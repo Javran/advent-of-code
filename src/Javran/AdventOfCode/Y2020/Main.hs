@@ -1,10 +1,13 @@
 module Javran.AdventOfCode.Y2020.Main
-  ( main
-  ) where
+  ( subMain
+  )
+where
 
-import Javran.AdventOfCode.Y2020.Day1
+import Javran.AdventOfCode.Prelude
+import Javran.AdventOfCode.Y2020.Day1 as Day1
 
-{-
-main :: IO ()
-main = pure ()
- -}
+subMain :: String -> IO ()
+subMain cmdHelpPrefix =
+  dispatchToSubCmds
+    cmdHelpPrefix
+    [("1", const Day1.main)]
