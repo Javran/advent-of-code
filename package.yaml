@@ -29,7 +29,7 @@ library:
     - -O2
 
 executables:
-  demo:
+  run-advent-of-code:
     main: Main.hs
     source-dirs: exe
     dependencies:

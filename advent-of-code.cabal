@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 4f488adbb034333b22215080ed6835ada496c01bae134dca1174e0816a9fc36e
+-- hash: 422bf1167ba88bb4741413270ccb55b35b492749a3e03103e871469bfcef574b
 
 name:           advent-of-code
 version:        0.1.0.0
@@ -47,7 +47,7 @@ library
     , vector-algorithms
   default-language: Haskell2010
 
-executable demo
+executable run-advent-of-code
   main-is: Main.hs
   other-modules:
       Paths_advent_of_code

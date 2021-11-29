@@ -6,3 +6,11 @@ Environment variables required:
 - `ADVENT_OF_CODE_SESSION`: session value for downloading input files, this can be found in request header using web browsers.
 
 Files under `data/download/` dirctory are downloaded from [Advent of Code](https://adventofcode.com/).
+
+To run solutions:
+
+```sh
+PROJECT_HOME=/path/to/project/home
+ADVENT_OF_CODE_SESSION=<cookie session>
+stack build && stack exec -- run-advent-of-code <year> <day>
+```
