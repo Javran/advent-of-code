@@ -75,6 +75,10 @@ getInput yyyy dd = prepareDataPath rsc >>= prepareData
   where
     rsc = show yyyy </> "day" </> show dd </> "input"
 
+{-
+  TODO: we probably want to pass down a context rather than String, which should allow
+  passing a reading IO action that can read input from somewhere else - we can allow easier testing this way.
+ -}
 type SubCmdHandlers = [(String, String -> IO ())]
 
 dispatchToSubCmds :: String -> SubCmdHandlers -> IO ()
