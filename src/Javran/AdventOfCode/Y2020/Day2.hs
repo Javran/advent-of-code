@@ -6,6 +6,7 @@ module Javran.AdventOfCode.Y2020.Day2
 where
 
 import Data.Char
+import Data.Maybe
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP
 
@@ -31,17 +32,28 @@ validatorP = do
   _ <- string ": "
   pure ((lo, hi), c)
 
-isValidLine :: String -> Bool
-isValidLine xs = case readP_to_S
+buildValidator2 :: ValidatorSpec -> Validator
+buildValidator2 ((pos0, pos1), ch) xs =
+  ch0 /= ch1 && ch `elem` catMaybes [ch0, ch1]
+  where
+    ch0 = getPos pos0
+    ch1 = getPos pos1
+    l = length xs
+    getPos i =
+      if i <= l then Just (xs !! (i -1)) else Nothing
+
+isValidLine :: (ValidatorSpec -> Validator) -> Validator
+isValidLine fromSpec xs = case readP_to_S
   ((,)
      <$> validatorP
      <*> (munch (const True) <* eof))
   xs of
-  [((fSpec, v), "")] -> buildValidator fSpec v
+  [((fSpec, v), "")] -> fromSpec fSpec v
   _ -> False
 
 main :: IO ()
 main = do
   rawLines <- lines <$> getInput @String 2020 2
-  print . length . filter id . fmap isValidLine $ rawLines
+  print . length . filter id . fmap (isValidLine buildValidator) $ rawLines
+  print . length . filter id . fmap (isValidLine buildValidator2) $ rawLines
   pure ()
