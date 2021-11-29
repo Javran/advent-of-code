@@ -4,3 +4,5 @@ stack.yaml.lock
 
 private/
 z*
+
+data/download
