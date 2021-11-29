@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: b2481886576a391eb983cdf758e89b25267c708d82682f64c2d3e75506439110
+-- hash: 8710e59dd09168aad9cb55f10a30fec6fc869ec1d51621ad36f16d10d9886d72
 
 name:           advent-of-code
 version:        0.1.0.0
@@ -40,6 +40,7 @@ library
     , http-types
     , text
     , time
+    , turtle
     , vector
     , vector-algorithms
   default-language: Haskell2010

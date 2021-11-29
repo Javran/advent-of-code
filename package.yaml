@@ -23,6 +23,7 @@ library:
     - text
     - bytestring
     - time
+    - turtle
   ghc-options:
     - -Wall
     - -O2

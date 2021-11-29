@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
 
 module Javran.AdventOfCode.Y2020.Day1
@@ -6,14 +7,14 @@ module Javran.AdventOfCode.Y2020.Day1
 where
 
 import Control.Monad
-import qualified Data.ByteString.Lazy as BSL
+import qualified Data.ByteString as BS
 import qualified Data.IntSet as IS
-import Network.HTTP.Client
-import Network.HTTP.Client.TLS
-import Network.HTTP.Types
+import qualified Data.Text as T
 import System.Directory
 import System.Environment
+import System.Exit
 import System.FilePath.Posix
+import qualified Turtle.Bytes as TBytes
 
 getInput :: IO IS.IntSet
 getInput = do
@@ -49,6 +50,7 @@ prepareData :: FilePath -> IO FilePath
 prepareData rsc = do
   projectHome <- getEnv "PROJECT_HOME"
   mySession <- getEnv "ADVENT_OF_CODE_SESSION"
+
   let actualFp = projectHome </> "data" </> "download" </> rsc
       (actualDir, _) = splitFileName actualFp
   createDirectoryIfMissing True actualDir
@@ -57,12 +59,14 @@ prepareData rsc = do
     <$ unless
       e
       (do
-         mgr <- newManager tlsManagerSettings
-         req <- parseRequest $ "https://adventofcode.com" </> rsc
-         print req
-         resp <- httpLbs req mgr
-         guard $ responseStatus resp == status200
-         BSL.writeFile actualFp $ responseBody resp)
+         -- there are too much bullshit involved to get the fucking CookieJar attached to a request for http-client that I won't bother.
+         let url = "https://adventofcode.com" </> rsc
+         (ExitSuccess, raw) <-
+           TBytes.procStrict
+             "curl"
+             ["--cookie", "session=" <> T.pack mySession, T.pack url]
+             ""
+         BS.writeFile actualFp raw)
 
 main :: IO ()
 main = do
