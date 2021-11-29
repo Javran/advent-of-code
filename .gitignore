@@ -1,0 +1,6 @@
+.stack-work/
+stack.yaml.lock
+*~
+
+private/
+z*

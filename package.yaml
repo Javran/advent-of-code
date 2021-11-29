@@ -1,0 +1,50 @@
+name: advent-of-code
+version: 0.1.0.0
+github: Javran/advent-of-code
+license: BSD3
+author: Javran Cheng
+maintainer: javran.c@gmail.com
+description: description
+
+dependencies:
+- base
+
+library:
+  source-dirs: src
+  dependencies:
+    - vector
+    - vector-algorithms
+    - containers
+  ghc-options:
+    - -Wall
+    - -O2
+
+executables:
+  demo:
+    main: Main.hs
+    source-dirs: exe
+    dependencies:
+      - advent-of-code
+    ghc-options:
+      - -Wall
+      - -O2
+      - -threaded
+      - -rtsopts
+      - -with-rtsopts=-N
+
+tests:
+  hspec:
+    main: Spec.hs
+    source-dirs:
+      - test
+    dependencies:
+      - advent-of-code
+      - QuickCheck
+      - hspec
+    ghc-options:
+      - -Wall
+      - -O2
+      - -threaded
+      - -rtsopts
+      - -with-rtsopts=-N
+      - -main-is Spec

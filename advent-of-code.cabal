@@ -1,0 +1,65 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.33.0.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: 9b41f094190eaea1953365fa38d66075f48a10df400caa624a289174f4a666aa
+
+name:           advent-of-code
+version:        0.1.0.0
+description:    description
+homepage:       https://github.com/Javran/advent-of-code#readme
+bug-reports:    https://github.com/Javran/advent-of-code/issues
+author:         Javran Cheng
+maintainer:     javran.c@gmail.com
+license:        BSD3
+build-type:     Simple
+
+source-repository head
+  type: git
+  location: https://github.com/Javran/advent-of-code
+
+library
+  exposed-modules:
+      Javran.AdventOfCode.Y2020.Day1
+      Javran.AdventOfCode.Y2020.Main
+  other-modules:
+      Paths_advent_of_code
+  hs-source-dirs:
+      src
+  ghc-options: -Wall -O2
+  build-depends:
+      base
+    , containers
+    , vector
+    , vector-algorithms
+  default-language: Haskell2010
+
+executable demo
+  main-is: Main.hs
+  other-modules:
+      Paths_advent_of_code
+  hs-source-dirs:
+      exe
+  ghc-options: -Wall -O2 -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      advent-of-code
+    , base
+  default-language: Haskell2010
+
+test-suite hspec
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      DemoSpec
+      Paths_advent_of_code
+  hs-source-dirs:
+      test
+  ghc-options: -Wall -O2 -threaded -rtsopts -with-rtsopts=-N -main-is Spec
+  build-depends:
+      QuickCheck
+    , advent-of-code
+    , base
+    , hspec
+  default-language: Haskell2010
