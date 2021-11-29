@@ -15,6 +15,14 @@ library:
     - vector
     - vector-algorithms
     - containers
+    - filepath
+    - http-types
+    - http-client
+    - http-client-tls
+    - directory
+    - text
+    - bytestring
+    - time
   ghc-options:
     - -Wall
     - -O2

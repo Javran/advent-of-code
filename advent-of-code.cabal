@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 9b41f094190eaea1953365fa38d66075f48a10df400caa624a289174f4a666aa
+-- hash: b2481886576a391eb983cdf758e89b25267c708d82682f64c2d3e75506439110
 
 name:           advent-of-code
 version:        0.1.0.0
@@ -31,7 +31,15 @@ library
   ghc-options: -Wall -O2
   build-depends:
       base
+    , bytestring
     , containers
+    , directory
+    , filepath
+    , http-client
+    , http-client-tls
+    , http-types
+    , text
+    , time
     , vector
     , vector-algorithms
   default-language: Haskell2010
