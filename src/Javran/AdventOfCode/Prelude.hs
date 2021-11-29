@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedStrings #-}
+
 module Javran.AdventOfCode.Prelude
   ( PreparableData (..)
   , prepareDataPath
@@ -71,15 +72,15 @@ getInput yyyy dd = prepareDataPath rsc >>= prepareData
   where
     rsc = show yyyy </> "day" </> show dd </> "input"
 
-
 type SubCmdHandlers = [(String, String -> IO ())]
 
 dispatchToSubCmds :: String -> SubCmdHandlers -> IO ()
-dispatchToSubCmds cmdHelpPrefix subCmdHandlers =  getArgs >>= \case
+dispatchToSubCmds cmdHelpPrefix subCmdHandlers =
+  getArgs >>= \case
     subCmd : args
-        | Just handler <- lookup subCmd subCmdHandlers ->
-          withArgs args (handler (cmdHelpPrefix <> subCmd <> " "))
+      | Just handler <- lookup subCmd subCmdHandlers ->
+        withArgs args (handler (cmdHelpPrefix <> subCmd <> " "))
     _ -> do
       forM_ subCmdHandlers $ \(sub, _) ->
-          putStrLn $ cmdHelpPrefix <> sub <> " ..."
+        putStrLn $ cmdHelpPrefix <> sub <> " ..."
       exitFailure
