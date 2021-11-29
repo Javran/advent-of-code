@@ -5,7 +5,6 @@ module Javran.AdventOfCode.Y2020.Day2
   )
 where
 
-import Data.Char
 import Data.Maybe
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP
@@ -14,9 +13,6 @@ type ValidatorSpec = ((Int, Int), Char)
 
 type Validator = String -> Bool
 
-decimal1 :: (Read i, Integral i) => ReadP i
-decimal1 = read <$> munch1 isDigit
-
 buildValidator :: ValidatorSpec -> Validator
 buildValidator ((lo, hi), ch) xs =
   let cnt = length (filter (== ch) xs)
@@ -24,9 +20,9 @@ buildValidator ((lo, hi), ch) xs =
 
 validatorP :: ReadP ValidatorSpec
 validatorP = do
-  lo <- decimal1
+  lo <- decimal1P
   _ <- char '-'
-  hi <- decimal1
+  hi <- decimal1P
   _ <- char ' '
   c <- get
   _ <- string ": "

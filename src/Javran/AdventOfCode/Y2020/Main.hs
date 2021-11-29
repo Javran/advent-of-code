@@ -7,6 +7,7 @@ import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.Y2020.Day1 as Day1
 import Javran.AdventOfCode.Y2020.Day2 as Day2
 import Javran.AdventOfCode.Y2020.Day3 as Day3
+import Javran.AdventOfCode.Y2020.Day4 as Day4
 
 subMain :: String -> IO ()
 subMain cmdHelpPrefix =
@@ -15,4 +16,5 @@ subMain cmdHelpPrefix =
     [ ("1", const Day1.main)
     , ("2", const Day2.main)
     , ("3", const Day3.main)
+    , ("4", const Day4.main)
     ]

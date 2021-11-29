@@ -8,12 +8,14 @@ module Javran.AdventOfCode.Prelude
   , getInput
   , SubCmdHandlers
   , dispatchToSubCmds
+  , decimal1P
   )
 where
 
 import Control.Monad
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BSL
+import Data.Char
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import qualified Data.Text.Lazy as TL
@@ -22,6 +24,7 @@ import System.Directory
 import System.Environment
 import System.Exit
 import System.FilePath.Posix
+import Text.ParserCombinators.ReadP
 import qualified Turtle.Bytes as TBytes
 
 class PreparableData a where
@@ -84,3 +87,6 @@ dispatchToSubCmds cmdHelpPrefix subCmdHandlers =
       forM_ subCmdHandlers $ \(sub, _) ->
         putStrLn $ cmdHelpPrefix <> sub <> " ..."
       exitFailure
+
+decimal1P :: (Read i, Integral i) => ReadP i
+decimal1P = read <$> munch1 isDigit
