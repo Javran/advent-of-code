@@ -9,6 +9,7 @@ where
 import Data.Maybe
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP
+import Control.Monad
 
 data Day2
 
@@ -49,10 +50,10 @@ buildValidator2 ((pos0, pos1), ch) xs =
       if i <= l then Just (xs !! (i -1)) else Nothing
 
 isValidLine :: (ValidatorSpec -> Validator) -> Validator
-isValidLine fromSpec xs = case readP_to_S
-  ((,)
+isValidLine fromSpec xs = isJust $ do
+  (fSpec, v) <- consumeAllWithReadP p xs
+  guard $ fromSpec fSpec v
+ where
+   p = (,)
      <$> validatorP
-     <*> (munch (const True) <* eof))
-  xs of
-  [((fSpec, v), "")] -> fromSpec fSpec v
-  _ -> False
+     <*> (munch (const True) <* eof)

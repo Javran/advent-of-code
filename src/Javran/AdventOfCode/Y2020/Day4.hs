@@ -36,7 +36,7 @@ requiredFields = S.fromList $ words "byr iyr eyr hgt hcl ecl pid" -- cid is opti
 valueValidators :: M.Map String (String -> Bool)
 valueValidators =
   M.fromList
-    (second fromReadP
+    (second (\p xs -> isJust (consumeAllWithReadP p xs))
        <$> [ ("byr", fourDigits 1920 2002)
            , ("iyr", fourDigits 2010 2020)
            , ("eyr", fourDigits 2020 2030)
@@ -64,9 +64,6 @@ valueValidators =
       xs <- replicateM 4 (satisfy isDigit)
       let v = read @Int xs
       guard $ v >= lo && v <= hi
-    fromReadP p xs = case readP_to_S (p <* eof) xs of
-      [(_, "")] -> True
-      _ -> False
 
 toRawRecord :: [String] -> [(String, String)]
 toRawRecord recLines = do

@@ -7,10 +7,13 @@
 {-# LANGUAGE NoMonomorphismRestriction #-}
 
 module Javran.AdventOfCode.Prelude
-  ( prepareDataPath
+  ( -- helper functions
+    decimal1P
+  , consumeAllWithReadP
+  , -- infrastructure setups.
+    prepareDataPath
   , SubCmdHandlers
   , dispatchToSubCmds
-  , decimal1P
   , Solution (..)
   , SolutionContext (..)
   , runSolutionWithLoginInput
@@ -26,8 +29,8 @@ import qualified Data.ByteString.Lazy as BSL
 import Data.Char
 import Data.IORef
 import qualified Data.Text as T
-import qualified Data.Text.IO as T
 import Data.Text.Encoding
+import qualified Data.Text.IO as T
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.Builder as TLB
 import qualified Paths_advent_of_code as StockData
@@ -38,6 +41,14 @@ import System.FilePath.Posix
 import System.IO
 import Text.ParserCombinators.ReadP
 import qualified Turtle.Bytes as TBytes
+
+decimal1P :: (Read i, Integral i) => ReadP i
+decimal1P = read <$> munch1 isDigit
+
+consumeAllWithReadP :: ReadP a -> String -> Maybe a
+consumeAllWithReadP p xs = case readP_to_S (p <* eof) xs of
+  [(v, "")] -> pure v
+  _ -> Nothing
 
 {-
   Ensure that the resource is available locally.
@@ -80,9 +91,6 @@ dispatchToSubCmds cmdHelpPrefix subCmdHandlers =
       forM_ subCmdHandlers $ \(sub, _) ->
         putStrLn $ cmdHelpPrefix <> sub <> " ..."
       exitFailure
-
-decimal1P :: (Read i, Integral i) => ReadP i
-decimal1P = read <$> munch1 isDigit
 
 getRawInput :: Int -> Int -> IO BSL.ByteString
 getRawInput yyyy dd = prepareDataPath rsc >>= BSL.readFile
@@ -164,7 +172,7 @@ runSolutionWithLoginInput p = runSolutionWithInputGetter p getRawInput
 {-
   TODO: expect files are not used for now - in future might use it as unit test.
  -}
-runSolutionWithExampleAndWriteExpect  :: forall p sol. Solution sol => p sol -> IO ()
+runSolutionWithExampleAndWriteExpect :: forall p sol. Solution sol => p sol -> IO ()
 runSolutionWithExampleAndWriteExpect p = do
   projectHome <- getEnv "PROJECT_HOME"
   let (yyyy, dd) = solutionIndex p
