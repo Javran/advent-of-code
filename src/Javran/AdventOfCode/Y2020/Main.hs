@@ -38,8 +38,10 @@ runSomeSolution (SomeSolution s) cmdHelpPrefix = do
       runSolutionWithLoginInput s >>= T.putStr
     ["example"] ->
       runSolutionWithExampleInput s >>= T.putStr
+    ["write-expect"] ->
+      runSolutionWithExampleAndWriteExpect s
     _ ->
-      die $ cmdHelpPrefix <> "[example|login]"
+      die $ cmdHelpPrefix <> "[example|login|write-expect]"
 
 subMain :: String -> IO ()
 subMain cmdHelpPrefix = do

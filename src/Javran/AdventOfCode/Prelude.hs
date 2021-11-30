@@ -15,6 +15,7 @@ module Javran.AdventOfCode.Prelude
   , SolutionContext (..)
   , runSolutionWithLoginInput
   , runSolutionWithExampleInput
+  , runSolutionWithExampleAndWriteExpect
   )
 where
 
@@ -25,6 +26,7 @@ import qualified Data.ByteString.Lazy as BSL
 import Data.Char
 import Data.IORef
 import qualified Data.Text as T
+import qualified Data.Text.IO as T
 import Data.Text.Encoding
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.Builder as TLB
@@ -33,6 +35,7 @@ import System.Directory
 import System.Environment
 import System.Exit
 import System.FilePath.Posix
+import System.IO
 import Text.ParserCombinators.ReadP
 import qualified Turtle.Bytes as TBytes
 
@@ -86,18 +89,34 @@ getRawInput yyyy dd = prepareDataPath rsc >>= BSL.readFile
   where
     rsc = show yyyy </> "day" </> show dd </> "input"
 
+exampleRawInputRelativePath :: Int -> Int -> FilePath
+exampleRawInputRelativePath yyyy dd =
+  "data"
+    </> "testdata"
+    </> show yyyy
+    </> "day"
+    </> show dd
+
 getExampleRawInput :: Int -> Int -> IO BSL.ByteString
 getExampleRawInput yyyy dd = do
+  projectHome <- getEnv "PROJECT_HOME"
   dataDir <- StockData.getDataDir
-  let fp =
+  let subPath = exampleRawInputRelativePath yyyy dd
+      exampleInputFileName = "example.input.txt"
+      fp =
         dataDir
-          </> "data"
-          </> "testdata"
-          </> show yyyy
-          </> "day"
-          </> show dd
-          </> "example.input.txt"
-  BSL.readFile fp
+          </> subPath
+          </> exampleInputFileName
+  e <- doesFileExist fp
+  if e
+    then BSL.readFile fp
+    else do
+      createDirectoryIfMissing True (projectHome </> subPath)
+      hPutStrLn stderr $
+        "Sample file for Solution " <> show (yyyy, dd) <> " does not exist."
+      hPutStrLn stderr $
+        "Please write its content to: " <> (projectHome </> subPath </> exampleInputFileName)
+      exitFailure
 
 data SolutionContext = SolutionContext
   { getInputS :: IO String
@@ -141,3 +160,16 @@ runSolutionWithExampleInput p = runSolutionWithInputGetter p getExampleRawInput
 
 runSolutionWithLoginInput :: forall p sol. Solution sol => p sol -> IO T.Text
 runSolutionWithLoginInput p = runSolutionWithInputGetter p getRawInput
+
+{-
+  TODO: expect files are not used for now - in future might use it as unit test.
+ -}
+runSolutionWithExampleAndWriteExpect  :: forall p sol. Solution sol => p sol -> IO ()
+runSolutionWithExampleAndWriteExpect p = do
+  projectHome <- getEnv "PROJECT_HOME"
+  let (yyyy, dd) = solutionIndex p
+  actualOutput <- runSolutionWithExampleInput p
+  let fpTarget = projectHome </> subPath </> "example.expect.txt"
+      subPath = exampleRawInputRelativePath yyyy dd
+  T.writeFile fpTarget actualOutput
+  putStrLn $ "Written to: " <> fpTarget
