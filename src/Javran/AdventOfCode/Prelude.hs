@@ -1,49 +1,38 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
 
 module Javran.AdventOfCode.Prelude
-  ( PreparableData (..)
-  , prepareDataPath
-  , getInput
+  ( prepareDataPath
   , SubCmdHandlers
   , dispatchToSubCmds
   , decimal1P
+  , Solution (..)
+  , SolutionContext (..)
+  , runSolutionWithLoginInput
   )
 where
 
 import Control.Monad
+import Control.Once
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BSL
 import Data.Char
+import Data.IORef
 import qualified Data.Text as T
-import qualified Data.Text.IO as T
+import Data.Text.Encoding
 import qualified Data.Text.Lazy as TL
-import qualified Data.Text.Lazy.IO as TL
+import qualified Data.Text.Lazy.Builder as TLB
 import System.Directory
 import System.Environment
 import System.Exit
 import System.FilePath.Posix
 import Text.ParserCombinators.ReadP
 import qualified Turtle.Bytes as TBytes
-
-class PreparableData a where
-  prepareData :: FilePath -> IO a
-
-instance PreparableData String where
-  prepareData = readFile
-
-instance PreparableData T.Text where
-  prepareData = T.readFile
-
-instance PreparableData TL.Text where
-  prepareData = TL.readFile
-
-instance PreparableData BS.ByteString where
-  prepareData = BS.readFile
-
-instance PreparableData BSL.ByteString where
-  prepareData = BSL.readFile
 
 {-
   Ensure that the resource is available locally.
@@ -70,11 +59,6 @@ prepareDataPath rsc = do
              ""
          BS.writeFile actualFp raw)
 
-getInput :: PreparableData d => Int -> Int -> IO d
-getInput yyyy dd = prepareDataPath rsc >>= prepareData
-  where
-    rsc = show yyyy </> "day" </> show dd </> "input"
-
 {-
   TODO: we probably want to pass down a context rather than String, which should allow
   passing a reading IO action that can read input from somewhere else - we can allow easier testing this way.
@@ -94,3 +78,45 @@ dispatchToSubCmds cmdHelpPrefix subCmdHandlers =
 
 decimal1P :: (Read i, Integral i) => ReadP i
 decimal1P = read <$> munch1 isDigit
+
+getRawInput :: Int -> Int -> IO BSL.ByteString
+getRawInput yyyy dd = prepareDataPath rsc >>= BSL.readFile
+  where
+    rsc = show yyyy </> "day" </> show dd </> "input"
+
+data SolutionContext = SolutionContext
+  { getInputS :: IO String
+  , getInputT :: IO T.Text
+  , answerS :: String -> IO ()
+  , answerShow :: forall a. Show a => a -> IO ()
+  , answerT :: T.Text -> IO ()
+  }
+
+class Solution sol where
+  -- year and day
+  solutionIndex :: forall p. p sol -> (Int, Int)
+  solutionRun :: forall p. p sol -> SolutionContext -> IO ()
+
+runSolutionWithLoginInput :: forall p sol. Solution sol => p sol -> IO T.Text
+runSolutionWithLoginInput p = do
+  let (yyyy, dd) = solutionIndex p
+  getInputBs <- once (getRawInput yyyy dd)
+  outRef <- newIORef @TLB.Builder ""
+  let getInputT = decodeUtf8 . BSL.toStrict <$> getInputBs
+      getInputS = T.unpack <$> getInputT
+      answerT output =
+        atomicModifyIORef' outRef (\b -> (b <> TLB.fromText output <> "\n", ()))
+      answerS output =
+        atomicModifyIORef' outRef (\b -> (b <> TLB.fromString output <> "\n", ()))
+      answerShow = answerS . show
+  solutionRun
+    p
+    SolutionContext
+      { getInputS
+      , getInputT
+      , answerT
+      , answerS
+      , answerShow
+      }
+  answer <- readIORef outRef
+  pure $ TL.toStrict $ TLB.toLazyText answer

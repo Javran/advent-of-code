@@ -1,3 +1,4 @@
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
 
@@ -7,7 +8,18 @@ module Javran.AdventOfCode.Y2020.Day1
 where
 
 import qualified Data.IntSet as IS
+import Data.Proxy
+import qualified Data.Text.IO as T
 import Javran.AdventOfCode.Prelude
+
+data Day1
+
+instance Solution Day1 where
+  solutionIndex _ = (2020, 1)
+  solutionRun _ SolutionContext {getInputS, answerShow} = do
+    xs <- IS.fromList . fmap (read @Int) . words <$> getInputS
+    answerShow (head (solutions xs))
+    answerShow (head (solutions2 xs))
 
 solutions :: IS.IntSet -> [] Int
 solutions xs = do
@@ -29,6 +41,4 @@ solutions2 xs = do
 
 main :: IO ()
 main = do
-  xs <- IS.fromList . fmap (read @Int) . words <$> getInput 2020 1
-  print (head (solutions xs))
-  print (head (solutions2 xs))
+  runSolutionWithLoginInput (Proxy @Day1) >>= T.putStr

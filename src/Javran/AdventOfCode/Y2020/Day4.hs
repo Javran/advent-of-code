@@ -1,3 +1,5 @@
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
 
 module Javran.AdventOfCode.Y2020.Day4
@@ -11,11 +13,23 @@ import Data.Char
 import qualified Data.List.Split as LSplit
 import qualified Data.Map.Strict as M
 import Data.Maybe
+import Data.Proxy
 import qualified Data.Set as S
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP
-
+import qualified Data.Text.IO as T
 type Record = S.Set String
+
+data Day4
+
+instance Solution Day4 where
+  solutionIndex _ = (2020, 4)
+  solutionRun _ SolutionContext {getInputS, answerShow} = do
+    raw <- getInputS
+    let rawRecords = fmap toRawRecord . LSplit.splitOn [""] . lines $ raw
+        validRawRecords = filter (isValid . S.fromList . fmap fst) rawRecords
+    answerShow $ length validRawRecords
+    answerShow $ length $ filter isValid2 validRawRecords
 
 requiredFields :: S.Set String
 requiredFields = S.fromList $ words "byr iyr eyr hgt hcl ecl pid" -- cid is optional
@@ -36,8 +50,9 @@ valueValidators =
              )
            , ( "hcl"
              , char '#'
-                 *> replicateM_ 6 (
-                       satisfy (`elem` (['0' .. '9'] <> ['a' .. 'f'])))
+                 *> replicateM_
+                   6
+                   (satisfy (`elem` (['0' .. '9'] <> ['a' .. 'f'])))
              )
            , ("ecl", void $ foldr1 (<++) $ string <$> words "amb blu brn gry grn hzl oth")
            , ( "pid"
@@ -74,8 +89,4 @@ isValid2 kvs = isJust $ mapM_ verifyKv kvs
 
 main :: IO ()
 main = do
-  raw <- getInput @String 2020 4
-  let rawRecords = fmap toRawRecord . LSplit.splitOn [""] . lines $ raw
-      validRawRecords = filter (isValid . S.fromList . fmap fst) rawRecords
-  print $ length validRawRecords
-  print $ length $ filter isValid2 validRawRecords
+  runSolutionWithLoginInput (Proxy @Day4) >>= T.putStr

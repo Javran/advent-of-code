@@ -1,5 +1,6 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Javran.AdventOfCode.Y2020.Day3
   ( main
@@ -9,8 +10,21 @@ where
 import Control.Monad
 import Data.List
 import Data.Monoid
+import Data.Proxy
+import qualified Data.Text.IO as T
 import qualified Data.Vector as V
 import Javran.AdventOfCode.Prelude
+
+data Day3
+
+instance Solution Day3 where
+  solutionIndex _ = (2020, 3)
+  solutionRun _ SolutionContext {getInputS, answerShow} = do
+    tm <- mkTreeMap . lines <$> getInputS
+    answerShow $ getSum (countTrees tm (1, 3))
+    answerShow $
+      product $ do
+        getSum . countTrees tm <$> [(1, 1), (1, 3), (1, 5), (1, 7), (2, 1)]
 
 data TreeMap = TreeMap
   { tmRows :: Int
@@ -52,7 +66,4 @@ countTrees tm (dr, dc) = mconcat $ unfoldr go (0, 0)
 
 main :: IO ()
 main = do
-  tm <- mkTreeMap . lines <$> getInput 2020 3
-  print (countTrees tm (1,3))
-  print $ product $ do
-    getSum . countTrees tm <$> [(1,1), (1,3), (1,5), (1,7), (2,1)]
+  runSolutionWithLoginInput (Proxy @Day3) >>= T.putStr

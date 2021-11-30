@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 849384f86f6952abbdf2c561be6e06e7eedfde1dfe800d03822930da2421942e
+-- hash: 87e30fb9f28a8670a1c538e91a871f680a61c57726b18caef302eaaecbbb5c85
 
 name:           advent-of-code
 version:        0.1.0.0
@@ -43,6 +43,7 @@ library
     , http-client
     , http-client-tls
     , http-types
+    , once
     , split
     , text
     , time

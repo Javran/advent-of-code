@@ -1,3 +1,5 @@
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
 
 module Javran.AdventOfCode.Y2020.Day2
@@ -6,8 +8,19 @@ module Javran.AdventOfCode.Y2020.Day2
 where
 
 import Data.Maybe
+import Data.Proxy
+import qualified Data.Text.IO as T
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP
+
+data Day2
+
+instance Solution Day2 where
+  solutionIndex _ = (2020, 2)
+  solutionRun _ SolutionContext {getInputS, answerShow} = do
+    rawLines <- lines <$> getInputS
+    answerShow . length . filter id . fmap (isValidLine buildValidator) $ rawLines
+    answerShow . length . filter id . fmap (isValidLine buildValidator2) $ rawLines
 
 type ValidatorSpec = ((Int, Int), Char)
 
@@ -49,7 +62,4 @@ isValidLine fromSpec xs = case readP_to_S
 
 main :: IO ()
 main = do
-  rawLines <- lines <$> getInput @String 2020 2
-  print . length . filter id . fmap (isValidLine buildValidator) $ rawLines
-  print . length . filter id . fmap (isValidLine buildValidator2) $ rawLines
-  pure ()
+  runSolutionWithLoginInput (Proxy @Day2) >>= T.putStr

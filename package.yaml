@@ -25,6 +25,7 @@ library:
     - time
     - turtle
     - split
+    - once
   ghc-options:
     - -Wall
     - -O2
