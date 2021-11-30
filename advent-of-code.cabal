@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 87e30fb9f28a8670a1c538e91a871f680a61c57726b18caef302eaaecbbb5c85
+-- hash: bc261a5c3842b187843e5408bcef6c4041265e4031cbfd41d2fc19a8b27c3f43
 
 name:           advent-of-code
 version:        0.1.0.0
@@ -24,6 +24,7 @@ library
   exposed-modules:
       Javran.AdventOfCode.Main
       Javran.AdventOfCode.Prelude
+      Javran.AdventOfCode.TH
       Javran.AdventOfCode.Y2020.Day1
       Javran.AdventOfCode.Y2020.Day2
       Javran.AdventOfCode.Y2020.Day3
@@ -45,6 +46,7 @@ library
     , http-types
     , once
     , split
+    , template-haskell
     , text
     , time
     , turtle

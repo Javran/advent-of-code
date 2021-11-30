@@ -26,6 +26,7 @@ library:
     - turtle
     - split
     - once
+    - template-haskell
   ghc-options:
     - -Wall
     - -O2

@@ -1,17 +1,14 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeApplications #-}
 
 module Javran.AdventOfCode.Y2020.Day3
-  ( main
+  (
   )
 where
 
 import Control.Monad
 import Data.List
 import Data.Monoid
-import Data.Proxy
-import qualified Data.Text.IO as T
 import qualified Data.Vector as V
 import Javran.AdventOfCode.Prelude
 
@@ -63,7 +60,3 @@ countTrees tm (dr, dc) = mconcat $ unfoldr go (0, 0)
     go coord@(r, c) = do
       t <- treeMapIndex tm coord
       pure (if t then 1 else 0, (r + dr, c + dc))
-
-main :: IO ()
-main = do
-  runSolutionWithLoginInput (Proxy @Day3) >>= T.putStr

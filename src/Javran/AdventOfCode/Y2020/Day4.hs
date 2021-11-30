@@ -3,7 +3,7 @@
 {-# LANGUAGE TypeApplications #-}
 
 module Javran.AdventOfCode.Y2020.Day4
-  ( main
+  (
   )
 where
 
@@ -13,11 +13,10 @@ import Data.Char
 import qualified Data.List.Split as LSplit
 import qualified Data.Map.Strict as M
 import Data.Maybe
-import Data.Proxy
 import qualified Data.Set as S
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP
-import qualified Data.Text.IO as T
+
 type Record = S.Set String
 
 data Day4
@@ -86,7 +85,3 @@ isValid2 kvs = isJust $ mapM_ verifyKv kvs
     verifyKv (k, v) = case valueValidators M.!? k of
       Nothing -> pure ()
       Just validator -> guard $ validator v
-
-main :: IO ()
-main = do
-  runSolutionWithLoginInput (Proxy @Day4) >>= T.putStr

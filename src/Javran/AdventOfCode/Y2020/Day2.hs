@@ -1,15 +1,12 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeApplications #-}
 
 module Javran.AdventOfCode.Y2020.Day2
-  ( main
+  (
   )
 where
 
 import Data.Maybe
-import Data.Proxy
-import qualified Data.Text.IO as T
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP
 
@@ -59,7 +56,3 @@ isValidLine fromSpec xs = case readP_to_S
   xs of
   [((fSpec, v), "")] -> fromSpec fSpec v
   _ -> False
-
-main :: IO ()
-main = do
-  runSolutionWithLoginInput (Proxy @Day2) >>= T.putStr
