@@ -9,6 +9,10 @@ description: description
 dependencies:
 - base
 
+data-files:
+- data/testdata/**/*.input.txt
+- data/testdata/**/*.expect.txt
+
 library:
   source-dirs: src
   dependencies:

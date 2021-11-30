@@ -14,6 +14,7 @@ module Javran.AdventOfCode.Prelude
   , Solution (..)
   , SolutionContext (..)
   , runSolutionWithLoginInput
+  , runSolutionWithExampleInput
   )
 where
 
@@ -27,6 +28,7 @@ import qualified Data.Text as T
 import Data.Text.Encoding
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.Builder as TLB
+import qualified Paths_advent_of_code as StockData
 import System.Directory
 import System.Environment
 import System.Exit
@@ -84,6 +86,19 @@ getRawInput yyyy dd = prepareDataPath rsc >>= BSL.readFile
   where
     rsc = show yyyy </> "day" </> show dd </> "input"
 
+getExampleRawInput :: Int -> Int -> IO BSL.ByteString
+getExampleRawInput yyyy dd = do
+  dataDir <- StockData.getDataDir
+  let fp =
+        dataDir
+          </> "data"
+          </> "testdata"
+          </> show yyyy
+          </> "day"
+          </> show dd
+          </> "example.input.txt"
+  BSL.readFile fp
+
 data SolutionContext = SolutionContext
   { getInputS :: IO String
   , getInputT :: IO T.Text
@@ -97,10 +112,10 @@ class Solution sol where
   solutionIndex :: forall p. p sol -> (Int, Int)
   solutionRun :: forall p. p sol -> SolutionContext -> IO ()
 
-runSolutionWithLoginInput :: forall p sol. Solution sol => p sol -> IO T.Text
-runSolutionWithLoginInput p = do
+runSolutionWithInputGetter :: forall p sol. Solution sol => p sol -> (Int -> Int -> IO BSL.ByteString) -> IO T.Text
+runSolutionWithInputGetter p inputGetter = do
   let (yyyy, dd) = solutionIndex p
-  getInputBs <- once (getRawInput yyyy dd)
+  getInputBs <- once (inputGetter yyyy dd)
   outRef <- newIORef @TLB.Builder ""
   let getInputT = decodeUtf8 . BSL.toStrict <$> getInputBs
       getInputS = T.unpack <$> getInputT
@@ -120,3 +135,9 @@ runSolutionWithLoginInput p = do
       }
   answer <- readIORef outRef
   pure $ TL.toStrict $ TLB.toLazyText answer
+
+runSolutionWithExampleInput :: forall p sol. Solution sol => p sol -> IO T.Text
+runSolutionWithExampleInput p = runSolutionWithInputGetter p getExampleRawInput
+
+runSolutionWithLoginInput :: forall p sol. Solution sol => p sol -> IO T.Text
+runSolutionWithLoginInput p = runSolutionWithInputGetter p getRawInput

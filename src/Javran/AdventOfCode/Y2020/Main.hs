@@ -6,6 +6,7 @@ module Javran.AdventOfCode.Y2020.Main
   )
 where
 
+import Data.Bifunctor
 import Data.List
 import Data.Proxy
 import qualified Data.Text.IO as T
@@ -15,6 +16,8 @@ import Javran.AdventOfCode.Y2020.Day1 ()
 import Javran.AdventOfCode.Y2020.Day2 ()
 import Javran.AdventOfCode.Y2020.Day3 ()
 import Javran.AdventOfCode.Y2020.Day4 ()
+import System.Environment
+import System.Exit
 
 data SomeSolution = forall sol. Solution sol => SomeSolution (Proxy sol)
 
@@ -25,14 +28,24 @@ collectedSolutions = sortOn fst (mk <$> $collectSolutions)
       (2020, dd) -> (dd, ss)
       solInd -> error $ "Invalid solution index: " <> show solInd
 
-runSomeSolution :: SomeSolution -> IO ()
-runSomeSolution (SomeSolution s) = runSolutionWithLoginInput s >>= T.putStr
+runSomeSolution :: SomeSolution -> String -> IO ()
+runSomeSolution (SomeSolution s) cmdHelpPrefix = do
+  args <- getArgs
+  case args of
+    [] ->
+      runSolutionWithLoginInput s >>= T.putStr
+    ["login"] ->
+      runSolutionWithLoginInput s >>= T.putStr
+    ["example"] ->
+      runSolutionWithExampleInput s >>= T.putStr
+    _ ->
+      die $ cmdHelpPrefix <> "[example|login]"
 
 subMain :: String -> IO ()
 subMain cmdHelpPrefix = do
   let solutionRunners =
         fmap
-          (\(i, ss) -> (show i, const (runSomeSolution ss)))
+          (bimap show runSomeSolution)
           collectedSolutions
   dispatchToSubCmds
     cmdHelpPrefix
