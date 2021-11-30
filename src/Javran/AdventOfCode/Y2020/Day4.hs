@@ -61,8 +61,7 @@ valueValidators =
   where
     -- a bit subtle: decimal1P accepts 01920 while this does not.
     fourDigits lo hi = do
-      xs <- munch1 isDigit
-      guard $ take 4 xs == xs
+      xs <- replicateM 4 (satisfy isDigit)
       let v = read @Int xs
       guard $ v >= lo && v <= hi
     fromReadP p xs = case readP_to_S (p <* eof) xs of
