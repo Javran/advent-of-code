@@ -1,3 +1,6 @@
 resolver: lts-16.31
 packages:
 - .
+
+extra-deps:
+- memoize-0.8.1

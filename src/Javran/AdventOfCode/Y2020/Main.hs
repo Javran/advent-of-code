@@ -18,6 +18,7 @@ import Javran.AdventOfCode.Y2020.Day3 ()
 import Javran.AdventOfCode.Y2020.Day4 ()
 import Javran.AdventOfCode.Y2020.Day5 ()
 import Javran.AdventOfCode.Y2020.Day6 ()
+import Javran.AdventOfCode.Y2020.Day7 ()
 import System.Environment
 import System.Exit
 

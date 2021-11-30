@@ -31,6 +31,8 @@ library:
     - split
     - once
     - template-haskell
+    - mtl
+    - memoize
   ghc-options:
     - -Wall
     - -O2
