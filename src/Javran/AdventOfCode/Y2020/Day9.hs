@@ -16,16 +16,13 @@ import Javran.AdventOfCode.Prelude
 
 data Day9
 
--- TODO: example needs 5 and actual input needs 25,
--- there is no way to vary this value for example and real run for now.
-preambleLength :: Int
-preambleLength = 25
-
 instance Solution Day9 where
   solutionIndex _ = (2020, 9)
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    xs <- fmap (read @Integer) . lines <$> getInputS
-    let targetSum = head $ do
+    (mExtra, xsPre) <- consumeExtraLeadingLines <$> getInputS
+    let preambleLength = maybe 25 (read . unlines) mExtra
+        xs = fmap (read @Integer) . lines $ xsPre
+        targetSum = head $ do
           ns <- tails xs
           (prevs, cur : _) <- pure (splitAt preambleLength ns)
           let prevSet = S.fromList prevs
