@@ -16,12 +16,14 @@ module Javran.AdventOfCode.Infra
   , dispatchToSubCmds
   , Solution (..)
   , SolutionContext (..)
+  , runSolutionWithInputGetter
   , runSolutionWithLoginInput
   , runSolutionWithExampleInput
   , runSolutionWithExampleAndWriteExpect
   , SomeSolution (..)
   , runSomeSolution
   , mkYearlyMain
+  , exampleRawInputRelativePath
   )
 where
 

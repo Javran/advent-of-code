@@ -8,6 +8,8 @@ description: description
 
 dependencies:
 - base
+- text
+- bytestring
 
 data-files:
 - data/testdata/**/*.input.txt
@@ -24,8 +26,6 @@ library:
     - http-client
     - http-client-tls
     - directory
-    - text
-    - bytestring
     - time
     - turtle
     - split
