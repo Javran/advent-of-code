@@ -1,9 +1,11 @@
 module Javran.AdventOfCode.TH
   ( collectSolutions
+  , module Data.Proxy
   )
 where
 
 import Data.Maybe
+import Data.Proxy
 import Language.Haskell.TH
 
 collectSolutions :: Q Exp

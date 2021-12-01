@@ -1,6 +1,7 @@
 {-
   This module contains intrastructure that keep things working.
  -}
+{-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
@@ -18,6 +19,9 @@ module Javran.AdventOfCode.Infra
   , runSolutionWithLoginInput
   , runSolutionWithExampleInput
   , runSolutionWithExampleAndWriteExpect
+  , SomeSolution (..)
+  , runSomeSolution
+  , mkYearlyMain
   )
 where
 
@@ -26,6 +30,8 @@ import Control.Once
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BSL
 import Data.IORef
+import Data.List
+import Data.Proxy
 import qualified Data.Text as T
 import Data.Text.Encoding
 import qualified Data.Text.IO as T
@@ -170,3 +176,37 @@ runSolutionWithExampleAndWriteExpect p = do
       subPath = exampleRawInputRelativePath yyyy dd
   T.writeFile fpTarget actualOutput
   putStrLn $ "Written to: " <> fpTarget
+
+data SomeSolution = forall sol. Solution sol => SomeSolution (Proxy sol)
+
+runSomeSolution :: SomeSolution -> String -> IO ()
+runSomeSolution (SomeSolution s) cmdHelpPrefix = do
+  args <- getArgs
+  case args of
+    [] ->
+      runSolutionWithLoginInput s >>= T.putStr
+    ["login"] ->
+      runSolutionWithLoginInput s >>= T.putStr
+    ["example"] ->
+      runSolutionWithExampleInput s >>= T.putStr
+    ["write-expect"] ->
+      runSolutionWithExampleAndWriteExpect s
+    _ ->
+      die $ cmdHelpPrefix <> "[example|login|write-expect]"
+
+mkYearlyMain :: Int -> [SomeSolution] -> String -> IO ()
+mkYearlyMain year collectedSolutions = yearlyMain
+  where
+    solutionRunners = sortOn fst (mk <$> collectedSolutions)
+      where
+        mk ss@(SomeSolution s) = case solutionIndex s of
+          (yyyy, dd)
+            | yyyy == year ->
+              (show dd, runSomeSolution ss)
+          solInd -> error $ "Invalid solution index: " <> show solInd
+
+    yearlyMain :: String -> IO ()
+    yearlyMain cmdHelpPrefix = do
+      dispatchToSubCmds
+        cmdHelpPrefix
+        solutionRunners
