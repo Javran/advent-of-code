@@ -33,7 +33,8 @@ import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Vector as V
 import Javran.AdventOfCode.Prelude
-import Text.ParserCombinators.ReadP
+import Text.ParserCombinators.ReadP hiding (many)
+import Control.Applicative
 
 {-
 
@@ -93,21 +94,23 @@ instance Solution Day11 where
           let v' = (r', c')
           guard $ c' >= 0 && c' < cols && (r, c) /= v'
           pure v'
-        countOccupiedNeighborSeats :: World Cell -> Coord -> Int
-        countOccupiedNeighborSeats world coord = countLength (== SeatOccupied) $ do
-          (r', c') <- neighborCoords coord
-          pure $ world V.! r' V.! c'
+        stepCell :: World Cell -> Coord -> Cell -> Cell
+        stepCell w coord cur = case cur of
+          SeatEmpty | ns == 0 -> SeatOccupied
+          SeatOccupied | ns >= 4 -> SeatEmpty
+          _ -> cur
+          where
+            ns = countLength (== SeatOccupied) $ do
+              (r', c') <- neighborCoords coord
+              pure $ w V.! r' V.! c'
+
         stepWorld :: World Cell -> World Cell
         stepWorld w =
           V.imap
             (\r curRow ->
                V.imap
                  (\c cur ->
-                    let ns = countOccupiedNeighborSeats w (r, c)
-                     in case cur of
-                          SeatEmpty | ns == 0 -> SeatOccupied
-                          SeatOccupied | ns >= 4 -> SeatEmpty
-                          _ -> cur)
+                    stepCell w (r, c) cur)
                  curRow)
             w
         _ppr w = do
@@ -125,3 +128,45 @@ instance Solution Day11 where
              SeatOccupied -> 1
              _ -> 0)
           finalWorld
+    let torpedo w coord@(r,c) nextCoord =
+          (w V.! r V.! c) <|> do
+             c' <- nextCoord coord
+             torpedo w c' nextCoord
+        torpedoNeighbors :: World Cell -> Coord -> [Cell]
+        torpedoNeighbors w coord = do
+          dr <- [-1 .. 1]
+          dc <- [-1 .. 1]
+          guard $ (dr,dc) /= (0,0)
+          let nextCoord (r, c) = do
+                let v'@(r', c') = (r + dr, c+dc) :: Coord
+                guard $ r' >= 0 && r' < rows && c' >= 0 && c' < cols
+                pure v'
+          Just coord' <- [nextCoord coord]
+          pure $ torpedo w coord' nextCoord
+        stepCell2 :: World Cell -> Coord -> Cell -> Cell
+        stepCell2 w coord cur = case cur of
+          SeatEmpty | ns == 0 -> SeatOccupied
+          SeatOccupied | ns >= 5 -> SeatEmpty
+          _ -> cur
+          where
+            ns = countLength (== SeatOccupied) $ torpedoNeighbors w coord
+        stepWorld2 :: World Cell -> World Cell
+        stepWorld2 w =
+          V.imap
+            (\r curRow ->
+               V.imap
+                 (\c cur ->
+                    stepCell2 w (r, c) cur)
+                 curRow)
+            w
+    let (_, finalWorld2) : _ = dropWhile (uncurry (/=)) $ zip progression (tail progression)
+          where
+            progression :: [World Cell]
+            progression = iterate stepWorld2 initWorld
+    answerShow $
+      getSum @Int $
+        (foldMap . foldMap)
+          (\case
+             SeatOccupied -> 1
+             _ -> 0)
+          finalWorld2
