@@ -10,9 +10,10 @@ import Data.Bifunctor
 import Data.List
 import Data.Proxy
 import qualified Data.Text.IO as T
-import Javran.AdventOfCode.Prelude
+import Javran.AdventOfCode.Infra
 import Javran.AdventOfCode.TH
 import Javran.AdventOfCode.Y2020.Day1 ()
+import Javran.AdventOfCode.Y2020.Day10 ()
 import Javran.AdventOfCode.Y2020.Day2 ()
 import Javran.AdventOfCode.Y2020.Day3 ()
 import Javran.AdventOfCode.Y2020.Day4 ()
@@ -21,7 +22,6 @@ import Javran.AdventOfCode.Y2020.Day6 ()
 import Javran.AdventOfCode.Y2020.Day7 ()
 import Javran.AdventOfCode.Y2020.Day8 ()
 import Javran.AdventOfCode.Y2020.Day9 ()
-import Javran.AdventOfCode.Y2020.Day10 ()
 import System.Environment
 import System.Exit
 

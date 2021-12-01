@@ -3,7 +3,7 @@ module Javran.AdventOfCode.Main
   )
 where
 
-import Javran.AdventOfCode.Prelude
+import Javran.AdventOfCode.Infra
 import qualified Javran.AdventOfCode.Y2020.Main as Y2020
 
 main :: IO ()

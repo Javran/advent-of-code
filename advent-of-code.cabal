@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: f20469fedce3e199443eff06e6fb8e4390851f2c7ebd28c47c71bf599aba32cf
+-- hash: 6369bcd1f3d99b5d3c178497d48c9a32b88e3c98399a770d058092bd5836b75e
 
 name:           advent-of-code
 version:        0.1.0.0
@@ -42,6 +42,7 @@ source-repository head
 
 library
   exposed-modules:
+      Javran.AdventOfCode.Infra
       Javran.AdventOfCode.Main
       Javran.AdventOfCode.Prelude
       Javran.AdventOfCode.TH
