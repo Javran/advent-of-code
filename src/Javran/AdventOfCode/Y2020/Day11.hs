@@ -20,6 +20,7 @@ where
 
 {- HLINT ignore "Unused LANGUAGE pragma" -}
 
+import Control.Applicative
 import Control.Monad
 import qualified Data.IntMap.Strict as IM
 import qualified Data.IntSet as IS
@@ -34,7 +35,6 @@ import qualified Data.Text as T
 import qualified Data.Vector as V
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (many)
-import Control.Applicative
 
 {-
 
@@ -75,6 +75,12 @@ _pprCell = \case
   Floor -> '.'
   SeatEmpty -> 'L'
   SeatOccupied -> '#'
+
+findFix :: Eq a => (a -> a) -> a -> a
+findFix f z = v
+  where
+    xs = iterate f z
+    (_, v) : _ = dropWhile (uncurry (/=)) $ zip xs (tail xs)
 
 instance Solution Day11 where
   solutionIndex _ = (2020, 11)
@@ -117,10 +123,7 @@ instance Solution Day11 where
           forM_ w $ \r ->
             putStrLn (V.toList $ fmap _pprCell r)
           putStrLn ""
-    let (_, finalWorld) : _ = dropWhile (uncurry (/=)) $ zip progression (tail progression)
-          where
-            progression :: [World Cell]
-            progression = iterate stepWorld initWorld
+    let finalWorld = findFix stepWorld initWorld
     answerShow $
       getSum @Int $
         (foldMap . foldMap)
@@ -128,17 +131,17 @@ instance Solution Day11 where
              SeatOccupied -> 1
              _ -> 0)
           finalWorld
-    let torpedo w coord@(r,c) nextCoord =
+    let torpedo w coord@(r, c) nextCoord =
           (w V.! r V.! c) <|> do
-             c' <- nextCoord coord
-             torpedo w c' nextCoord
+            c' <- nextCoord coord
+            torpedo w c' nextCoord
         torpedoNeighbors :: World Cell -> Coord -> [Cell]
         torpedoNeighbors w coord = do
           dr <- [-1 .. 1]
           dc <- [-1 .. 1]
-          guard $ (dr,dc) /= (0,0)
+          guard $ (dr, dc) /= (0, 0)
           let nextCoord (r, c) = do
-                let v'@(r', c') = (r + dr, c+dc) :: Coord
+                let v'@(r', c') = (r + dr, c + dc) :: Coord
                 guard $ r' >= 0 && r' < rows && c' >= 0 && c' < cols
                 pure v'
           Just coord' <- [nextCoord coord]
@@ -159,10 +162,7 @@ instance Solution Day11 where
                     stepCell2 w (r, c) cur)
                  curRow)
             w
-    let (_, finalWorld2) : _ = dropWhile (uncurry (/=)) $ zip progression (tail progression)
-          where
-            progression :: [World Cell]
-            progression = iterate stepWorld2 initWorld
+    let finalWorld2 = findFix stepWorld2 initWorld
     answerShow $
       getSum @Int $
         (foldMap . foldMap)
