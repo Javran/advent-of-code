@@ -6,10 +6,10 @@ module Javran.AdventOfCode.Y2020.Day2
   )
 where
 
+import Control.Monad
 import Data.Maybe
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP
-import Control.Monad
 
 data Day2
 
@@ -17,8 +17,8 @@ instance Solution Day2 where
   solutionIndex _ = (2020, 2)
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     rawLines <- lines <$> getInputS
-    answerShow . length . filter id . fmap (isValidLine buildValidator) $ rawLines
-    answerShow . length . filter id . fmap (isValidLine buildValidator2) $ rawLines
+    answerShow . countLength id . fmap (isValidLine buildValidator) $ rawLines
+    answerShow . countLength id . fmap (isValidLine buildValidator2) $ rawLines
 
 type ValidatorSpec = ((Int, Int), Char)
 
@@ -53,7 +53,8 @@ isValidLine :: (ValidatorSpec -> Validator) -> Validator
 isValidLine fromSpec xs = isJust $ do
   (fSpec, v) <- consumeAllWithReadP p xs
   guard $ fromSpec fSpec v
- where
-   p = (,)
-     <$> validatorP
-     <*> (munch (const True) <* eof)
+  where
+    p =
+      (,)
+        <$> validatorP
+        <*> (munch (const True) <* eof)

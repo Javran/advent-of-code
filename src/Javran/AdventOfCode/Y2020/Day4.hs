@@ -28,7 +28,7 @@ instance Solution Day4 where
     let rawRecords = fmap toRawRecord . LSplit.splitOn [""] . lines $ raw
         validRawRecords = filter (isValid . S.fromList . fmap fst) rawRecords
     answerShow $ length validRawRecords
-    answerShow $ length $ filter isValid2 validRawRecords
+    answerShow $ countLength isValid2 validRawRecords
 
 requiredFields :: S.Set String
 requiredFields = S.fromList $ words "byr iyr eyr hgt hcl ecl pid" -- cid is optional
