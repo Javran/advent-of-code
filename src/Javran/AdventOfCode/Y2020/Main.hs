@@ -26,6 +26,7 @@ import Javran.AdventOfCode.Y2020.Day12 ()
 import Javran.AdventOfCode.Y2020.Day13 ()
 import Javran.AdventOfCode.Y2020.Day14 ()
 import Javran.AdventOfCode.Y2020.Day15 ()
+import Javran.AdventOfCode.Y2020.Day16 ()
 {- ORMOLU_ENABLE -}
 
 allSolutions :: [SomeSolution]

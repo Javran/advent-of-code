@@ -7,19 +7,21 @@ module Javran.AdventOfCode.Prelude
   , countLength
   , consumeExtraLeadingLines
   , splitOn
+  , inRange
   , -- infrastructures
     module Javran.AdventOfCode.Infra
   )
 where
 
 import Data.Char
+import Data.Ix (inRange)
+import Data.List.Split
 import Data.Monoid
 import Javran.AdventOfCode.Infra
   ( Solution (..)
   , SolutionContext (..)
   )
 import Text.ParserCombinators.ReadP
-import Data.List.Split
 
 decimal1P :: (Read i, Integral i) => ReadP i
 decimal1P = read <$> munch1 isDigit
@@ -31,7 +33,6 @@ consumeAllWithReadP p xs = case readP_to_S (p <* eof) xs of
 
 countLength :: Foldable f => (a -> Bool) -> f a -> Int
 countLength p = getSum . foldMap (\x -> if p x then 1 else 0)
-
 
 {-
   Examples could contain smaller examples with smaller extra parameters than
