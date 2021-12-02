@@ -35,6 +35,7 @@ library:
     - memoize
     - data-ordlist
     - arithmoi
+    - unordered-containers
   ghc-options:
     - -Wall
     - -O2

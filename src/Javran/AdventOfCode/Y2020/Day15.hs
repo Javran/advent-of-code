@@ -1,52 +1,45 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeApplications #-}
-{-# OPTIONS_GHC -Wno-typed-holes #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -Wno-unused-matches #-}
-{-# OPTIONS_GHC -fdefer-typed-holes #-}
 
 module Javran.AdventOfCode.Y2020.Day15
   (
   )
 where
 
-{- HLINT ignore "Unused LANGUAGE pragma" -}
-
 import Control.Monad
-import qualified Data.IntMap.Strict as IM
-import qualified Data.IntSet as IS
-import Data.List
+import Control.Monad.ST
+import Data.Function
 import qualified Data.List.Split as LSplit
-import qualified Data.Map.Strict as M
-import Data.Maybe
-import Data.Monoid
-import qualified Data.Set as S
-import qualified Data.Text as T
-import qualified Data.Vector as V
+import qualified Data.Vector.Unboxed.Mutable as VUM
 import Javran.AdventOfCode.Prelude
-import Text.ParserCombinators.ReadP
-import Data.Tuple
+import Data.Word
 
-data Day15 -- TODO: change to actual number
+data Day15
 
--- TODO: import to Javran.AdventOfCode.Y2020.Main
+solve :: [(Word32, Word32)] -> Int -> Word32
+solve xs size = runST $ do
+  vec <- VUM.replicate size 0
+  forM_ (init xs) $ \(t, v) ->
+    VUM.unsafeWrite vec (fromIntegral v) t
+  let (startT, startN) = last xs
+  fix
+    (\loop turn val ->
+       if turn == fromIntegral size
+         then pure val
+         else do
+           r <- VUM.unsafeRead vec (fromIntegral val)
+           let num' = if r == 0 then 0 else turn - fromIntegral r
+               turn' = turn + 1
+           VUM.unsafeWrite vec (fromIntegral val) turn
+           num' `seq` turn' `seq` loop turn' num')
+    startT
+    startN
 
 instance Solution Day15 where
   solutionIndex _ = (2020, 15)
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     [raw] <- lines <$> getInputS
-    let xs :: [(Int, Int)]
-        xs = zip [1..] $ fmap read $ LSplit.splitOn "," raw
-        nextNum lastPair@(turn, num) hist = case hist IM.!? num of
-          Nothing -> 0
-          Just turn' -> turn - turn'
-        ys = unfoldr go (last xs, IM.fromList (fmap swap (init xs)))
-          where
-            go (lastPair@(turn, num), hist) = m `seq` Just ((turn+1, x), ((turn+1, x), m))
-              where
-                m =  IM.insert num turn hist
-                x = nextNum lastPair hist
-        ns = xs <> ys
-    answerShow (snd $ ns !! (2020-1))
-    answerShow (snd $ ns !! (30000000-1))
+    let xs :: [(Word32, Word32)]
+        xs = zip [1 ..] $ fmap read $ LSplit.splitOn "," raw
+    answerShow $ solve xs 2020
+    answerShow $ solve xs 30000000

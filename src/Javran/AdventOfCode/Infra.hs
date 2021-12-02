@@ -32,7 +32,6 @@ import Control.Once
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BSL
 import Data.IORef
-import Data.List
 import Data.Proxy
 import qualified Data.Text as T
 import Data.Text.Encoding

@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 6776c557ecefe7d0e33b8e68ef2f0f78ac179e15340b7c7ce38dad292fc098d1
+-- hash: 2c46ac6a522b2039710f1f34ee9c20e429c5df6b38e84d4ad7462d6876f24f8b
 
 name:           advent-of-code
 version:        0.1.0.0
@@ -39,6 +39,7 @@ data-files:
     data/testdata/2020/day/12/example.expect.txt
     data/testdata/2020/day/13/example.expect.txt
     data/testdata/2020/day/14/example.expect.txt
+    data/testdata/2020/day/15/example.expect.txt
     data/testdata/2020/day/2/example.expect.txt
     data/testdata/2020/day/3/example.expect.txt
     data/testdata/2020/day/4/example.expect.txt
@@ -106,6 +107,7 @@ library
     , text
     , time
     , turtle
+    , unordered-containers
     , vector
     , vector-algorithms
   default-language: Haskell2010
