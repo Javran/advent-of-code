@@ -199,7 +199,7 @@ runSomeSolution (SomeSolution s) cmdHelpPrefix = do
 mkYearlyMain :: Int -> [SomeSolution] -> String -> IO ()
 mkYearlyMain year collectedSolutions = yearlyMain
   where
-    solutionRunners = sortOn fst (mk <$> collectedSolutions)
+    solutionRunners = mk <$> collectedSolutions
       where
         mk ss@(SomeSolution s) = case solutionIndex s of
           (yyyy, dd)
