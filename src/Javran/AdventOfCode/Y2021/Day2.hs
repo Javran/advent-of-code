@@ -1,36 +1,59 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeApplications #-}
-{-# OPTIONS_GHC -Wno-typed-holes #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -Wno-unused-matches #-}
-{-# OPTIONS_GHC -fdefer-typed-holes #-}
 
 module Javran.AdventOfCode.Y2021.Day2
   (
   )
 where
 
-{- HLINT ignore "Unused LANGUAGE pragma" -}
-
-import Control.Monad
-import qualified Data.IntMap.Strict as IM
-import qualified Data.IntSet as IS
-import Data.List
-import qualified Data.List.Split as LSplit
-import qualified Data.Map.Strict as M
+import Control.Monad.State.Strict
+import Data.Bifunctor
 import Data.Maybe
-import Data.Monoid
-import qualified Data.Set as S
-import qualified Data.Text as T
-import qualified Data.Vector as V
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP
 
-data Day2 -- TODO: change to actual number
+data Day2
 
--- TODO: import to Javran.AdventOfCode.Y2021.Main
+data Op
+  = OpFwd Int
+  | OpDown Int
+  | OpUp Int
+
+opP :: ReadP Op
+opP = do
+  c <-
+    (OpFwd <$ string "forward")
+      <++ (OpDown <$ string "down")
+      <++ (OpUp <$ string "up")
+  _ <- char ' '
+  d <- decimal1P
+  pure $ c d
+
+type Pos = (Int, Int) -- hor, depth
+
+interpret :: Op -> State Pos ()
+interpret op = case op of
+  OpFwd d -> modify (first (+ d))
+  OpDown v -> modify (second (+ v))
+  OpUp v -> modify (second (subtract v))
+
+type Pos2 = (Pos, Int)
+
+interpret2 :: Op -> State Pos2 ()
+interpret2 op = case op of
+  OpDown x -> modify (second (+ x))
+  OpUp x -> modify (second (subtract x))
+  OpFwd x -> do
+    aim <- gets snd
+    modify (first (bimap (+x) (+ aim * x)))
 
 instance Solution Day2 where
-  solutionIndex _ = (2021, _fixme)
-  solutionRun _ SolutionContext {getInputS, answerShow} = _impl
+  solutionIndex _ = (2021, 2)
+  solutionRun _ SolutionContext {getInputS, answerShow} = do
+    ops <- fmap (fromJust . consumeAllWithReadP opP) . lines <$> getInputS
+    do
+      let (horiz, dep) = execState (mapM_ interpret ops) (0, 0)
+      answerShow (horiz * dep)
+    do
+      let ((horiz, dep), _aim) = execState (mapM_ interpret2 ops) ((0, 0), 0)
+      answerShow (horiz * dep)
