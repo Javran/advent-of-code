@@ -35,12 +35,11 @@ data Day14 -- TODO: change to actual number
 
 -- TODO: import to Javran.AdventOfCode.Y2020.Main
 
-data BitMutate = BitSet | BitClear
-
-type Mask = [Maybe BitMutate]
+data MaskElem = MX | M0 | M1
+type Mask = [MaskElem]
 
 data Instr
-  = InstrSetMask [Maybe BitMutate] -- mask = ...
+  = InstrSetMask Mask -- mask = ...
   | InstrAssign Int Int -- mem[x] = y
 
 type MachineState = (IM.IntMap Int, Int -> Int)
@@ -51,9 +50,9 @@ instrP = setMaskP <++ assignP
     setMaskP = do
       _ <- string "mask = "
       let bitOpP =
-            (Nothing <$ char 'X')
-              <++ (Just BitSet <$ char '1')
-              <++ (Just BitClear <$ char '0')
+            (MX <$ char 'X')
+              <++ (M1 <$ char '1')
+              <++ (M0 <$ char '0')
       InstrSetMask <$> replicateM 36 bitOpP
     assignP = do
       _ <- string "mem["
@@ -65,11 +64,11 @@ instrP = setMaskP <++ assignP
 maskToModifier :: Mask -> Int -> Int
 maskToModifier xs = appEndo . foldMap (Endo . mk) $ zip [35,34..] xs
   where
-    mk :: (Int, Maybe BitMutate) -> Int -> Int
+    mk :: (Int, MaskElem) -> Int -> Int
     mk (i, m) = case m of
-      Nothing -> id
-      Just BitSet -> (`setBit` i)
-      Just BitClear -> (`clearBit` i)
+      MX -> id
+      M1 -> (`setBit` i)
+      M0 -> (`clearBit` i)
 
 interpret :: Instr -> State MachineState ()
 interpret instr = case instr of
