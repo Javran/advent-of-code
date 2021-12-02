@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 8552e4b671336b5df516cfe1f8ae04b8b8a500f0819eb04b50856f2a9b554769
+-- hash: 5da3956d4b6f14ffa5f02dd3a4e967595180a811c9058b7f8a3754c4b16d1aeb
 
 name:           advent-of-code
 version:        0.1.0.0
@@ -27,6 +27,7 @@ data-files:
     data/testdata/2020/day/7/example.input.txt
     data/testdata/2020/day/8/example.input.txt
     data/testdata/2020/day/9/example.input.txt
+    data/testdata/2021/day/1/example.input.txt
     data/testdata/2020/day/1/example.expect.txt
     data/testdata/2020/day/10/example.expect.txt
     data/testdata/2020/day/11/example.expect.txt
@@ -38,6 +39,7 @@ data-files:
     data/testdata/2020/day/7/example.expect.txt
     data/testdata/2020/day/8/example.expect.txt
     data/testdata/2020/day/9/example.expect.txt
+    data/testdata/2021/day/1/example.expect.txt
 
 source-repository head
   type: git
@@ -63,6 +65,9 @@ library
       Javran.AdventOfCode.Y2020.Day9
       Javran.AdventOfCode.Y2020.DayX
       Javran.AdventOfCode.Y2020.Main
+      Javran.AdventOfCode.Y2021.Day1
+      Javran.AdventOfCode.Y2021.DayX
+      Javran.AdventOfCode.Y2021.Main
   other-modules:
       Paths_advent_of_code
   hs-source-dirs:
