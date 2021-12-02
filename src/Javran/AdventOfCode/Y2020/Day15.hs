@@ -9,7 +9,6 @@ where
 import Control.Monad
 import Control.Monad.ST
 import Data.Function
-import qualified Data.List.Split as LSplit
 import qualified Data.Vector.Unboxed.Mutable as VUM
 import Javran.AdventOfCode.Prelude
 import Data.Word
@@ -40,6 +39,6 @@ instance Solution Day15 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     [raw] <- lines <$> getInputS
     let xs :: [(Word32, Word32)]
-        xs = zip [1 ..] $ fmap read $ LSplit.splitOn "," raw
+        xs = zip [1 ..] $ fmap read $ splitOn "," raw
     answerShow $ solve xs 2020
     answerShow $ solve xs 30000000

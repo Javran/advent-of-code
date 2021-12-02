@@ -17,7 +17,7 @@ import Control.Monad
 import qualified Data.IntMap.Strict as IM
 import qualified Data.IntSet as IS
 import Data.List
-import qualified Data.List.Split as LSplit
+import Data.List.Split
 import qualified Data.Map.Strict as M
 import Data.Maybe
 import Data.Monoid

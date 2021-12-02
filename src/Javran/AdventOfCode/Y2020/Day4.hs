@@ -10,7 +10,6 @@ where
 import Control.Monad
 import Data.Bifunctor
 import Data.Char
-import qualified Data.List.Split as LSplit
 import qualified Data.Map.Strict as M
 import Data.Maybe
 import qualified Data.Set as S
@@ -25,7 +24,7 @@ instance Solution Day4 where
   solutionIndex _ = (2020, 4)
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     raw <- getInputS
-    let rawRecords = fmap toRawRecord . LSplit.splitOn [""] . lines $ raw
+    let rawRecords = fmap toRawRecord . splitOn [""] . lines $ raw
         validRawRecords = filter (isValid . S.fromList . fmap fst) rawRecords
     answerShow $ length validRawRecords
     answerShow $ countLength isValid2 validRawRecords

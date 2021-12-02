@@ -6,6 +6,7 @@ module Javran.AdventOfCode.Prelude
   , consumeAllWithReadP
   , countLength
   , consumeExtraLeadingLines
+  , splitOn
   , -- infrastructures
     module Javran.AdventOfCode.Infra
   )
@@ -18,6 +19,7 @@ import Javran.AdventOfCode.Infra
   , SolutionContext (..)
   )
 import Text.ParserCombinators.ReadP
+import Data.List.Split
 
 decimal1P :: (Read i, Integral i) => ReadP i
 decimal1P = read <$> munch1 isDigit

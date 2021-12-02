@@ -9,7 +9,6 @@ where
 
 import Data.Bifunctor
 import qualified Data.List.Ordered as LOrdered
-import Data.List.Split
 import Data.Maybe
 import Data.Ord
 import Javran.AdventOfCode.Prelude
