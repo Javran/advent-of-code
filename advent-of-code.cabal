@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 75f81bd36c5a3bba282521d52eb30c044258a7ced883a2014f8b0c2e2ec46c5b
+-- hash: a0c28ed4232898239b66438faf1b617891197ae7afa52e310900e98a5b155e96
 
 name:           advent-of-code
 version:        0.1.0.0
@@ -34,6 +34,7 @@ data-files:
     data/testdata/2020/day/10/example.expect.txt
     data/testdata/2020/day/11/example.expect.txt
     data/testdata/2020/day/12/example.expect.txt
+    data/testdata/2020/day/13/example.expect.txt
     data/testdata/2020/day/2/example.expect.txt
     data/testdata/2020/day/3/example.expect.txt
     data/testdata/2020/day/4/example.expect.txt

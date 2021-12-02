@@ -10,9 +10,10 @@ where
 import Data.Bifunctor
 import qualified Data.List.Ordered as LOrdered
 import Data.List.Split
+import Data.Maybe
 import Data.Ord
 import Javran.AdventOfCode.Prelude
-import Math.NumberTheory.GCD
+import Math.NumberTheory.Moduli.Chinese
 
 data Day13
 
@@ -36,13 +37,8 @@ instance Solution Day13 where
         merged = foldr1 (LOrdered.unionBy (comparing snd)) $ fmap (\p -> mkMults p n) stops
         (stop, dTime) = head $ dropWhile ((< n) . snd) merged
     answerShow $ stop * (dTime - n)
-    -- https://en.wikipedia.org/wiki/Chinese_remainder_theorem#Existence_(direct_construction)
-    let prod :: Integer
-        prod = product (fmap fromIntegral stops)
-        prodAllButOnes :: [Integer]
-        prodAllButOnes = fmap (\s -> prod `div` fromIntegral s) stops
-        eGcds = zipWith extendedGCD prodAllButOnes (fmap fromIntegral stops)
-        ans = sum $ do
-          ((ind, p), (bigN, (1, bigM, _v))) <- zip stopsIndexed (zip prodAllButOnes eGcds)
-          pure $ fromIntegral ((- ind) `mod` p) * bigN * bigM
-    answerShow (ans `mod` prod)
+    answerShow $
+      fromJust $
+        chineseRemainder $ do
+          (ind, p) <- stopsIndexed
+          pure (fromIntegral ((- ind) `mod` p), fromIntegral p)
