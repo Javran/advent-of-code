@@ -190,6 +190,8 @@ runSomeSolution (SomeSolution s) cmdHelpPrefix = do
       runSolutionWithLoginInput s >>= T.putStr
     ["example"] ->
       runSolutionWithExampleInput s >>= T.putStr
+    ["edit-example"] ->
+      error "TODO: open example by EDITOR."
     ["write-expect"] ->
       runSolutionWithExampleAndWriteExpect s
     _ ->
