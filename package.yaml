@@ -33,6 +33,8 @@ library:
     - template-haskell
     - mtl
     - memoize
+    - data-ordlist
+    - arithmoi
   ghc-options:
     - -Wall
     - -O2

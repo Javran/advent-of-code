@@ -4,3 +4,4 @@ packages:
 
 extra-deps:
 - memoize-0.8.1
+- arithmoi-0.7.0.0

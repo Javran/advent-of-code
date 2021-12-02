@@ -1,37 +1,48 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeApplications #-}
-{-# OPTIONS_GHC -Wno-typed-holes #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -Wno-unused-matches #-}
-{-# OPTIONS_GHC -fdefer-typed-holes #-}
+{-# LANGUAGE TupleSections #-}
 
 module Javran.AdventOfCode.Y2020.Day13
   (
   )
 where
 
-{- HLINT ignore "Unused LANGUAGE pragma" -}
-
-import Control.Monad
-import qualified Data.IntMap.Strict as IM
-import qualified Data.IntSet as IS
-import Data.List
-import qualified Data.List.Split as LSplit
-import qualified Data.Map.Strict as M
-import Data.Maybe
-import Data.Monoid
-import qualified Data.Set as S
-import qualified Data.Text as T
-import qualified Data.Vector as V
+import Data.Bifunctor
+import qualified Data.List.Ordered as LOrdered
+import Data.List.Split
+import Data.Ord
 import Javran.AdventOfCode.Prelude
-import Text.ParserCombinators.ReadP
+import Math.NumberTheory.GCD
 
-data Day13 -- TODO: change to actual number
+data Day13
 
--- TODO: import to Javran.AdventOfCode.Y2020.Main
+-- TODO: newer version of arithmoi removed extendedGCD, find replacement.
+
+mkMults :: Int -> Int -> [(Int, Int)]
+mkMults p v = fmap (p,) [z, z + p ..]
+  where
+    z = (v `div` p) * p
 
 instance Solution Day13 where
   solutionIndex _ = (2020, 13)
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    getInputS >>= print . length
+    [rawN, rawStops] <- lines <$> getInputS
+    let n :: Int
+        n = read rawN
+        stopsIndexed :: [(Int, Int)]
+        stopsIndexed = fmap (second read) . filter ((/= "x") . snd) $ zip [0 ..] (splitOn "," rawStops)
+        stops :: [Int]
+        stops = snd <$> stopsIndexed
+        merged = foldr1 (LOrdered.unionBy (comparing snd)) $ fmap (\p -> mkMults p n) stops
+        (stop, dTime) = head $ dropWhile ((< n) . snd) merged
+    answerShow $ stop * (dTime - n)
+    -- https://en.wikipedia.org/wiki/Chinese_remainder_theorem#Existence_(direct_construction)
+    let prod :: Integer
+        prod = product (fmap fromIntegral stops)
+        prodAllButOnes :: [Integer]
+        prodAllButOnes = fmap (\s -> prod `div` fromIntegral s) stops
+        eGcds = zipWith extendedGCD prodAllButOnes (fmap fromIntegral stops)
+        ans = sum $ do
+          ((ind, p), (bigN, (1, bigM, _v))) <- zip stopsIndexed (zip prodAllButOnes eGcds)
+          pure $ fromIntegral ((- ind) `mod` p) * bigN * bigM
+    answerShow (ans `mod` prod)
