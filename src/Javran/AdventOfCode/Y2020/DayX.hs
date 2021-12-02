@@ -33,4 +33,5 @@ data DayX -- TODO: change to actual number
 
 instance Solution DayX where
   solutionIndex _ = (2020, _fixme)
-  solutionRun _ SolutionContext {getInputS, answerShow} = _impl
+  solutionRun _ SolutionContext {getInputS, answerShow} = do
+    getInputS >>= print . length
