@@ -1,39 +1,22 @@
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeApplications #-}
-{-# OPTIONS_GHC -Wno-typed-holes #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -Wno-unused-matches #-}
-{-# OPTIONS_GHC -fdefer-typed-holes #-}
 
 module Javran.AdventOfCode.Y2020.Day14
   (
   )
 where
 
-{- HLINT ignore "Unused LANGUAGE pragma" -}
-
 import Control.Monad
 import Control.Monad.State.Strict
 import Data.Bits
 import qualified Data.IntMap.Strict as IM
-import qualified Data.IntSet as IS
-import Data.List
-import qualified Data.List.Split as LSplit
-import qualified Data.Map.Strict as M
 import Data.Maybe
 import Data.Monoid
-import qualified Data.Set as S
-import qualified Data.Text as T
-import qualified Data.Vector as V
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP
 import Data.Bifunctor
 
-data Day14 -- TODO: change to actual number
-
--- TODO: import to Javran.AdventOfCode.Y2020.Main
+data Day14
 
 data MaskElem = MX | M0 | M1
 type Mask = [MaskElem]
@@ -78,9 +61,38 @@ interpret instr = case instr of
     let val = modifier valPre
     modify (first (IM.insert addr val))
 
+maskToAddrModifier :: Mask -> Int -> [Int]
+maskToAddrModifier xs addr = fmap pack  (sequence nondetAddr)
+  where
+    pack ds =  foldl (\acc i -> acc * 2 + if i then 1 else 0) 0 ds
+    nondetAddr :: [] [Bool]
+    nondetAddr = zipWith (\loc m -> maskElemToModifier m (testBit addr loc)) [35,34..] xs
+    maskElemToModifier :: MaskElem -> Bool -> [Bool]
+    maskElemToModifier m v = case m of
+      M0 -> [v]
+      M1 -> [True]
+      MX -> [False, True]
+
+type MachineState2 = (IM.IntMap Int, Int -> [Int])
+
+interpret2 :: Instr -> State MachineState2 ()
+interpret2 instr = case instr of
+  InstrSetMask m -> modify (second (const (maskToAddrModifier m)))
+  InstrAssign addrPre val -> do
+    modifier <- gets snd
+    let addrs = modifier addrPre
+        newM = IM.fromList $ do
+          addr <- addrs
+          pure (addr, val)
+    modify (first (IM.union newM))
+
 instance Solution Day14 where
   solutionIndex _ = (2020, 14)
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     instrs <- fmap (fromJust . consumeAllWithReadP instrP ) . lines <$> getInputS
-    let (mem, _) = execState (mapM_ interpret instrs) (IM.empty, id)
-    answerShow (sum mem)
+    do
+      let (mem, _) = execState (mapM_ interpret instrs) (IM.empty, id)
+      answerShow (sum mem)
+    do
+      let (mem, _) = execState (mapM_ interpret2 instrs) (IM.empty, pure)
+      answerShow (sum mem)
