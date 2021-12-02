@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 5da3956d4b6f14ffa5f02dd3a4e967595180a811c9058b7f8a3754c4b16d1aeb
+-- hash: 7b821c4b1f39fd30c0dd3ccf8acfb86ae10fc01befad45d4f4c6a7dcbf07e5dc
 
 name:           advent-of-code
 version:        0.1.0.0
@@ -113,6 +113,7 @@ test-suite hspec
   main-is: Spec.hs
   other-modules:
       Javran.AdventOfCode.Y2020Spec
+      Javran.AdventOfCode.Y2021Spec
       Paths_advent_of_code
   hs-source-dirs:
       test
