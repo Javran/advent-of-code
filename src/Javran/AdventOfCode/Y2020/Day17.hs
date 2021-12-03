@@ -8,7 +8,6 @@ module Javran.AdventOfCode.Y2020.Day17
   )
 where
 
-
 import Control.Applicative
 import Control.Monad
 import Data.List
@@ -24,30 +23,15 @@ data Day17
 cellP :: ReadP Bool
 cellP = (False <$ char '.') <++ (True <$ char '#')
 
-type Coord = (Int, Int, Int)
-
-type Coord2 = (Int, Int, Int, Int)
+type Coord = [Int]
 
 type Universe = S.Set Coord
 
 neighborhoods :: Coord -> [] Coord
-neighborhoods c@(x, y, z) = do
-  x' <- [x -1 .. x + 1]
-  y' <- [y -1 .. y + 1]
-  z' <- [z -1 .. z + 1]
-  let c' = (x', y', z')
-  guard $ c /= c'
-  pure c'
-
-neighborhoods2 :: Coord2 -> [] Coord2
-neighborhoods2 c@(x, y, z, w) = do
-  x' <- [x -1 .. x + 1]
-  y' <- [y -1 .. y + 1]
-  z' <- [z -1 .. z + 1]
-  w' <- [w -1 .. w + 1]
-  let c' = (x', y', z', w')
-  guard $ c /= c'
-  pure c'
+neighborhoods inds = do
+  inds' <- mapM (\x -> [x -1 .. x + 1]) inds
+  guard $ inds' /= inds
+  pure inds'
 
 countNeighborhoods :: Ord t => (t -> [t]) -> S.Set t -> M.Map t Int
 countNeighborhoods getNeighborhoods u = M.fromListWith (+) $ do
@@ -68,8 +52,12 @@ stepUniv getNeighborhoods u = S.filter keepAlive u `S.union` newBorns
     nCounts = countNeighborhoods getNeighborhoods u
 
 pprUniv :: Universe -> IO ()
-pprUniv u = do
-  let Just
+pprUniv uPre = do
+  let u = S.map to3DCoord uPre
+      to3DCoord c = case c of
+        [x, y, z] -> (x, y, z)
+        _ -> error "only 3d space is supported"
+      Just
         ( (Min minX, Max maxX)
           , (Min minY, Max maxY)
           , (Min minZ, Max maxZ)
@@ -108,8 +96,8 @@ instance Solution Day17 where
           (c, cell) <- zip [0 ..] row
           guard cell
           -- let x-axis be horizontal and y-axis vertical.
-          pure (c, r, 0)
-        initUniv2 = S.map (\(x,y,z) -> (x,y,z,0)) initUniv
+          pure [c, r, 0]
+        initUniv2 = S.map (0 :) initUniv
 
     answerShow $ S.size (iterate (stepUniv neighborhoods) initUniv !! 6)
-    answerShow $ S.size (iterate (stepUniv neighborhoods2) initUniv2 !! 6)
+    answerShow $ S.size (iterate (stepUniv neighborhoods) initUniv2 !! 6)
