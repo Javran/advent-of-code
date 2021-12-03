@@ -180,6 +180,17 @@ runSolutionWithExampleAndWriteExpect p = do
 
 data SomeSolution = forall sol. Solution sol => SomeSolution (Proxy sol)
 
+editExample :: Int -> Int -> IO ()
+editExample yyyy dd = do
+  editorCmd <- getEnv "EDITOR"
+  projectHome <- getEnv "PROJECT_HOME"
+  let subPath = exampleRawInputRelativePath yyyy dd
+      exampleInputFileName = "example.input.txt"
+      exampleDir = projectHome </> subPath
+  createDirectoryIfMissing True exampleDir
+  ec <- TBytes.proc (T.pack editorCmd) [T.pack $  exampleDir </> exampleInputFileName] ""
+  exitWith ec
+
 runSomeSolution :: SomeSolution -> String -> IO ()
 runSomeSolution (SomeSolution s) cmdHelpPrefix = do
   args <- getArgs
@@ -191,7 +202,8 @@ runSomeSolution (SomeSolution s) cmdHelpPrefix = do
     ["example"] ->
       runSolutionWithExampleInput s >>= T.putStr
     ["edit-example"] ->
-      error "TODO: open example by EDITOR."
+      let (yyyy, dd) = solutionIndex s
+      in editExample yyyy dd
     ["write-expect"] ->
       runSolutionWithExampleAndWriteExpect s
     _ ->
