@@ -8,6 +8,7 @@ module Javran.AdventOfCode.Prelude
   , consumeExtraLeadingLines
   , splitOn
   , inRange
+  , extractSection
   , -- infrastructures
     module Javran.AdventOfCode.Infra
   )
@@ -16,6 +17,7 @@ where
 import Data.Char
 import Data.Ix (inRange)
 import Data.List.Split
+import Data.Maybe
 import Data.Monoid
 import Javran.AdventOfCode.Infra
   ( Solution (..)
@@ -49,9 +51,16 @@ countLength p = getSum . foldMap (\x -> if p x then 1 else 0)
   as a separate bit of input for a solution to consume.
  -}
 consumeExtraLeadingLines :: String -> (Maybe [String], String)
-consumeExtraLeadingLines raw = case lines raw of
-  "# EXAMPLE_EXTRA_BEGIN" : xs
-    | (ys, _ : zs) <-
-        span (/= "# EXAMPLE_EXTRA_END") xs ->
-      (Just ys, unlines zs)
-  _ -> (Nothing, raw)
+consumeExtraLeadingLines raw =
+  extractSection
+    "# EXAMPLE_EXTRA_BEGIN"
+    "# EXAMPLE_EXTRA_END"
+    (Nothing, raw)
+    (\_pre _bm sec _em post -> (Just sec, unlines post))
+    (lines raw)
+
+extractSection :: Eq t => t -> t -> a -> ([t] -> t -> [t] -> t -> [t] -> a) -> [t] -> a
+extractSection beginMarker endMarker defVal onSuccess xs = fromMaybe defVal $ do
+  (ys0, bm : remaining0) <- pure $ span (/= beginMarker) xs
+  (ys1, em : remaining1) <- pure $ span (/= endMarker) remaining0
+  pure $ onSuccess ys0 bm ys1 em remaining1
