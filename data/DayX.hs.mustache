@@ -27,9 +27,9 @@ import qualified Data.Vector as V
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP
 
-data Day{{day}} -- TODO: change to actual number
+data Day{{day}}
 
-instance Solution DayX where
+instance Solution Day{{day}} where
   solutionIndex _ = ({{year}}, {{day}})
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     getInputS >>= print . length

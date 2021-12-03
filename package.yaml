@@ -37,6 +37,8 @@ library:
     - arithmoi
     - unordered-containers
     - strict
+    - microstache
+    - aeson
   ghc-options:
     - -Wall
     - -O2

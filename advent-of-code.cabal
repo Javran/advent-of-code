@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: a8113624a88c727aabc853fe2a67c75bbfb9a8743bfe6f13f3f4b1bd8f511f93
+-- hash: 6a4444a186304dc171d084b9d09b91ed63fc41bbe5e7c6e3da95ca91aba0e67e
 
 name:           advent-of-code
 version:        0.1.0.0
@@ -59,6 +59,7 @@ source-repository head
 
 library
   exposed-modules:
+      Javran.AdventOfCode.Cli.New
       Javran.AdventOfCode.Cli.Sync
       Javran.AdventOfCode.Infra
       Javran.AdventOfCode.Main
@@ -81,11 +82,10 @@ library
       Javran.AdventOfCode.Y2020.Day7
       Javran.AdventOfCode.Y2020.Day8
       Javran.AdventOfCode.Y2020.Day9
-      Javran.AdventOfCode.Y2020.DayX
       Javran.AdventOfCode.Y2020.Main
       Javran.AdventOfCode.Y2021.Day1
       Javran.AdventOfCode.Y2021.Day2
-      Javran.AdventOfCode.Y2021.DayX
+      Javran.AdventOfCode.Y2021.Day3
       Javran.AdventOfCode.Y2021.Main
   other-modules:
       Paths_advent_of_code
@@ -93,7 +93,8 @@ library
       src
   ghc-options: -Wall -O2
   build-depends:
-      arithmoi
+      aeson
+    , arithmoi
     , base
     , bytestring
     , containers
@@ -104,6 +105,7 @@ library
     , http-client-tls
     , http-types
     , memoize
+    , microstache
     , mtl
     , once
     , split
