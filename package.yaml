@@ -39,6 +39,7 @@ library:
     - strict
     - microstache
     - aeson
+    - parser-combinators
   ghc-options:
     - -Wall
     - -O2

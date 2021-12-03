@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: eaa14a467cec63ce33588dc6fb1c02fadb3815935eb29244fceeafd1f48e2f01
+-- hash: 8cc8e1a5e0447de8e2d69eaa928735993d8174868a69973a42e0a27608ab329b
 
 name:           advent-of-code
 version:        0.1.0.0
@@ -25,6 +25,7 @@ data-files:
     data/testdata/2020/day/15/example.input.txt
     data/testdata/2020/day/16/example.input.txt
     data/testdata/2020/day/17/example.input.txt
+    data/testdata/2020/day/18/example.input.txt
     data/testdata/2020/day/2/example.input.txt
     data/testdata/2020/day/3/example.input.txt
     data/testdata/2020/day/4/example.input.txt
@@ -79,6 +80,7 @@ library
       Javran.AdventOfCode.Y2020.Day15
       Javran.AdventOfCode.Y2020.Day16
       Javran.AdventOfCode.Y2020.Day17
+      Javran.AdventOfCode.Y2020.Day18
       Javran.AdventOfCode.Y2020.Day2
       Javran.AdventOfCode.Y2020.Day3
       Javran.AdventOfCode.Y2020.Day4
@@ -113,6 +115,7 @@ library
     , microstache
     , mtl
     , once
+    , parser-combinators
     , split
     , strict
     , template-haskell
