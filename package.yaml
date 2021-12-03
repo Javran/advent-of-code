@@ -36,6 +36,7 @@ library:
     - data-ordlist
     - arithmoi
     - unordered-containers
+    - strict
   ghc-options:
     - -Wall
     - -O2

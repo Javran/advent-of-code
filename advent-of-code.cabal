@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 3c2aff13f6076180ccfa3e020fc08e2769f66d2438e8cd52f9f47d993cf545c2
+-- hash: a8113624a88c727aabc853fe2a67c75bbfb9a8743bfe6f13f3f4b1bd8f511f93
 
 name:           advent-of-code
 version:        0.1.0.0
@@ -59,6 +59,7 @@ source-repository head
 
 library
   exposed-modules:
+      Javran.AdventOfCode.Cli.Sync
       Javran.AdventOfCode.Infra
       Javran.AdventOfCode.Main
       Javran.AdventOfCode.Prelude
@@ -106,6 +107,7 @@ library
     , mtl
     , once
     , split
+    , strict
     , template-haskell
     , text
     , time
