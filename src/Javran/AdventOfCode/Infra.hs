@@ -24,6 +24,7 @@ module Javran.AdventOfCode.Infra
   , runSomeSolution
   , mkYearlyMain
   , exampleRawInputRelativePath
+  , editExample
   )
 where
 
@@ -31,6 +32,7 @@ import Control.Monad
 import Control.Once
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BSL
+import Data.Char
 import Data.IORef
 import Data.Proxy
 import qualified Data.Text as T
@@ -182,14 +184,26 @@ data SomeSolution = forall sol. Solution sol => SomeSolution (Proxy sol)
 
 editExample :: Int -> Int -> IO ()
 editExample yyyy dd = do
-  editorCmd <- getEnv "EDITOR"
+  mEditorCmd <- lookupEnv "EDITOR"
   projectHome <- getEnv "PROJECT_HOME"
   let subPath = exampleRawInputRelativePath yyyy dd
       exampleInputFileName = "example.input.txt"
       exampleDir = projectHome </> subPath
   createDirectoryIfMissing True exampleDir
-  ec <- TBytes.proc (T.pack editorCmd) [T.pack $  exampleDir </> exampleInputFileName] ""
-  exitWith ec
+  let exampleFp = exampleDir </> exampleInputFileName
+  -- ensure that the file exists.
+  do
+    e <- doesFileExist exampleFp
+    unless e $ writeFile exampleFp ""
+  case mEditorCmd of
+    Just editorCmd | not (all isSpace editorCmd) -> do
+      ec <- TBytes.proc (T.pack editorCmd) [T.pack $ exampleDir </> exampleInputFileName] ""
+      exitWith ec
+    _ ->
+      do
+        print mEditorCmd
+        putStrLn "EDITOR is empty, please edit the file manually:"
+        putStrLn exampleFp
 
 runSomeSolution :: SomeSolution -> String -> IO ()
 runSomeSolution (SomeSolution s) cmdHelpPrefix = do
@@ -203,7 +217,7 @@ runSomeSolution (SomeSolution s) cmdHelpPrefix = do
       runSolutionWithExampleInput s >>= T.putStr
     ["edit-example"] ->
       let (yyyy, dd) = solutionIndex s
-      in editExample yyyy dd
+       in editExample yyyy dd
     ["write-expect"] ->
       runSolutionWithExampleAndWriteExpect s
     _ ->

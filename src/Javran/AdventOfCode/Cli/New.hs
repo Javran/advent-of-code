@@ -1,4 +1,5 @@
-{-# LANGUAGE LambdaCase, OverloadedStrings #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Javran.AdventOfCode.Cli.New
   ( newCommand
@@ -7,11 +8,9 @@ where
 
 import Data.Aeson
 import qualified Data.HashMap.Strict as HM
-import qualified Data.Text as T
-import qualified Data.Text.IO as T
-import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.IO as TL
 import Javran.AdventOfCode.Cli.Sync (performSync)
+import Javran.AdventOfCode.Infra
 import System.Directory
 import System.Environment
 import System.Exit
@@ -58,9 +57,8 @@ newCommand cmdHelpPrefix =
 
               tmpl <- compileMustacheFile tmplFp
               TL.writeFile moduleFp (renderMustache tmpl ctxt)
-              putStrLn $  "Written to: " <> moduleFp
+              putStrLn $ "Written to: " <> moduleFp
         -- sync modules
         performSync
-        print (year :: Int, day :: Int)
-        print moduleFp
+        editExample year day
     _ -> die $ cmdHelpPrefix <> "<year> <day>"
