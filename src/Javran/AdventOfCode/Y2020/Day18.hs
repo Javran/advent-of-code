@@ -1,37 +1,13 @@
-{-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE PatternGuards #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# OPTIONS_GHC -Wno-typed-holes #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -Wno-unused-matches #-}
-{-# OPTIONS_GHC -fdefer-typed-holes #-}
 
 module Javran.AdventOfCode.Y2020.Day18
   (
   )
 where
 
-{- HLINT ignore "Unused LANGUAGE pragma" -}
-
-import Control.Monad
 import Control.Monad.Combinators.Expr
-import qualified Data.IntMap.Strict as IM
-import qualified Data.IntSet as IS
-import Data.List
-import Data.List.Split
-import qualified Data.Map.Strict as M
 import Data.Maybe
-import Data.Monoid
-import qualified Data.Set as S
-import qualified Data.Text as T
-import qualified Data.Vector as V
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP
 
@@ -41,17 +17,18 @@ data Op = Plus | Mult deriving (Show)
 
 data Expr
   = ENum Int
-  | EBin Expr Op Expr
+  | EBin Op Expr Expr
   deriving (Show)
 
+tok :: ReadP a -> ReadP a
 tok p = p <* skipSpaces
 
 exprP :: ReadP Expr
 exprP =
   makeExprParser
     termP
-    [ [ binary "+" (\l r -> EBin l Plus r)
-      , binary "*" (\l r -> EBin l Mult r)
+    [ [ binary "+" (EBin Plus)
+      , binary "*" (EBin Mult)
       ]
     ]
   where
@@ -63,24 +40,26 @@ expr2P :: ReadP Expr
 expr2P =
   makeExprParser
     termP
-    [ [binary "+" (\l r -> EBin l Plus r)]
-    , [binary "*" (\l r -> EBin l Mult r)]
+    [ [binary "+" (EBin Plus)]
+    , [binary "*" (EBin Mult)]
     ]
   where
     termP =
       (tok (char '(') *> expr2P <* tok (char ')'))
         <++ (ENum <$> tok decimal1P)
 
-binary name f = InfixL (f <$ tok (string name))
+binary :: String -> (Expr -> Expr -> Expr) -> Operator ReadP Expr
+binary sym f = InfixL (f <$ tok (string sym))
 
 eval :: Expr -> Int
 eval = \case
   ENum v -> v
-  EBin l op r ->
-    let f = case op of
-          Plus -> (+)
-          Mult -> (*)
-     in eval l `f` eval r
+  EBin op l r ->
+    (case op of
+       Plus -> (+)
+       Mult -> (*))
+      (eval l)
+      (eval r)
 
 instance Solution Day18 where
   solutionIndex _ = (2020, 18)
