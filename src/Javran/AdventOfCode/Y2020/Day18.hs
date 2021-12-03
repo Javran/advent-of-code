@@ -23,33 +23,42 @@ data Expr
 tok :: ReadP a -> ReadP a
 tok p = p <* skipSpaces
 
-exprP :: ReadP Expr
-exprP =
-  makeExprParser
-    termP
-    [ [ binary "+" (EBin Plus)
-      , binary "*" (EBin Mult)
-      ]
-    ]
+plusExprP, multExprP :: Operator ReadP Expr
+( plusExprP
+  , multExprP
+  ) =
+    ( binary "+" (EBin Plus)
+    , binary "*" (EBin Mult)
+    )
+    where
+      binary sym f = InfixL (f <$ tok (string sym))
+
+makeParser :: [[Operator ReadP Expr]] -> ReadP Expr
+makeParser precedRules = exprP
   where
+    exprP =
+      makeExprParser
+        termP
+        precedRules
     termP =
       (tok (char '(') *> exprP <* tok (char ')'))
         <++ (ENum <$> tok decimal1P)
 
-expr2P :: ReadP Expr
-expr2P =
-  makeExprParser
-    termP
-    [ [binary "+" (EBin Plus)]
-    , [binary "*" (EBin Mult)]
+parser :: ReadP Expr
+parser =
+  makeParser
+    [ [ plusExprP
+      , multExprP
+      ]
     ]
-  where
-    termP =
-      (tok (char '(') *> expr2P <* tok (char ')'))
-        <++ (ENum <$> tok decimal1P)
 
-binary :: String -> (Expr -> Expr -> Expr) -> Operator ReadP Expr
-binary sym f = InfixL (f <$ tok (string sym))
+parser2 :: ReadP Expr
+parser2 =
+  makeParser
+    [ [plusExprP]
+    , [ multExprP
+      ]
+    ]
 
 eval :: Expr -> Int
 eval = \case
@@ -66,8 +75,8 @@ instance Solution Day18 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     rawLines <- lines <$> getInputS
     do
-      let xs = fmap (fromJust . consumeAllWithReadP exprP) rawLines
+      let xs = fmap (fromJust . consumeAllWithReadP parser) rawLines
       answerShow (sum $ fmap eval xs)
     do
-      let xs = fmap (fromJust . consumeAllWithReadP expr2P) rawLines
+      let xs = fmap (fromJust . consumeAllWithReadP parser2) rawLines
       answerShow (sum $ fmap eval xs)
