@@ -18,13 +18,14 @@ module Javran.AdventOfCode.Y{{year}}.Day{{day}}
   )
 where
 
-{- HLINT ignore "Unused LANGUAGE pragma" -}
+{- HLINT ignore -}
 
+import Control.Applicative
 import Control.Monad
 import qualified Data.IntMap.Strict as IM
 import qualified Data.IntSet as IS
 import Data.List
-import Data.List.Split
+import Data.List.Split hiding (sepBy)
 import qualified Data.Map.Strict as M
 import Data.Maybe
 import Data.Monoid
@@ -32,11 +33,12 @@ import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Vector as V
 import Javran.AdventOfCode.Prelude
-import Text.ParserCombinators.ReadP
+import Text.ParserCombinators.ReadP hiding (many)
 
 data Day{{day}}
 
 instance Solution Day{{day}} where
   solutionIndex _ = ({{year}}, {{day}})
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    getInputS >>= print . length
+    xs <- fmap id . lines <$> getInputS
+    print (length xs)
