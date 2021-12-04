@@ -1,61 +1,54 @@
-{-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE PatternGuards #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# OPTIONS_GHC -Wno-typed-holes #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -Wno-unused-matches #-}
-{-# OPTIONS_GHC -fdefer-typed-holes #-}
 
 module Javran.AdventOfCode.Y2021.Day4
   (
   )
 where
 
-{- HLINT ignore -}
-
-import Control.Applicative
-import Control.Monad
-import Data.Bool
-import Data.Function
-import Data.Function.Memoize (memoFix)
-import qualified Data.IntMap.Strict as IM
+import Control.Monad.State.Strict
+import Data.Bifunctor
 import qualified Data.IntSet as IS
 import Data.List
-import Data.List.Split hiding (sepBy)
-import qualified Data.Map.Strict as M
-import Data.Maybe
-import Data.Monoid
-import qualified Data.Set as S
-import qualified Data.Text as T
-import qualified Data.Vector as V
 import Javran.AdventOfCode.Prelude
-import Text.ParserCombinators.ReadP hiding (many)
 
 data Day4
 
 type Board = [[Int]]
 
-bingoSet :: Board -> [IS.IntSet]
+type BingoSet = [IS.IntSet]
+
+bingoSet :: Board -> BingoSet
 bingoSet bd = fmap IS.fromList bd <> fmap IS.fromList (transpose bd)
 
-playGame callSeq bds allBingoSetsPre pairedAllCallSeqs won = case tmp of
-  (finalCallSeq , justCalled): keepGoing ->
-      let
-        (which, _) : _ = filter (\(_, bSets) -> any (\b -> IS.null (b `IS.difference` finalCallSeq)) bSets) allBingoSets
-        unmarkedNums = (IS.fromList $ concat $ bds !! which) `IS.difference` finalCallSeq
-     in Just ((which, sum $ IS.toList unmarkedNums, justCalled), (keepGoing, IS.insert which won))
-  [] -> Nothing
-  where
-    (_, tmp) = span (noBingo . fst) $ pairedAllCallSeqs
-    allBingoSets = filter (\(w, _) -> IS.notMember w won) allBingoSetsPre
-    noBingo callSet = all (\(w, bSets) -> all (\b -> not $ IS.null (b `IS.difference` callSet)) bSets) allBingoSets
+type TracedBingoSet = (Int, BingoSet)
+
+type GameState =
+  ( IS.IntSet {- called numbers -}
+  , [TracedBingoSet {- bingo set of boards that have not won -}]
+  )
+
+type WinnerInfo =
+  ( Int {- which board -}
+  , ( Int {- sum of unmarked numbers -}
+    , Int {- number just called -}
+    )
+  )
+
+callNumber :: (Int -> Board) -> Int -> State GameState [WinnerInfo]
+callNumber getBoard n = do
+  modify (first (IS.insert n))
+  (calledNums, tracedBingoSets) <- get
+  let winners = do
+        (w, bSets) <- tracedBingoSets
+        guard $ any (\b -> IS.null (b `IS.difference` calledNums)) bSets
+        pure w
+      winnerSet = IS.fromList winners
+  modify (second (filter ((`IS.notMember` winnerSet) . fst)))
+  pure $ do
+    winner <- winners
+    let winnerBoard = getBoard winner
+        unmarkedNums = filter (`IS.notMember` calledNums) $ concat winnerBoard
+    pure (winner, (sum unmarkedNums, n))
 
 instance Solution Day4 where
   solutionIndex _ = (2021, 4)
@@ -63,12 +56,16 @@ instance Solution Day4 where
     [callSeqRaw] : bdsRaw <- splitOn [""] . lines <$> getInputS
     let callSeq :: [Int]
         callSeq = fmap read . splitOn "," $ callSeqRaw
-    let bds :: [] [[Int]]
+        bds :: [Board]
         bds = (fmap . fmap) (fmap read . words) bdsRaw
-        allBingoSets = zip [0 :: Int ..] (fmap bingoSet bds)
-        allCallSeqs = tail $ fmap IS.fromList $ inits callSeq
-        pairedAllCallSeqs = zip allCallSeqs callSeq
-        Just ((_ , unmarkedSum , justCalled), _)  = playGame callSeq bds allBingoSets pairedAllCallSeqs IS.empty
-    answerShow (justCalled *  unmarkedSum)
-    let (_, u, v) = last $ unfoldr (\(st, won) -> playGame callSeq bds allBingoSets pairedAllCallSeqs won) (pairedAllCallSeqs, IS.empty)
-    answerShow (u * v)
+        tracedBingoSets = zipWith (\i bd -> (i, bingoSet bd)) [0 ..] bds
+        history =
+          concat $
+            evalState
+              (mapM (callNumber getBoard) callSeq)
+              (IS.empty, tracedBingoSets)
+          where
+            getBoard which = bds !! which
+        computeScore (_w, (u, v)) = u * v
+    answerShow (computeScore (head history))
+    answerShow (computeScore (last history))
