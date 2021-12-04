@@ -4,6 +4,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
@@ -124,7 +125,11 @@ pprTile t = do
   forM_ [0 .. tileLen -1] $ \r ->
     putStrLn (fmap (\c -> if t (r, c) then '#' else '.') [0 .. tileLen -1])
 
-allTransforms :: Tile -> [(Int, Tile)]
+type TileAlts = [(Int, Tile)]
+
+type TracedTileAlts = (Int {- tile id -}, TileAlts)
+
+allTransforms :: Tile -> TileAlts
 allTransforms t0 = zip [0 ..] $ do
   t1 <- [t0, flipVert t0]
   take 4 (iterate rotateCwQt t1)
@@ -157,6 +162,73 @@ tileEdgeNums t = do
   let ((u, d), (l, r)) = tileEdges t'
   (i {- stands for a specific orientation for a tile -},) <$> [u, d, l, r]
 
+prepareTileSolving
+  :: [TracedTile]
+  -> Int
+  -> IM.IntMap IS.IntSet
+  -> (Tile, IM.IntMap TileAlts, IS.IntSet)
+prepareTileSolving
+  tracedTiles
+  topLeftTileId
+  edgeRepToTileIds =
+    ( topLeftTile
+    , IM.union tmpL tmpR
+    , deadEdgeReps
+    )
+    where
+      initTracedTileAltsMap :: IM.IntMap TileAlts
+      initTracedTileAltsMap = IM.fromList $ do
+        (tId, tile) <- tracedTiles
+        pure (tId, allTransforms tile)
+      (tmpL, Just ts, tmpR) = IM.splitLookup topLeftTileId initTracedTileAltsMap
+      topLeftTile = head $ do
+        t@(i, curTile) <- ts
+        let ((u, _d), (l, _r)) = tileEdges curTile
+        guard $ IS.member u deadEdgeReps && IS.member l deadEdgeReps
+        pure curTile
+      deadEdgeReps = IS.fromList $ do
+        -- compute edge reps that does not connect anything
+        (edgeRep, xs) <- IM.toList edgeRepToTileIds
+        guard $ IS.size xs == 1
+        pure edgeRep
+
+type TileCoord = (Int, Int)
+
+type TileSolution = M.Map TileCoord Tile
+
+solveTiles :: IS.IntSet -> (Int, Int) -> IM.IntMap TileAlts -> TileSolution -> [TileSolution]
+solveTiles deadEdgeReps (r, c) remainingTiles solution
+  | IM.null remainingTiles = [solution]
+  | otherwise = do
+    {-
+      Find an appropriate tile to put on row r, col c.
+      We want to solve in row-major order,
+      meaning we can assume (r-1,c) and (r,c-1) are already solved, if present.
+     -}
+    let mUpEdge, mLeftEdge :: Maybe Int
+        mUpEdge = do
+          guard $ r /= 0
+          let topTile = solution M.! (r -1, c)
+              ((_up, down), _) = tileEdges topTile
+          pure down
+        mLeftEdge = do
+          guard $ c /= 0
+          let leftTile = solution M.! (r, c -1)
+              (_, (_left, right)) = tileEdges leftTile
+          pure right
+    (tileId, alts) <- IM.toList remainingTiles
+    (_, candidateTile) <- alts
+    let ((cUp, _cDown), (cLeft, cRight)) = tileEdges candidateTile
+    guard $ maybe True (== cUp) mUpEdge
+    guard $ maybe True (== cLeft) mLeftEdge
+    let solution' = M.insert (r, c) candidateTile solution
+        remainingTiles' = IM.delete tileId remainingTiles
+        nextCoord =
+          if IS.member cRight deadEdgeReps
+            then (r + 1, 0)
+            else (r, c + 1)
+    solveTiles deadEdgeReps nextCoord remainingTiles' solution'
+
 instance Solution Day20 where
   solutionIndex _ = (2020, 20)
   solutionRun _ SolutionContext {getInputS, answerShow} = do
@@ -177,5 +249,13 @@ instance Solution Day20 where
         edgeTileIds = fmap fst edgeTiles
     -- it so happens that this is sufficient for both example and my input.
     -- enforce that we have exactly 4 elements
-    [_, _, _, _] <- pure edgeTileIds
+    [ topLeftTileId {- pick a random one as top-left corner -}
+      , _
+      , _
+      , _
+      ] <-
+      pure edgeTileIds
     answerShow $ product edgeTileIds
+    let (orientedTopLeftTile, remainingTiles, deadEdgeReps) =
+          prepareTileSolving tracedTiles topLeftTileId edgeRepToTileIds
+    print $ M.keys $ head $ solveTiles deadEdgeReps (0, 1) remainingTiles (M.singleton (0, 0) orientedTopLeftTile)
