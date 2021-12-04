@@ -35,6 +35,7 @@ import Data.List.Split hiding (sepBy)
 import qualified Data.Map.Strict as M
 import Data.Maybe
 import Data.Monoid
+import Data.Semigroup
 import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Vector as V
@@ -229,6 +230,32 @@ solveTiles deadEdgeReps (r, c) remainingTiles solution
             else (r, c + 1)
     solveTiles deadEdgeReps nextCoord remainingTiles' solution'
 
+verifyDims :: S.Set TileCoord -> Maybe (Int, Int)
+verifyDims ts = do
+  let Just (Max maxR, Max maxC) = foldMap (\(r, c) -> Just (Max r, Max c)) ts
+  guard $ all (`S.member` ts) [(r, c) | r <- [0 .. maxR], c <- [0 .. maxC]]
+  pure (maxR + 1, maxC + 1)
+
+type Sea = V.Vector (V.Vector Bool)
+
+constructSea :: (Int, Int) -> M.Map TileCoord Tile -> Sea
+constructSea (tileRows, tileCols) tiles = V.fromList (fmap V.fromList flattened)
+  where
+    flattened :: [[Bool]]
+    flattened =
+      concat $
+        fmap
+          (\tileRow ->
+             fmap concat $
+               transpose $
+                 fmap
+                   (\tileCol -> unpackTile $ tiles M.! (tileRow, tileCol))
+                   [0 .. tileCols -1])
+          [0 .. tileRows -1]
+    unpackTile :: Tile -> [[Bool]]
+    unpackTile t =
+      fmap (\r -> fmap (\c -> t (r, c)) [1 .. tileLen -2]) [1 .. tileLen -2]
+
 instance Solution Day20 where
   solutionIndex _ = (2020, 20)
   solutionRun _ SolutionContext {getInputS, answerShow} = do
@@ -258,4 +285,8 @@ instance Solution Day20 where
     answerShow $ product edgeTileIds
     let (orientedTopLeftTile, remainingTiles, deadEdgeReps) =
           prepareTileSolving tracedTiles topLeftTileId edgeRepToTileIds
-    print $ M.keys $ head $ solveTiles deadEdgeReps (0, 1) remainingTiles (M.singleton (0, 0) orientedTopLeftTile)
+        solvedTiles = head $ solveTiles deadEdgeReps (0, 1) remainingTiles (M.singleton (0, 0) orientedTopLeftTile)
+    Just tileDims@(rows, cols) <- pure (verifyDims (M.keysSet solvedTiles))
+    let sea = constructSea tileDims solvedTiles
+    forM_ sea $ \rs -> do
+      putStrLn (fmap (bool '.' '#') $ V.toList rs)
