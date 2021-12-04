@@ -38,13 +38,6 @@ halfLen = tileLen `quot` 2
 coords :: [Int]
 coords = [0 .. tileLen -1]
 
-invalidInput :: a
-invalidInput = error "invalid input"
-
-pickInOrder :: [a] -> [] (a, [a])
-pickInOrder [] = []
-pickInOrder (x : xs) = (x, xs) : pickInOrder xs
-
 {-
   (<lo>, <hi>)
 
@@ -109,9 +102,9 @@ parseTile (t : xs) =
   where
     tr '#' = True
     tr '.' = False
-    tr _ = invalidInput
+    tr _ = errInvalid
     tileNumP = string "Tile " *> decimal1P <* char ':'
-parseTile [] = invalidInput
+parseTile [] = errInvalid
 
 data CoordTransformers a = CoordTransformers
   { flipVert :: forall b. (a -> b) -> (a -> b)
