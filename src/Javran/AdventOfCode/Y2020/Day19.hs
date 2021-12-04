@@ -1,12 +1,5 @@
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
-{-# OPTIONS_GHC -Wno-typed-holes #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -Wno-unused-matches #-}
-{-# OPTIONS_GHC -fdefer-typed-holes #-}
 
 module Javran.AdventOfCode.Y2020.Day19
   (
@@ -18,15 +11,9 @@ import Control.Monad
 import Data.Function
 import Data.Function.Memoize (memoFix)
 import qualified Data.IntMap.Strict as IM
-import qualified Data.IntSet as IS
-import Data.List
 import Data.List.Split hiding (sepBy)
-import qualified Data.Map.Strict as M
 import Data.Maybe
-import Data.Monoid
 import qualified Data.Set as S
-import qualified Data.Text as T
-import qualified Data.Vector as V
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (many)
 
@@ -153,6 +140,7 @@ instance Solution Day19 where
        -}
       Just l42 <- pure $ isElemLenConsistent set42
       Just l31 <- pure $ isElemLenConsistent set31
+      True <- pure $ l42 == l31
       True <- pure (S.null (S.intersection set42 set31))
       pure l42
     let isMatching xs =
