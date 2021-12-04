@@ -30,17 +30,24 @@ import Text.ParserCombinators.ReadP hiding (many)
 
 data Day19
 
+{-
+  Note that it is intentional that this Rule definition
+  supports only a limited form of valid syntax - as the problem
+  specifically states that the goal of this puzzle is not to go beyond
+  what we get as input.
+ -}
 data Rule
-  = RStr String
-  | RSeq [Int]
-  | RAlt [Rule]
+  = -- | matches a string
+    RStr String
+  | -- | [[a,b], [c,d]] means (a then b) or (c then d)
+    RAlt [[Int]]
   deriving (Show)
 
 ruleP :: ReadP Rule
 ruleP =
   (RStr <$> tok (char '"' *> munch1 (/= '"') <* char '"'))
     <++ (RAlt
-           <$> ((RSeq <$> many (tok decimal1P))
+           <$> (many (tok decimal1P)
                   `sepBy` tok (char '|')))
   where
     tok p = p <* skipSpaces
@@ -53,10 +60,10 @@ performMatch rules xs i = case rules IM.!? i of
           (xs0, xs1) = splitAt l xs
       guard $ xs0 == ys
       pure xs1
-    RSeq ys -> processRSeq ys
-    RAlt ys -> foldl1 (<|>) (fmap (\(RSeq zs) -> processRSeq zs) ys)
-  where
-    processRSeq ys = foldM (\curXs j -> performMatch rules curXs j) xs ys
+    RAlt ys ->
+      let processRSeq ys = foldM (\curXs j -> performMatch rules curXs j) xs ys
+      in foldl1 (<|>) (fmap (\zs -> processRSeq zs) ys)
+
 
 instance Solution Day19 where
   solutionIndex _ = (2020, 19)
@@ -90,8 +97,7 @@ instance Solution Day19 where
                 Nothing -> S.empty
                 Just rule -> case rule of
                   RStr s -> S.singleton s
-                  RSeq ys -> processRSeq ys
-                  RAlt ys -> S.unions (fmap (\(RSeq zs) -> processRSeq zs) ys)
+                  RAlt ys -> S.unions (fmap (\zs -> processRSeq zs) ys)
     answerShow (countLength (\msg -> Just "" == performMatch rules msg 0) messages)
     -- TODO: cleanup
     -- note: `0: 8 11' seems to be the only case that uses 8 and 11.
