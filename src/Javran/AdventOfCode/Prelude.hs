@@ -8,12 +8,14 @@ module Javran.AdventOfCode.Prelude
   , consumeExtraLeadingLines
   , splitOn
   , inRange
+  , decodeBinary
   , extractSection
   , -- infrastructures
     module Javran.AdventOfCode.Infra
   )
 where
 
+import Data.Bool
 import Data.Char
 import Data.Ix (inRange)
 import Data.List.Split
@@ -35,6 +37,9 @@ consumeAllWithReadP p xs = case readP_to_S (p <* eof) xs of
 
 countLength :: Foldable f => (a -> Bool) -> f a -> Int
 countLength p = getSum . foldMap (\x -> if p x then 1 else 0)
+
+decodeBinary :: (Foldable t, Num a) => t Bool -> a
+decodeBinary = foldl (\acc i -> acc * 2 + bool 0 1 i) 0
 
 {-
   Examples could contain smaller examples with smaller extra parameters than

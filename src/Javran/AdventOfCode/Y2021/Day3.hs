@@ -1,5 +1,4 @@
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
 
 module Javran.AdventOfCode.Y2021.Day3
@@ -7,7 +6,6 @@ module Javran.AdventOfCode.Y2021.Day3
   )
 where
 
-import Data.Bool
 import Data.Function
 import Data.List
 import qualified Data.Map.Strict as M
@@ -41,9 +39,6 @@ positionalFilter isOxygen xs i = case transpose xs of
             then chooseBit y True True
             else chooseBit y False False
      in filter (\x -> x !! i == ft) xs
-
-decodeBinary :: (Foldable t, Num a) => t Bool -> a
-decodeBinary = foldl (\acc i -> acc * 2 + bool 0 1 i) 0
 
 instance Solution Day3 where
   solutionIndex _ = (2021, 3)
