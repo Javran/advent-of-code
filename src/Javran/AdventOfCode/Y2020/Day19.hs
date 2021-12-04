@@ -64,6 +64,11 @@ instance Solution Day19 where
     xs <- splitOn [""] . lines <$> getInputS
     let [rawRules, messages] = xs
         setProd sa sb = S.fromList $ do
+          {-
+            we could use S.cartesianProduct here, but probably best to not to:
+            as the resulting elements would be (a,b) that we have to map back to a single one,
+            which rebuilds the whole Set.
+           -}
           a <- S.toList sa
           b <- S.toList sb
           pure (a <> b)
