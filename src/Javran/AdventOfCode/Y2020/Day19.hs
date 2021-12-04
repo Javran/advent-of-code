@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -Wno-typed-holes #-}
 {-# OPTIONS_GHC -Wno-unused-imports #-}
 {-# OPTIONS_GHC -Wno-unused-matches #-}
@@ -95,6 +96,11 @@ getMatchingSetOf rules = memoFix $ \query i ->
         S.unions
           (fmap (foldl setProd (S.singleton "") . fmap query) ys)
 
+isElemLenConsistent :: S.Set String -> Maybe Int
+isElemLenConsistent s = do
+  [l] <- pure $ S.toList (S.map length s)
+  pure l
+
 instance Solution Day19 where
   solutionIndex _ = (2020, 19)
   solutionRun _ SolutionContext {getInputS, answerShow} = do
@@ -107,7 +113,8 @@ instance Solution Day19 where
     answerShow (countLength (\msg -> Just "" == performMatch rules msg 0) messages)
     let getMatchingSet :: Int -> S.Set String
         getMatchingSet = getMatchingSetOf rules
-
+        set42 = getMatchingSet 42
+        set31 = getMatchingSet 31
     {-
       My key observation:
 
@@ -116,8 +123,8 @@ instance Solution Day19 where
       - We always have `0: 8 11` as the root rule.
         In addition, this seems to be the only use site of rule 8 and rule 11.
       - `8: 42` and `11: 42 31` are present.
-      - all matching strings of rule 8 are of the same length l8
-      - all matching strings of rule 11 are of the same length l11
+      - all matching strings of rule 42 are of the same length l42
+      - all matching strings of rule 31 are of the same length l31
 
       Now, by changing:
 
@@ -130,33 +137,37 @@ instance Solution Day19 where
       > followed by a sequence of {rule 31} repeating n times,
       > where m > n > 0.
 
-      Now, if we further assume that there is no string that matches both
-      rule 8 and rule 11
-      (if l8 and l11 are different, only match string as prefix on the longer set),
+      Now, if we further assume that (this appears to be true for both example and my specific input):
+
+      - l42 == l31
+      - there is no string that matches both rule 42 and rule 31
+
       we should be able to separate out substring matching rule 42 or rule 31
       without ambiguity. Then we can verify about m > n > 0, which should identify all matching strings.
 
      -}
-
-    -- TODO: cleanup
-    -- rule 42 matches a string of length 8 exactly.
-    -- rule 31 matches a string of length 8 exactly.
-    {-
-      TODO: we happen to have l42 being exactly the same as l31, which isn't the case for example,
-      let's try generalizing this a little bit to handle example as well..
-      (we also rely on the assumption that set42 and set31 have no intersection)
-     -}
-    let set42 = getMatchingSet 42
-        set31 = getMatchingSet 31
-        isActuallyMatching zs = l42 > 0 && and (zipWith (==) zs1 [31, 31 ..]) && l42 > l31 && l31 > 0
+    chunkLen <- do
+      {-
+        this block validates the assumption stated above and
+        returns length of a chunk (a chunk is a substring matching either rule 42 or rule 31)
+       -}
+      Just l42 <- pure $ isElemLenConsistent set42
+      Just l31 <- pure $ isElemLenConsistent set31
+      True <- pure (S.null (S.intersection set42 set31))
+      pure l42
+    let isMatching xs =
+          cnt42 > cnt31 && cnt31 > 0
+            && all (== 31) ys1
           where
-            l42 = length zs0
-            l31 = length zs1
-            (zs0, zs1) = span (== 42) zs
-
-        messages1 = mapMaybe (mapM matchingChunk . chunksOf 8) $ filter ((== 0) . (`mod` 8) . length) messages
-        matchingChunk ts
-          | ts `S.member` set42 = Just 42
-          | ts `S.member` set31 = Just 31
+            cnt42 = length ys0
+            cnt31 = length ys1
+            (ys0, ys1) = span (== 42) xs
+        messages1 =
+          mapMaybe (mapM matchingChunk . chunksOf chunkLen) $
+            -- rule out invalid strings by length (must be a multiple of chunkLen)
+            filter ((== 0) . (`mod` chunkLen) . length) messages
+        matchingChunk cs
+          | cs `S.member` set42 = Just @Int 42
+          | cs `S.member` set31 = Just 31
           | otherwise = Nothing
-    answerShow $ countLength isActuallyMatching messages1
+    answerShow $ countLength isMatching messages1
