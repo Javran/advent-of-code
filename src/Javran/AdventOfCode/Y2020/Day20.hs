@@ -234,6 +234,7 @@ verifyDims :: S.Set TileCoord -> Maybe (Int, Int)
 verifyDims ts = do
   let Just (Max maxR, Max maxC) = foldMap (\(r, c) -> Just (Max r, Max c)) ts
   guard $ all (`S.member` ts) [(r, c) | r <- [0 .. maxR], c <- [0 .. maxC]]
+  guard $ maxR == maxC
   pure (maxR + 1, maxC + 1)
 
 type Sea = V.Vector (V.Vector Bool)
@@ -255,6 +256,66 @@ constructSea (tileRows, tileCols) tiles = V.fromList (fmap V.fromList flattened)
     unpackTile :: Tile -> [[Bool]]
     unpackTile t =
       fmap (\r -> fmap (\c -> t (r, c)) [1 .. tileLen -2]) [1 .. tileLen -2]
+
+seaMonsterDims :: (Int, Int)
+seaMonsterParts :: S.Set (Int, Int)
+(seaMonsterDims, seaMonsterParts) = (dims, parts)
+  where
+    dims = (length art, length (head art))
+    art =
+      [ "                  # "
+      , "#    ##    ##    ###"
+      , " #  #  #  #  #  #   "
+      ]
+    parts = S.fromList $ do
+      (r, row) <- zip [0 ..] art
+      (c, x) <- zip [0 ..] row
+      guard $ x == '#'
+      pure (r, c)
+
+type SeaViewer = (Int, Int) -> Bool
+
+-- Bidi short for bi-direction.
+type SeaBidi =
+  ( SeaViewer
+  , (Int, Int) -> (Int, Int) -- translates back to underlying coord.
+  )
+
+mkSeaBidis :: Sea -> [SeaBidi]
+mkSeaBidis sea = do
+  let directViewer (r, c) = sea V.! r V.! c
+      directBidi = (directViewer, id)
+      -- to make things easier, we assume the sea is a square.
+      seaLen = V.length sea
+
+      sFlipVert :: SeaBidi -> SeaBidi
+      sFlipVert (viewer, backTranslate) =
+        ( \(r, c) -> viewer (seaLen -1 - r, c)
+        , \(r, c) -> backTranslate (seaLen -1 - r, c)
+        )
+
+      sRotateCwQt :: SeaBidi -> SeaBidi
+      sRotateCwQt (viewer, backTranslate) =
+        ( \(r, c) -> viewer (seaLen -1 - c, r)
+        , \(r, c) -> backTranslate (seaLen -1 - c, r)
+        )
+  v <- [directBidi, sFlipVert directBidi]
+  take 4 (iterate sRotateCwQt v)
+
+findSeaMonsters :: Int -> SeaBidi -> [(S.Set (Int, Int), Int)]
+findSeaMonsters seaLen (viewer, backTranslate) = do
+  let (smRows, smCols) = seaMonsterDims
+  r0 <- takeWhile (\r' -> r' + smRows -1 <= seaLen -1) [0 ..]
+  c0 <- takeWhile (\c' -> c' + smCols -1 <= seaLen -1) [0 ..]
+  let translatedSm = S.map (\(smR, smC) -> (r0 + smR, c0 + smC)) seaMonsterParts
+  guard $ all viewer translatedSm
+  let roughness = sum $ do
+        r1 <- [r0 .. r0+smRows-1]
+        c1 <- [c0 .. c0+smCols-1]
+        guard $ viewer (r1, c1) && S.notMember (r1,c1) translatedSm
+        pure 1
+
+  pure (S.map backTranslate translatedSm, roughness)
 
 instance Solution Day20 where
   solutionIndex _ = (2020, 20)
@@ -288,5 +349,26 @@ instance Solution Day20 where
         solvedTiles = head $ solveTiles deadEdgeReps (0, 1) remainingTiles (M.singleton (0, 0) orientedTopLeftTile)
     Just tileDims@(rows, cols) <- pure (verifyDims (M.keysSet solvedTiles))
     let sea = constructSea tileDims solvedTiles
-    forM_ sea $ \rs -> do
-      putStrLn (fmap (bool '.' '#') $ V.toList rs)
+        seaLen = V.length sea
+        monsters = do
+          bd <- mkSeaBidis sea
+          findSeaMonsters seaLen bd
+        allMonsterParts :: S.Set (Int, Int)
+        allMonsterParts = S.unions (fmap fst monsters)
+    let visualize = False
+    when visualize $
+      forM_ (zip [0 :: Int ..] (V.toList sea)) $ \(r, rs) -> do
+        putStrLn
+          (fmap
+             (\(c, x) ->
+                if S.member (r, c) allMonsterParts
+                  then 'O'
+                  else bool '.' '#' x)
+             $ zip [0 ..] (V.toList rs))
+    let roughness = sum $ do
+          r <- [0..seaLen-1]
+          c <- [0..seaLen-1]
+          guard $ sea V.! r V.! c
+          guard $ S.notMember (r,c) allMonsterParts
+          pure (1 :: Int)
+    answerShow roughness
