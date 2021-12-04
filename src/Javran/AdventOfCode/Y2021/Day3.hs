@@ -55,7 +55,7 @@ instance Solution Day3 where
     let ys = transpose xs
         getMostFreq = fst . last . computeFreq
         gamma = fmap getMostFreq ys
-        eps = fmap (not . getMostFreq) ys
+        eps = fmap not gamma
     answerShow $ ((*) `on` decodeBinary @_ @Int) gamma eps
     let l = length (head xs)
         [oxygenRating] = foldl (positionalFilter True) xs [0 .. l -1]
