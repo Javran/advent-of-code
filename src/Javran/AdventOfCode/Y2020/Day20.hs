@@ -22,6 +22,7 @@ where
 
 import Control.Applicative
 import Control.Monad
+import Data.Bifunctor
 import Data.Bits
 import Data.Bool
 import Data.Function
@@ -47,6 +48,13 @@ tileLen = 10
 
 halfLen :: Int
 halfLen = tileLen `quot` 2
+
+coords :: [Int]
+coords = [0 .. tileLen -1]
+
+pickInOrder :: [a] -> [] (a, [a])
+pickInOrder [] = []
+pickInOrder (x : xs) = (x, xs) : pickInOrder xs
 
 {-
   (<lo>, <hi>)
@@ -90,14 +98,16 @@ toTile (PackedTile (lo, hi)) (r, c) =
     then testBit lo (c + r * tileLen)
     else testBit hi (c + (r - halfLen) * tileLen)
 
-parseTile :: [String] -> (Int, Tile)
+type TracedTile = (Int, Tile)
+
+parseTile :: [String] -> TracedTile
 parseTile (t : xs) = (fromJust (consumeAllWithReadP tileNumP t), toTile . toPackedTile . (fmap . fmap) tr $ xs)
   where
     tr '#' = True
     tr '.' = False
     tr _ = error "invalid input"
     tileNumP = string "Tile " *> decimal1P <* char ':'
-parseTile _ = undefined
+parseTile [] = error "invalid input"
 
 flipVert :: Tile -> Tile
 flipVert origTile (r, c) = origTile (tileLen -1 - r, c)
@@ -114,23 +124,58 @@ pprTile t = do
   forM_ [0 .. tileLen -1] $ \r ->
     putStrLn (fmap (\c -> if t (r, c) then '#' else '.') [0 .. tileLen -1])
 
-allTransforms :: Tile -> [Tile]
-allTransforms t0 = do
+allTransforms :: Tile -> [(Int, Tile)]
+allTransforms t0 = zip [0 ..] $ do
   t1 <- [t0, flipVert t0]
   take 4 (iterate rotateCwQt t1)
 
 pprAllTransforms :: Tile -> IO ()
 pprAllTransforms t = do
   let (l0, l1) = splitAt 4 (allTransforms t)
-      ts0 = fmap renderTile l0
-      ts1 = fmap renderTile l1
+      ts0 = fmap (renderTile . snd) l0
+      ts1 = fmap (renderTile . snd) l1
   mapM_ putStrLn $ fmap (intercalate "  ") $ transpose ts0
   putStrLn ""
   mapM_ putStrLn $ fmap (intercalate "  ") $ transpose ts1
   putStrLn ""
 
+type Udlr = ((Int, Int), (Int, Int))
+
+tileEdges :: Tile -> Udlr
+tileEdges t =
+  ( ( decodeBinary $ fmap (\c -> t (0, c)) coords
+    , decodeBinary $ fmap (\c -> t (tileLen -1, c)) coords
+    )
+  , ( decodeBinary $ fmap (\r -> t (r, 0)) coords
+    , decodeBinary $ fmap (\r -> t (r, tileLen -1)) coords
+    )
+  )
+
+tileEdgeNums :: Tile -> [(Int, Int)]
+tileEdgeNums t = do
+  (i, t') <- allTransforms t
+  let ((u, d), (l, r)) = tileEdges t'
+  (i {- stands for a specific orientation for a tile -},) <$> [u, d, l, r]
+
 instance Solution Day20 where
   solutionIndex _ = (2020, 20)
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    xs <- fmap parseTile . splitOn [""] . lines <$> getInputS
-    pprAllTransforms (snd $ head xs)
+    tracedTiles <- fmap parseTile . filter (not . null) . splitOn [""] . lines <$> getInputS
+    let tracedEdgeNums = (fmap . second) tileEdgeNums tracedTiles
+        edgeRepToTileIds = IM.fromListWith (<>) $ do
+          (i, ens) <- tracedEdgeNums
+          (_, en) <- ens
+          pure (en, IS.singleton i)
+        possibleConns = IM.fromListWith (<>) $ do
+          (_e, tileIdSet) <- IM.toList edgeRepToTileIds
+          (a, as) <- pickInOrder $ IS.toList tileIdSet
+          b <- as
+          [(a, IS.singleton b), (b, IS.singleton a)]
+        edgeTiles =
+          -- we can guess an edge tile if it only has 2 possible connections
+          filter (\(v, es) -> IS.size es == 2) $ IM.toList possibleConns
+        edgeTileIds = fmap fst edgeTiles
+    -- it so happens that this is sufficient for both example and my input.
+    -- enforce that we have exactly 4 elements
+    [_, _, _, _] <- pure edgeTileIds
+    answerShow $ product edgeTileIds
