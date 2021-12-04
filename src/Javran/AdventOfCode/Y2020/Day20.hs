@@ -1,33 +1,18 @@
-{-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiWayIf #-}
+{-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE PatternGuards #-}
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TupleSections #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# OPTIONS_GHC -Wno-typed-holes #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -Wno-unused-matches #-}
-{-# OPTIONS_GHC -fdefer-typed-holes #-}
 
 module Javran.AdventOfCode.Y2020.Day20
   (
   )
 where
 
-{- HLINT ignore -}
-
-import Control.Applicative
 import Control.Monad
 import Data.Bifunctor
 import Data.Bits
 import Data.Bool
-import Data.Function
-import Data.Function.Memoize (memoFix)
 import qualified Data.IntMap.Strict as IM
 import qualified Data.IntSet as IS
 import Data.List
@@ -37,7 +22,6 @@ import Data.Maybe
 import Data.Monoid
 import Data.Semigroup
 import qualified Data.Set as S
-import qualified Data.Text as T
 import qualified Data.Vector as V
 import Data.Word
 import Javran.AdventOfCode.Prelude
@@ -53,6 +37,9 @@ halfLen = tileLen `quot` 2
 
 coords :: [Int]
 coords = [0 .. tileLen -1]
+
+invalidInput :: a
+invalidInput = error "invalid input"
 
 pickInOrder :: [a] -> [] (a, [a])
 pickInOrder [] = []
@@ -85,13 +72,25 @@ toPackedTile xs =
     packToWord yys = appEndo setup 0
       where
         setup = mconcat $ do
-          (r, ys) <- zip [0 :: Int ..] yys
-          (c, y) <- zip [0 :: Int ..] ys
+          (r, ys) <- zip [0 ..] yys
+          (c, y) <- zip [0 ..] ys
           let i = c + r * tileLen
           if y
             then pure $ Endo (`setBit` i)
             else mempty
 
+{-
+  We keep the underlying structure intact and simply export a function
+  that allows us to index into the tile.
+
+  If we want to rotate or flip a tile, we pre-compose a coordinate transformation.
+  This way we avoids actually performing any transformation on the underlying data entirely.
+
+  The trade off is that this precomposition could be multiple layers that we have to compute
+  on each access. But given that we pre-compose at most 4 times
+  (worse case is one vertical flip followed by 3 rotations),
+  this is a price we are willing to pay.
+ -}
 type Tile = (Int, Int) -> Bool
 
 toTile :: PackedTile -> Tile
@@ -103,47 +102,50 @@ toTile (PackedTile (lo, hi)) (r, c) =
 type TracedTile = (Int, Tile)
 
 parseTile :: [String] -> TracedTile
-parseTile (t : xs) = (fromJust (consumeAllWithReadP tileNumP t), toTile . toPackedTile . (fmap . fmap) tr $ xs)
+parseTile (t : xs) =
+  ( fromJust (consumeAllWithReadP tileNumP t)
+  , toTile . toPackedTile . (fmap . fmap) tr $ xs
+  )
   where
     tr '#' = True
     tr '.' = False
-    tr _ = error "invalid input"
+    tr _ = invalidInput
     tileNumP = string "Tile " *> decimal1P <* char ':'
-parseTile [] = error "invalid input"
+parseTile [] = invalidInput
 
-flipVert :: Tile -> Tile
-flipVert origTile (r, c) = origTile (tileLen -1 - r, c)
+data CoordTransformers a = CoordTransformers
+  { flipVert :: forall b. (a -> b) -> (a -> b)
+  , rotateCwQt :: forall b. (a -> b) -> (a -> b)
+  }
 
-rotateCwQt :: Tile -> Tile
-rotateCwQt origTile (r, c) = origTile (tileLen -1 - c, r)
+{-
+  Side note:
 
-renderTile :: Tile -> [String]
-renderTile t =
-  fmap (\r -> fmap (\c -> if t (r, c) then '#' else '.') [0 .. tileLen -1]) [0 .. tileLen -1]
+  notice that both flipVert and rotateCwQt are function precompositions,
+  meaning the following will work:
 
-pprTile :: Tile -> IO ()
-pprTile t = do
-  forM_ [0 .. tileLen -1] $ \r ->
-    putStrLn (fmap (\c -> if t (r, c) then '#' else '.') [0 .. tileLen -1])
+  flipVert = getOp . contramap (\(r, c) -> (sideLen -1 - r, c)) . Op
+
+  looks nicer if we ignore those newtype wrappers,
+  but admittedly less readable.
+
+ -}
+
+{- HLINT ignore mkCoordTransformers "Use first" -}
+mkCoordTransformers :: Int -> CoordTransformers (Int, Int)
+mkCoordTransformers sideLen =
+  CoordTransformers
+    { flipVert = \f (r, c) -> f (sideLen -1 - r, c)
+    , rotateCwQt = \f (r, c) -> f (sideLen -1 - c, r)
+    }
 
 type TileAlts = [(Int, Tile)]
 
-type TracedTileAlts = (Int {- tile id -}, TileAlts)
-
 allTransforms :: Tile -> TileAlts
 allTransforms t0 = zip [0 ..] $ do
+  let CoordTransformers {flipVert, rotateCwQt} = mkCoordTransformers tileLen
   t1 <- [t0, flipVert t0]
   take 4 (iterate rotateCwQt t1)
-
-pprAllTransforms :: Tile -> IO ()
-pprAllTransforms t = do
-  let (l0, l1) = splitAt 4 (allTransforms t)
-      ts0 = fmap (renderTile . snd) l0
-      ts1 = fmap (renderTile . snd) l1
-  mapM_ putStrLn $ fmap (intercalate "  ") $ transpose ts0
-  putStrLn ""
-  mapM_ putStrLn $ fmap (intercalate "  ") $ transpose ts1
-  putStrLn ""
 
 type Udlr = ((Int, Int), (Int, Int))
 
@@ -183,7 +185,7 @@ prepareTileSolving
         pure (tId, allTransforms tile)
       (tmpL, Just ts, tmpR) = IM.splitLookup topLeftTileId initTracedTileAltsMap
       topLeftTile = head $ do
-        t@(i, curTile) <- ts
+        (_i, curTile) <- ts
         let ((u, _d), (l, _r)) = tileEdges curTile
         guard $ IS.member u deadEdgeReps && IS.member l deadEdgeReps
         pure curTile
@@ -205,6 +207,11 @@ solveTiles deadEdgeReps (r, c) remainingTiles solution
       Find an appropriate tile to put on row r, col c.
       We want to solve in row-major order,
       meaning we can assume (r-1,c) and (r,c-1) are already solved, if present.
+
+      for a tile to be put in that place:
+      - its top edge must match down edge of (r-1,c)
+      - its left edge must match right edge of (r,c-1)
+
      -}
     let mUpEdge, mLeftEdge :: Maybe Int
         mUpEdge = do
@@ -225,11 +232,23 @@ solveTiles deadEdgeReps (r, c) remainingTiles solution
     let solution' = M.insert (r, c) candidateTile solution
         remainingTiles' = IM.delete tileId remainingTiles
         nextCoord =
+          {-
+            this row is done if we ends up having right edige of (r,c)
+            that cannot be connected to any other tiles.
+           -}
           if IS.member cRight deadEdgeReps
             then (r + 1, 0)
             else (r, c + 1)
     solveTiles deadEdgeReps nextCoord remainingTiles' solution'
 
+{-
+  verifies a solution and compute tile dimensions.
+
+  - a complete solution should form a rectangle
+  - to make things easier, it seems to be the case that we always end up
+    with a square. this function also verifies this assumption.
+
+ -}
 verifyDims :: S.Set TileCoord -> Maybe (Int, Int)
 verifyDims ts = do
   let Just (Max maxR, Max maxC) = foldMap (\(r, c) -> Just (Max r, Max c)) ts
@@ -244,18 +263,41 @@ constructSea (tileRows, tileCols) tiles = V.fromList (fmap V.fromList flattened)
   where
     flattened :: [[Bool]]
     flattened =
-      concat $
-        fmap
-          (\tileRow ->
-             fmap concat $
-               transpose $
-                 fmap
-                   (\tileCol -> unpackTile $ tiles M.! (tileRow, tileCol))
-                   [0 .. tileCols -1])
-          [0 .. tileRows -1]
+      concatMap
+        (\tileRow ->
+           fmap concat $
+             transpose $
+               fmap
+                 (\tileCol -> unpackTile $ tiles M.! (tileRow, tileCol))
+                 [0 .. tileCols -1])
+        [0 .. tileRows -1]
     unpackTile :: Tile -> [[Bool]]
-    unpackTile t =
+    unpackTile t = do
       fmap (\r -> fmap (\c -> t (r, c)) [1 .. tileLen -2]) [1 .. tileLen -2]
+
+type SeaViewer = (Int, Int) -> Bool
+
+-- Bidi short for bi-directional.
+type SeaBidi =
+  ( SeaViewer
+  , (Int, Int) -> (Int, Int) -- translates back to underlying coord.
+  )
+
+mkSeaBidis :: Sea -> [SeaBidi]
+mkSeaBidis sea = do
+  let directViewer (r, c) = sea V.! r V.! c
+      directBidi = (directViewer, id)
+      seaLen = V.length sea
+
+      CoordTransformers {flipVert, rotateCwQt} = mkCoordTransformers seaLen
+
+      sFlipVert :: SeaBidi -> SeaBidi
+      sFlipVert = bimap flipVert flipVert
+
+      sRotateCwQt :: SeaBidi -> SeaBidi
+      sRotateCwQt = bimap rotateCwQt rotateCwQt
+  v <- [directBidi, sFlipVert directBidi]
+  take 4 (iterate sRotateCwQt v)
 
 seaMonsterDims :: (Int, Int)
 seaMonsterParts :: S.Set (Int, Int)
@@ -273,49 +315,14 @@ seaMonsterParts :: S.Set (Int, Int)
       guard $ x == '#'
       pure (r, c)
 
-type SeaViewer = (Int, Int) -> Bool
-
--- Bidi short for bi-direction.
-type SeaBidi =
-  ( SeaViewer
-  , (Int, Int) -> (Int, Int) -- translates back to underlying coord.
-  )
-
-mkSeaBidis :: Sea -> [SeaBidi]
-mkSeaBidis sea = do
-  let directViewer (r, c) = sea V.! r V.! c
-      directBidi = (directViewer, id)
-      -- to make things easier, we assume the sea is a square.
-      seaLen = V.length sea
-
-      sFlipVert :: SeaBidi -> SeaBidi
-      sFlipVert (viewer, backTranslate) =
-        ( \(r, c) -> viewer (seaLen -1 - r, c)
-        , \(r, c) -> backTranslate (seaLen -1 - r, c)
-        )
-
-      sRotateCwQt :: SeaBidi -> SeaBidi
-      sRotateCwQt (viewer, backTranslate) =
-        ( \(r, c) -> viewer (seaLen -1 - c, r)
-        , \(r, c) -> backTranslate (seaLen -1 - c, r)
-        )
-  v <- [directBidi, sFlipVert directBidi]
-  take 4 (iterate sRotateCwQt v)
-
-findSeaMonsters :: Int -> SeaBidi -> [(S.Set (Int, Int), Int)]
+findSeaMonsters :: Int -> SeaBidi -> [S.Set (Int, Int)]
 findSeaMonsters seaLen (viewer, backTranslate) = do
   let (smRows, smCols) = seaMonsterDims
   r0 <- takeWhile (\r' -> r' + smRows -1 <= seaLen -1) [0 ..]
   c0 <- takeWhile (\c' -> c' + smCols -1 <= seaLen -1) [0 ..]
-  let translatedSm = S.map (\(smR, smC) -> (r0 + smR, c0 + smC)) seaMonsterParts
+  let translatedSm = S.map (bimap (+ r0) (+ c0)) seaMonsterParts
   guard $ all viewer translatedSm
-  let roughness = sum $ do
-        r1 <- [r0 .. r0+smRows-1]
-        c1 <- [c0 .. c0+smCols-1]
-        guard $ viewer (r1, c1) && S.notMember (r1,c1) translatedSm
-        pure 1
-
-  pure (S.map backTranslate translatedSm, roughness)
+  pure (S.map backTranslate translatedSm)
 
 instance Solution Day20 where
   solutionIndex _ = (2020, 20)
@@ -333,7 +340,7 @@ instance Solution Day20 where
           [(a, IS.singleton b), (b, IS.singleton a)]
         edgeTiles =
           -- we can guess an edge tile if it only has 2 possible connections
-          filter (\(v, es) -> IS.size es == 2) $ IM.toList possibleConns
+          filter (\(_v, es) -> IS.size es == 2) $ IM.toList possibleConns
         edgeTileIds = fmap fst edgeTiles
     -- it so happens that this is sufficient for both example and my input.
     -- enforce that we have exactly 4 elements
@@ -343,18 +350,25 @@ instance Solution Day20 where
       , _
       ] <-
       pure edgeTileIds
+    -- just knowing what those 4 tiles are allows us to answer first question.
     answerShow $ product edgeTileIds
     let (orientedTopLeftTile, remainingTiles, deadEdgeReps) =
           prepareTileSolving tracedTiles topLeftTileId edgeRepToTileIds
-        solvedTiles = head $ solveTiles deadEdgeReps (0, 1) remainingTiles (M.singleton (0, 0) orientedTopLeftTile)
-    Just tileDims@(rows, cols) <- pure (verifyDims (M.keysSet solvedTiles))
+        solvedTiles =
+          head $
+            solveTiles
+              deadEdgeReps
+              (0, 1)
+              remainingTiles
+              (M.singleton (0, 0) orientedTopLeftTile)
+    Just tileDims <- pure (verifyDims (M.keysSet solvedTiles))
     let sea = constructSea tileDims solvedTiles
         seaLen = V.length sea
         monsters = do
           bd <- mkSeaBidis sea
           findSeaMonsters seaLen bd
         allMonsterParts :: S.Set (Int, Int)
-        allMonsterParts = S.unions (fmap fst monsters)
+        allMonsterParts = S.unions monsters
     let visualize = False
     when visualize $
       forM_ (zip [0 :: Int ..] (V.toList sea)) $ \(r, rs) -> do
@@ -365,10 +379,9 @@ instance Solution Day20 where
                   then 'O'
                   else bool '.' '#' x)
              $ zip [0 ..] (V.toList rs))
-    let roughness = sum $ do
-          r <- [0..seaLen-1]
-          c <- [0..seaLen-1]
-          guard $ sea V.! r V.! c
-          guard $ S.notMember (r,c) allMonsterParts
-          pure (1 :: Int)
-    answerShow roughness
+    answerShow $ sum do
+      r <- [0 .. seaLen -1]
+      c <- [0 .. seaLen -1]
+      guard $ S.notMember (r, c) allMonsterParts
+      guard $ sea V.! r V.! c
+      pure (1 :: Int)
