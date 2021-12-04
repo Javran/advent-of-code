@@ -70,7 +70,7 @@ toPackedTile xs =
         && (let (y : ys) = fmap length xs
              in (y == tileLen && all (== y) ys)
                   || error "invalid # of cols")
-    (loXs, hiXs) = splitAt (tileLen `quot` 2) xs
+    (loXs, hiXs) = splitAt halfLen xs
     packToWord :: [[Bool]] -> Word64
     packToWord yys = appEndo setup 0
       where
@@ -99,18 +99,38 @@ parseTile (t : xs) = (fromJust (consumeAllWithReadP tileNumP t), toTile . toPack
     tileNumP = string "Tile " *> decimal1P <* char ':'
 parseTile _ = undefined
 
+flipVert :: Tile -> Tile
+flipVert origTile (r, c) = origTile (tileLen -1 - r, c)
+
+rotateCwQt :: Tile -> Tile
+rotateCwQt origTile (r, c) = origTile (tileLen -1 - c, r)
+
+renderTile :: Tile -> [String]
+renderTile t =
+  fmap (\r -> fmap (\c -> if t (r, c) then '#' else '.') [0 .. tileLen -1]) [0 .. tileLen -1]
+
 pprTile :: Tile -> IO ()
 pprTile t = do
   forM_ [0 .. tileLen -1] $ \r ->
     putStrLn (fmap (\c -> if t (r, c) then '#' else '.') [0 .. tileLen -1])
 
+allTransforms :: Tile -> [Tile]
+allTransforms t0 = do
+  t1 <- [t0, flipVert t0]
+  take 4 (iterate rotateCwQt t1)
+
+pprAllTransforms :: Tile -> IO ()
+pprAllTransforms t = do
+  let (l0, l1) = splitAt 4 (allTransforms t)
+      ts0 = fmap renderTile l0
+      ts1 = fmap renderTile l1
+  mapM_ putStrLn $ fmap (intercalate "  ") $ transpose ts0
+  putStrLn ""
+  mapM_ putStrLn $ fmap (intercalate "  ") $ transpose ts1
+  putStrLn ""
+
 instance Solution Day20 where
   solutionIndex _ = (2020, 20)
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     xs <- fmap parseTile . splitOn [""] . lines <$> getInputS
-    mapM_
-      (\(i, t) -> do
-         putStrLn $ "Tile " <> show i
-         pprTile t
-         putStrLn "")
-      xs
+    pprAllTransforms (snd $ head xs)
