@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 6303a3da7e71a218b6c44d7425f5cbdcdacae399f9a43197bd00ca69ae18d953
+-- hash: d347e500440e9d19b82ddb5a25cc5a8a85320fb8d63e20ca11b0c6b889cce17c
 
 name:           advent-of-code
 version:        0.1.0.0
@@ -148,6 +148,8 @@ executable run-advent-of-code
       advent-of-code
     , base
     , bytestring
+    , containers
+    , template-haskell
     , text
   default-language: Haskell2010
 
@@ -155,8 +157,8 @@ test-suite hspec
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
-      Javran.AdventOfCode.Y2020Spec
-      Javran.AdventOfCode.Y2021Spec
+      Javran.AdventOfCode.TestDataSpec
+      Javran.AdventOfCode.TestDataTh
       Paths_advent_of_code
   hs-source-dirs:
       test
@@ -166,6 +168,8 @@ test-suite hspec
     , advent-of-code
     , base
     , bytestring
+    , containers
     , hspec
+    , template-haskell
     , text
   default-language: Haskell2010

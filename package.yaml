@@ -10,6 +10,8 @@ dependencies:
 - base
 - text
 - bytestring
+- template-haskell
+- containers
 
 data-files:
 - data/testdata/**/*.input.txt
@@ -20,7 +22,6 @@ library:
   dependencies:
     - vector
     - vector-algorithms
-    - containers
     - filepath
     - http-types
     - http-client
@@ -30,7 +31,6 @@ library:
     - turtle
     - split
     - once
-    - template-haskell
     - mtl
     - memoize
     - data-ordlist

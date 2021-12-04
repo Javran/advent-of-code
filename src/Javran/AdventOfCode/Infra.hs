@@ -180,7 +180,8 @@ runSolutionWithExampleAndWriteExpect p = do
   T.writeFile fpTarget actualOutput
   putStrLn $ "Written to: " <> fpTarget
 
-data SomeSolution = forall sol. Solution sol => SomeSolution (Proxy sol)
+data SomeSolution
+  = forall sol. Solution sol => SomeSolution (Proxy sol)
 
 editExample :: Int -> Int -> IO ()
 editExample yyyy dd = do
