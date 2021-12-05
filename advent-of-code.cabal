@@ -1,10 +1,8 @@
 cabal-version: 2.0
 
--- This file has been generated from package.yaml by hpack version 0.33.0.
+-- This file has been generated from package.yaml by hpack version 0.34.4.
 --
 -- see: https://github.com/sol/hpack
---
--- hash: a265eabfbcd44e3382c5bb98900d725fbe41344bbbcd9e9e5c9e6fbe6a0d1b6a
 
 name:           advent-of-code
 version:        0.1.0.0
