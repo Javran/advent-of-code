@@ -122,6 +122,10 @@ computeTestdataDirDigestTextRep = do
     fp <- lstree testdataPath
     st <- stat fp
     guard $ isRegularFile st
+    {-
+      Note: this encoding is not OS-independent as path separator varies,
+      for now I don't think this is a problem worth working on.
+     -}
     pure (either encodeUtf8 encodeUtf8 $ FP.toText fp)
   let payload = BSL.intercalate (BSL.singleton 0) $ fmap BSL.fromStrict dirs
       digest = SHA256.hashlazy payload

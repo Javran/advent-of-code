@@ -12,6 +12,7 @@ import Control.Monad
 import Data.List
 import Data.Maybe
 import Javran.AdventOfCode.Prelude
+import Javran.AdventOfCode.Tester (computeTestdataDirDigestTextRep)
 import System.Directory
 import System.Environment
 import System.FilePath.Posix
@@ -38,7 +39,11 @@ mayEditFileWithSpecialSection
   -> String
   -> String
   -> String
-  -> ExtractSectionCallback String ([String], Maybe Bool)
+  -> ExtractSectionCallback
+       String
+       ( [String]
+       , Maybe Bool {- if this part is `Just False`, we guaranteed not to scrutinize `fst` part -}
+       )
   -> IO ()
 mayEditFileWithSpecialSection fp prefix bm em extractSecCb = do
   mainModuleContents <- System.IO.Strict.readFile fp
@@ -76,14 +81,12 @@ performYearlyModuleSync = do
                 (consumeAllWithReadP dayFileP)
                 dayFs
           moduleFp = yearDir </> "Main.hs"
-      mainModuleContents <- System.IO.Strict.readFile moduleFp
       let importLines = generateModuleImports year days
-          contentLines = lines mainModuleContents
           extractSecCb =
             (\prevSec bm sec em postSec ->
                if sec == importLines
-                 then -- no need for editing, nothing is changed.
-                   (contentLines, Just False)
+                 then -- nothing is changed.
+                   (error "no need for editing.", Just False)
                  else
                    ( prevSec <> [bm] <> importLines <> [em] <> postSec
                    , Just True
@@ -97,5 +100,29 @@ performYearlyModuleSync = do
         extractSecCb
     Nothing -> pure ()
 
+performTestdataSpecHashSync :: IO ()
+performTestdataSpecHashSync = do
+  projectHome <- getEnv "PROJECT_HOME"
+  let fp = projectHome </> "test" </> "Javran" </> "AdventOfCode" </> "TestdataSpec.hs"
+  digest <- computeTestdataDirDigestTextRep
+  let extractSecCb =
+        (\prevSec bm sec em postSec ->
+           if sec == [digest]
+             then -- no need for editing, nothing is changed.
+               (sec, Just False)
+             else
+               ( prevSec <> [bm] <> [digest] <> [em] <> postSec
+               , Just True
+               ))
+
+  mayEditFileWithSpecialSection
+    fp
+    "Edit TestdataSpec: "
+    "FORCE_RECOMP_HASH_BEGIN"
+    "FORCE_RECOMP_HASH_END"
+    extractSecCb
+
 performSync :: IO ()
-performSync = performYearlyModuleSync
+performSync = do
+  performYearlyModuleSync
+  performTestdataSpecHashSync
