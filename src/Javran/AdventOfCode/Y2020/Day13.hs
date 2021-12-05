@@ -7,16 +7,20 @@ module Javran.AdventOfCode.Y2020.Day13
   )
 where
 
+import Control.Monad
 import Data.Bifunctor
 import qualified Data.List.Ordered as LOrdered
-import Data.Maybe
 import Data.Ord
 import Javran.AdventOfCode.Prelude
 import Math.NumberTheory.Moduli.Chinese
+import Math.NumberTheory.Moduli.Class
 
 data Day13
 
--- TODO: newer version of arithmoi removed extendedGCD, find replacement.
+-- Ref: https://github.com/Bodigrim/arithmoi/issues/69
+chineseRemainder :: [SomeMod] -> Maybe SomeMod
+chineseRemainder (x : xs) = foldM chineseSomeMod x xs
+chineseRemainder _ = Just (0 `modulo` 1)
 
 mkMults :: Int -> Int -> [(Int, Int)]
 mkMults p v = fmap (p,) [z, z + p ..]
@@ -36,8 +40,9 @@ instance Solution Day13 where
         merged = foldr1 (LOrdered.unionBy (comparing snd)) $ fmap (\p -> mkMults p n) stops
         (stop, dTime) = head $ dropWhile ((< n) . snd) merged
     answerShow $ stop * (dTime - n)
-    answerShow $
-      fromJust $
-        chineseRemainder $ do
+    let answer = chineseRemainder $ do
           (ind, p) <- stopsIndexed
-          pure (fromIntegral ((- ind) `mod` p), fromIntegral p)
+          pure (fromIntegral ((- ind) `mod` p) `modulo` fromIntegral p)
+    answerShow $ case answer of
+      Just (SomeMod m) -> getVal m
+      _ -> undefined
