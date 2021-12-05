@@ -6,8 +6,8 @@
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE ViewPatterns #-}
@@ -27,6 +27,7 @@ import Control.Applicative
 import Control.Monad
 import Data.Bifunctor
 import Data.Bool
+import Data.Char
 import Data.Function
 import Data.Function.Memoize (memoFix)
 import qualified Data.IntMap.Strict as IM
@@ -41,7 +42,7 @@ import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Vector as V
 import Javran.AdventOfCode.Prelude
-import Text.ParserCombinators.ReadP hiding (many)
+import Text.ParserCombinators.ReadP hiding (many, count)
 
 data Day{{day}}
 
