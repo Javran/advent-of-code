@@ -209,13 +209,15 @@ editExample yyyy dd = do
 runSomeSolution :: SomeSolution -> String -> IO ()
 runSomeSolution (SomeSolution s) cmdHelpPrefix = do
   args <- getArgs
+  let runLogin = runSolutionWithLoginInput s >>= T.putStr
+      runExample = runSolutionWithExampleInput s >>= T.putStr
   case args of
     [] ->
-      runSolutionWithLoginInput s >>= T.putStr
-    ["login"] ->
-      runSolutionWithLoginInput s >>= T.putStr
-    ["example"] ->
-      runSolutionWithExampleInput s >>= T.putStr
+      runLogin
+    ["l"] -> runLogin
+    ["login"] -> runLogin
+    ["e"] -> runExample
+    ["example"] -> runExample
     ["edit-example"] ->
       let (yyyy, dd) = solutionIndex s
        in editExample yyyy dd
