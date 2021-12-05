@@ -40,6 +40,7 @@ library:
     - microstache
     - aeson
     - parser-combinators
+    - mod
   ghc-options:
     - -Wall
     - -O2

@@ -4,7 +4,7 @@ cabal-version: 2.0
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: f478b476a42c13ca15cdb8ddd1d0484f34848a1b9e8ad8544864d922fa8d1c4c
+-- hash: d193ac951ace75d2a5cae417e36f6d547ae8926c6c2cfd3bab1254bf75161d9f
 
 name:           advent-of-code
 version:        0.1.0.0
@@ -142,6 +142,7 @@ library
     , http-types
     , memoize
     , microstache
+    , mod
     , mtl
     , once
     , parser-combinators
