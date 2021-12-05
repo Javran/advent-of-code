@@ -8,6 +8,7 @@ where
 
 import Data.List
 import Javran.AdventOfCode.Infra
+import Javran.AdventOfCode.MainMaker
 import Javran.AdventOfCode.TH
 
 {- ORMOLU_DISABLE -}

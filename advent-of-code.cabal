@@ -85,6 +85,7 @@ library
       Javran.AdventOfCode.Cli.Sync
       Javran.AdventOfCode.Infra
       Javran.AdventOfCode.Main
+      Javran.AdventOfCode.MainMaker
       Javran.AdventOfCode.Prelude
       Javran.AdventOfCode.Tester
       Javran.AdventOfCode.TH

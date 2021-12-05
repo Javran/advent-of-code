@@ -19,12 +19,8 @@ module Javran.AdventOfCode.Infra
   , runSolutionWithInputGetter
   , runSolutionWithLoginInput
   , runSolutionWithExampleInput
-  , runSolutionWithExampleAndWriteExpect
   , SomeSolution (..)
-  , runSomeSolution
-  , mkYearlyMain
   , exampleRawInputRelativePath
-  , editExample
   )
 where
 
@@ -32,12 +28,10 @@ import Control.Monad
 import Control.Once
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BSL
-import Data.Char
 import Data.IORef
 import Data.Proxy
 import qualified Data.Text as T
 import Data.Text.Encoding
-import qualified Data.Text.IO as T
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.Builder as TLB
 import qualified Paths_advent_of_code as StockData
@@ -167,78 +161,5 @@ runSolutionWithExampleInput p = runSolutionWithInputGetter p getExampleRawInput
 runSolutionWithLoginInput :: forall p sol. Solution sol => p sol -> IO T.Text
 runSolutionWithLoginInput p = runSolutionWithInputGetter p getRawInput
 
-{-
-  TODO: expect files are not used for now - in future might use it as unit test.
- -}
-runSolutionWithExampleAndWriteExpect :: forall p sol. Solution sol => p sol -> IO ()
-runSolutionWithExampleAndWriteExpect p = do
-  projectHome <- getEnv "PROJECT_HOME"
-  let (yyyy, dd) = solutionIndex p
-  actualOutput <- runSolutionWithExampleInput p
-  let fpTarget = projectHome </> subPath </> "example.expect.txt"
-      subPath = exampleRawInputRelativePath yyyy dd
-  T.writeFile fpTarget actualOutput
-  putStrLn $ "Written to: " <> fpTarget
-
 data SomeSolution
   = forall sol. Solution sol => SomeSolution (Proxy sol)
-
-editExample :: Int -> Int -> IO ()
-editExample yyyy dd = do
-  mEditorCmd <- lookupEnv "EDITOR"
-  projectHome <- getEnv "PROJECT_HOME"
-  let subPath = exampleRawInputRelativePath yyyy dd
-      exampleInputFileName = "example.input.txt"
-      exampleDir = projectHome </> subPath
-  createDirectoryIfMissing True exampleDir
-  let exampleFp = exampleDir </> exampleInputFileName
-  -- ensure that the file exists.
-  do
-    e <- doesFileExist exampleFp
-    unless e $ writeFile exampleFp ""
-  case mEditorCmd of
-    Just editorCmd | not (all isSpace editorCmd) -> do
-      ec <- TBytes.proc (T.pack editorCmd) [T.pack $ exampleDir </> exampleInputFileName] ""
-      exitWith ec
-    _ ->
-      do
-        print mEditorCmd
-        putStrLn "EDITOR is empty, please edit the file manually:"
-        putStrLn exampleFp
-
-runSomeSolution :: SomeSolution -> String -> IO ()
-runSomeSolution (SomeSolution s) cmdHelpPrefix = do
-  args <- getArgs
-  let runLogin = runSolutionWithLoginInput s >>= T.putStr
-      runExample = runSolutionWithExampleInput s >>= T.putStr
-  case args of
-    [] ->
-      runLogin
-    ["l"] -> runLogin
-    ["login"] -> runLogin
-    ["e"] -> runExample
-    ["example"] -> runExample
-    ["edit-example"] ->
-      let (yyyy, dd) = solutionIndex s
-       in editExample yyyy dd
-    ["write-expect"] ->
-      runSolutionWithExampleAndWriteExpect s
-    _ ->
-      die $ cmdHelpPrefix <> "[example|login|write-expect]"
-
-mkYearlyMain :: Int -> [SomeSolution] -> String -> IO ()
-mkYearlyMain year collectedSolutions = yearlyMain
-  where
-    solutionRunners = mk <$> collectedSolutions
-      where
-        mk ss@(SomeSolution s) = case solutionIndex s of
-          (yyyy, dd)
-            | yyyy == year ->
-              (show dd, runSomeSolution ss)
-          solInd -> error $ "Invalid solution index: " <> show solInd
-
-    yearlyMain :: String -> IO ()
-    yearlyMain cmdHelpPrefix = do
-      dispatchToSubCmds
-        cmdHelpPrefix
-        solutionRunners

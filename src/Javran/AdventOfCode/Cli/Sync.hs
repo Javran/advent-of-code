@@ -5,6 +5,7 @@
 module Javran.AdventOfCode.Cli.Sync
   ( syncCommand
   , performSync
+  , performTestdataSpecHashSync
   )
 where
 

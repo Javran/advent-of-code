@@ -10,7 +10,7 @@ import Data.Aeson
 import qualified Data.HashMap.Strict as HM
 import qualified Data.Text.Lazy.IO as TL
 import Javran.AdventOfCode.Cli.Sync (performSync)
-import Javran.AdventOfCode.Infra
+import Javran.AdventOfCode.MainMaker
 import System.Directory
 import System.Environment
 import System.Exit
