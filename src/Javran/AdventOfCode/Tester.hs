@@ -6,10 +6,10 @@
 {-# LANGUAGE TypeApplications #-}
 
 module Javran.AdventOfCode.Tester
-  ( TestDataInfo (..)
+  ( TestdataInfo (..)
   , scanForSomeSolution
-  , StructuredTestData
-  , scanTestData
+  , StructuredTestdata
+  , scanTestdata
   , subCommand
   , computeTestdataDirDigestTextRep
   )
@@ -37,7 +37,7 @@ import Text.ParserCombinators.ReadP
 import Turtle.Prelude hiding (sort)
 import Turtle.Shell
 
-data TestDataInfo = TestDataInfo
+data TestdataInfo = TestdataInfo
   { tag :: String
   , inputFilePath :: FilePath
   , mExpectFilePath :: Maybe FilePath
@@ -47,7 +47,7 @@ data TestDataInfo = TestDataInfo
 testInputFileNameP :: ReadP String
 testInputFileNameP = get `manyTill` string ".input.txt"
 
-scanForSolution :: (Int, Int) -> IO [TestDataInfo]
+scanForSolution :: (Int, Int) -> IO [TestdataInfo]
 scanForSolution (yyyy, dd) = do
   dataDir <- StockData.getDataDir
   let targetPath = dataDir </> exampleRawInputRelativePath yyyy dd
@@ -63,7 +63,7 @@ scanForSolution (yyyy, dd) = do
     tag <- allInputTestTags
     let expectFileName = tag <> ".expect.txt"
     pure $
-      TestDataInfo
+      TestdataInfo
         { tag
         , inputFilePath = targetPath </> (tag <> ".input.txt")
         , mExpectFilePath = do
@@ -71,13 +71,13 @@ scanForSolution (yyyy, dd) = do
             pure $ targetPath </> expectFileName
         }
 
-scanForSomeSolution :: SomeSolution -> IO [TestDataInfo]
+scanForSomeSolution :: SomeSolution -> IO [TestdataInfo]
 scanForSomeSolution (SomeSolution s) = scanForSolution (solutionIndex s)
 
-type StructuredTestData = [(Int, [(Int, [TestDataInfo])])]
+type StructuredTestdata = [(Int, [(Int, [TestdataInfo])])]
 
-scanTestData :: IO StructuredTestData
-scanTestData = do
+scanTestdata :: IO StructuredTestdata
+scanTestdata = do
   dataDir <- StockData.getDataDir
   let yearPath = dataDir </> "data" </> "testdata"
   yearsRaw <-

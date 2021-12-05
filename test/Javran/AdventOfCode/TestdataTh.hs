@@ -1,9 +1,9 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE TemplateHaskell #-}
 
-module Javran.AdventOfCode.TestDataTh
+module Javran.AdventOfCode.TestdataTh
   ( collectTests
-  , mkSpecFromStructuredTestData
+  , mkSpecFromStructuredTestdata
   )
 where
 
@@ -35,22 +35,22 @@ getSolution year day = allSolutions M.! (year, day)
 
 collectTests :: Q Exp
 collectTests = do
-  d <- runIO scanTestData
-  [|d :: StructuredTestData|]
+  d <- runIO scanTestdata
+  [|d :: StructuredTestdata|]
 
-mkSpecFromStructuredTestData :: StructuredTestData -> Spec
-mkSpecFromStructuredTestData = mapM_ (uncurry handleYear)
+mkSpecFromStructuredTestdata :: StructuredTestdata -> Spec
+mkSpecFromStructuredTestdata = mapM_ (uncurry handleYear)
   where
-    handleYear :: Int -> [(Int, [TestDataInfo])] -> Spec
+    handleYear :: Int -> [(Int, [TestdataInfo])] -> Spec
     handleYear year =
       describe ('Y' : show year)
         . mapM_ (uncurry handleDay)
       where
-        handleDay :: Int -> [TestDataInfo] -> Spec
+        handleDay :: Int -> [TestdataInfo] -> Spec
         handleDay day tds =
           describe ("Day" <> show day) $
             forM_ tds $
-              \TestDataInfo {tag, inputFilePath, mExpectFilePath} -> do
+              \TestdataInfo {tag, inputFilePath, mExpectFilePath} -> do
                 specify tag $ do
                   case getSolution year day of
                     SomeSolution s -> do

@@ -179,8 +179,8 @@ test-suite hspec
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
-      Javran.AdventOfCode.TestDataSpec
-      Javran.AdventOfCode.TestDataTh
+      Javran.AdventOfCode.TestdataSpec
+      Javran.AdventOfCode.TestdataTh
       Paths_advent_of_code
   autogen-modules:
       Paths_advent_of_code
