@@ -41,6 +41,9 @@ library:
     - aeson
     - parser-combinators
     - mod
+    - system-filepath
+    - foldl
+    - cryptohash-sha256
   ghc-options:
     - -Wall
     - -O2

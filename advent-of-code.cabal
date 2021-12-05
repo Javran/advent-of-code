@@ -133,9 +133,11 @@ library
     , base
     , bytestring
     , containers
+    , cryptohash-sha256
     , data-ordlist
     , directory
     , filepath
+    , foldl
     , http-client
     , http-client-tls
     , http-types
@@ -147,6 +149,7 @@ library
     , parser-combinators
     , split
     , strict
+    , system-filepath
     , template-haskell
     , text
     , time
