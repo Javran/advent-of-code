@@ -1,54 +1,25 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE BlockArguments #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# OPTIONS_GHC -Wno-typed-holes #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -Wno-unused-matches #-}
-{-# OPTIONS_GHC -fdefer-typed-holes #-}
 
 module Javran.AdventOfCode.Y2020.Day23
   (
   )
 where
 
-{- HLINT ignore -}
-
-import Control.Applicative
 import Control.Monad
 import Control.Monad.ST
-import Data.Bifunctor
-import Data.Bool
 import Data.Char
 import Data.Function
-import Data.Function.Memoize (memoFix)
-import qualified Data.IntMap.Strict as IM
-import qualified Data.IntSet as IS
 import Data.List
-import Data.List.Split hiding (sepBy)
-import qualified Data.Map.Strict as M
-import Data.Maybe
-import Data.Monoid
 import Data.STRef
-import Data.Semigroup
-import qualified Data.Set as S
-import qualified Data.Text as T
-import qualified Data.Vector as V
 import qualified Data.Vector.Mutable as VM
-import Debug.Trace
 import Javran.AdventOfCode.Prelude
-import Text.ParserCombinators.ReadP hiding (many)
 
 data Day23
 
@@ -101,8 +72,8 @@ mixCups xs len opCount = runST simulate
       let performMove :: cup -> ST s cup
           performMove (Cup focLbl focRef) = do
             c1@(Cup lbl1 r1) <- readSTRef focRef
-            c2@(Cup lbl2 r2) <- readSTRef r1
-            c3@(Cup lbl3 r3) <- readSTRef r2
+            (Cup lbl2 r2) <- readSTRef r1
+            (Cup lbl3 r3) <- readSTRef r2
             cNext <- readSTRef r3
             -- removes c1,c2,c3
             writeSTRef focRef cNext
@@ -111,23 +82,20 @@ mixCups xs len opCount = runST simulate
                     tail $ iterate nextDest focLbl
                   where
                     nextDest i = if i == 1 then len else i -1
-            destCup@(Cup _ rDest) <- getCup destCupLbl
+            (Cup _ rDest) <- getCup destCupLbl
             -- insert
             afterDest <- readSTRef rDest
             writeSTRef rDest c1
             writeSTRef r3 afterDest
+            -- return next cup to be operated upon.
             pure cNext
-      do
-        hd <- getCup (head xs)
-        fix
-          (\loop cup cnt ->
-             if cnt == 0
-               then pure ()
-               else do
-                 cup' <- performMove cup
-                 loop cup' (cnt - 1 :: Int))
-          hd
+      getCup (head xs)
+        >>= fix
+          (\loop cnt cup ->
+             unless (cnt == 0) do
+               performMove cup >>= loop (cnt-1))
           opCount
+
       do
         (Cup _ r0) <- getCup 1
         (Cup lbl1 r1) <- readSTRef r0
