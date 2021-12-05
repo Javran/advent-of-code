@@ -65,7 +65,7 @@ mayEditFileWithSpecialSection fp prefix bm em extractSecCb = do
       putStrLn $ prefix <> "No edit required."
     (xs, Just True) -> do
       writeFile fp (unlines xs)
-      putStrLn $ prefix <> "Module updated."
+      putStrLn $ prefix <> "File edited."
 
 performYearlyModuleSync :: IO ()
 performYearlyModuleSync = do

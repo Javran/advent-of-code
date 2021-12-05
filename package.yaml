@@ -49,6 +49,11 @@ library:
     - -O2
   generated-other-modules:
     - Paths_advent_of_code
+  # https://github.com/commercialhaskell/stack/issues/5503#issuecomment-799909211
+  when:
+    - condition: false
+      other-modules:
+        - Paths_advent_of_code
 
 executables:
   run-advent-of-code:
@@ -81,3 +86,7 @@ tests:
       - -main-is Spec
     generated-other-modules:
       - Paths_advent_of_code
+    when:
+      - condition: false
+        other-modules:
+        - Paths_advent_of_code
