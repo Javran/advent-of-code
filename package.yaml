@@ -43,6 +43,8 @@ library:
   ghc-options:
     - -Wall
     - -O2
+  generated-other-modules:
+    - Paths_advent_of_code
 
 executables:
   run-advent-of-code:
@@ -73,3 +75,5 @@ tests:
       - -rtsopts
       - -with-rtsopts=-N
       - -main-is Spec
+    generated-other-modules:
+      - Paths_advent_of_code

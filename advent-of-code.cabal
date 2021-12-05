@@ -1,10 +1,10 @@
-cabal-version: 1.12
+cabal-version: 2.0
 
 -- This file has been generated from package.yaml by hpack version 0.33.0.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: c2b66818b5ca5efaa6bd9404ed46e49de7ac163db58fe87fe7a15d5ba7bf63c5
+-- hash: ca6021d176a65ccaa4624b25815e11a8f81ac7aa702c078e91d2fe5253643280
 
 name:           advent-of-code
 version:        0.1.0.0
@@ -109,6 +109,8 @@ library
       Javran.AdventOfCode.Y2021.Main
   other-modules:
       Paths_advent_of_code
+  autogen-modules:
+      Paths_advent_of_code
   hs-source-dirs:
       src
   ghc-options: -Wall -O2
@@ -162,6 +164,8 @@ test-suite hspec
   other-modules:
       Javran.AdventOfCode.TestDataSpec
       Javran.AdventOfCode.TestDataTh
+      Paths_advent_of_code
+  autogen-modules:
       Paths_advent_of_code
   hs-source-dirs:
       test
