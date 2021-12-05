@@ -7,12 +7,16 @@ import Test.Hspec
 
 {-
 
-  TODO: current approach has a problem that
-  when testfiles are updates, this is not recompiled,
-  see what can we do about it.
+The section below is used to keep track of a digest of
+all filepaths within data/testdata [1], this is done
+to force the build system to recompile (thus re-run TH) this module again.
 
-  probably we can do something stupid,
-  like edit this file every time we write-expect.
+1: the TH stuff doesn't care about file content,
+  which is actually read by the unit tests.
+
+FORCE_RECOMP_HASH_BEGIN
+TODO: not implemented yet
+FORCE_RECOMP_HASH_END
 
  -}
 

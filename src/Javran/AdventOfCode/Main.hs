@@ -18,5 +18,5 @@ main =
     , ("2021", Y2021.subMain)
     , ("sync", CliSync.syncCommand)
     , ("new", CliNew.newCommand)
-    , ("_dev_scan-tests", Tester.subCommand)
+    , ("_dev", Tester.subCommand)
     ]
