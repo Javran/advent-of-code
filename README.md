@@ -18,3 +18,6 @@ stack build && stack exec -- run-advent-of-code <year> <day>
 Files under `data/download/` directory (intentionally ignored from VCS) are downloaded from [Advent of Code](https://adventofcode.com/).
 
 Files with name `example.input.txt` or `example.expect.txt` under `data/testdata/` directory are manually maintained but its original author is [Advent of Code](https://adventofcode.com/).
+
+
+[//]: # (test to see if this thing works: https://stackoverflow.com/a/20885980/315302)
