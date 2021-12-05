@@ -22,9 +22,6 @@ data Day24
 
 data Dir = E | SE | SW | W | NW | NE deriving (Show, Bounded, Enum)
 
-universe :: (Enum a, Bounded a) => [a]
-universe = [minBound .. maxBound]
-
 dirP :: ReadP Dir
 dirP =
   (E <$ char 'e')

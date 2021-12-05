@@ -13,6 +13,7 @@ module Javran.AdventOfCode.Prelude
   , unreachable
   , pick
   , pickInOrder
+  , universe
   , extractSection
   , -- infrastructures
     module Javran.AdventOfCode.Infra
@@ -31,6 +32,9 @@ import Javran.AdventOfCode.Infra
   , SolutionContext (..)
   )
 import Text.ParserCombinators.ReadP
+
+universe :: (Enum a, Bounded a) => [a]
+universe = [minBound .. maxBound]
 
 decimal1P :: (Read i, Integral i) => ReadP i
 decimal1P = read <$> munch1 isDigit
