@@ -33,8 +33,36 @@ generateModuleImports yyyy dds = do
 syncCommand :: String -> IO ()
 syncCommand _cmdHelpPrefix = performSync
 
-performSync :: IO ()
-performSync = do
+mayEditFileWithSpecialSection
+  :: FilePath
+  -> String
+  -> String
+  -> String
+  -> ExtractSectionCallback String ([String], Maybe Bool)
+  -> IO ()
+mayEditFileWithSpecialSection fp prefix bm em extractSecCb = do
+  mainModuleContents <- System.IO.Strict.readFile fp
+  let contentLines = lines mainModuleContents
+      editResult :: ([String], Maybe Bool)
+      editResult =
+        extractSection
+          bm
+          em
+          -- when the section is not found.
+          (contentLines, Nothing)
+          extractSecCb
+          contentLines
+  case editResult of
+    (_, Nothing) -> do
+      putStrLn $ prefix <> "Abort editing as no section is recognized."
+    (_, Just False) -> do
+      putStrLn $ prefix <> "No edit required."
+    (xs, Just True) -> do
+      writeFile fp (unlines xs)
+      putStrLn $ prefix <> "Module updated."
+
+performYearlyModuleSync :: IO ()
+performYearlyModuleSync = do
   projectHome <- getEnv "PROJECT_HOME"
   let baseDir = projectHome </> "src" </> "Javran" </> "AdventOfCode"
   yearDs <- listDirectory baseDir >>= filterM (\p -> doesDirectoryExist (baseDir </> p))
@@ -51,29 +79,23 @@ performSync = do
       mainModuleContents <- System.IO.Strict.readFile moduleFp
       let importLines = generateModuleImports year days
           contentLines = lines mainModuleContents
-          editResult :: ([String], Maybe Bool)
-          editResult =
-            extractSection
-              "{- ORMOLU_DISABLE -}"
-              "{- ORMOLU_ENABLE -}"
-              -- when the section is not found.
-              (contentLines, Nothing)
-              (\prevSec bm sec em postSec ->
-                 if sec == importLines
-                   then -- no need for editing, nothing is changed.
-                     (contentLines, Just False)
-                   else
-                     ( prevSec <> [bm] <> importLines <> [em] <> postSec
-                     , Just True
-                     ))
-              contentLines
+          extractSecCb =
+            (\prevSec bm sec em postSec ->
+               if sec == importLines
+                 then -- no need for editing, nothing is changed.
+                   (contentLines, Just False)
+                 else
+                   ( prevSec <> [bm] <> importLines <> [em] <> postSec
+                   , Just True
+                   ))
       let prefix = 'Y' : show year <> ": "
-      case editResult of
-        (_, Nothing) -> do
-          putStrLn $ prefix <> "Abort editing as no section is recognized."
-        (_, Just False) -> do
-          putStrLn $ prefix <> "No edit required."
-        (xs, Just True) -> do
-          writeFile moduleFp (unlines xs)
-          putStrLn $ prefix <> "Module updated."
+      mayEditFileWithSpecialSection
+        moduleFp
+        prefix
+        "{- ORMOLU_DISABLE -}"
+        "{- ORMOLU_ENABLE -}"
+        extractSecCb
     Nothing -> pure ()
+
+performSync :: IO ()
+performSync = performYearlyModuleSync

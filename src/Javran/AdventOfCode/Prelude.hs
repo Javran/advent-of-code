@@ -15,6 +15,7 @@ module Javran.AdventOfCode.Prelude
   , pickInOrder
   , universe
   , extractSection
+  , ExtractSectionCallback
   , -- infrastructures
     module Javran.AdventOfCode.Infra
   )
@@ -98,7 +99,17 @@ consumeExtraLeadingLines raw =
     (\_pre _bm sec _em post -> (Just sec, unlines post))
     (lines raw)
 
-extractSection :: Eq t => t -> t -> a -> ([t] -> t -> [t] -> t -> [t] -> a) -> [t] -> a
+type ExtractSectionCallback line result =
+  [line] -> line -> [line] -> line -> [line] -> result
+
+extractSection
+  :: Eq t
+  => t -- begin marker
+  -> t -- end marker
+  -> a -- default value if this section does not exist
+  -> ExtractSectionCallback t a
+  -> [t] -- file lines
+  -> a
 extractSection beginMarker endMarker defVal onSuccess xs = fromMaybe defVal $ do
   (ys0, bm : remaining0) <- pure $ span (/= beginMarker) xs
   (ys1, em : remaining1) <- pure $ span (/= endMarker) remaining0
