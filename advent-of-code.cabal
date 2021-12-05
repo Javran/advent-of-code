@@ -4,7 +4,7 @@ cabal-version: 2.0
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: ca6021d176a65ccaa4624b25815e11a8f81ac7aa702c078e91d2fe5253643280
+-- hash: 80ccc25a7fbf6b8cdc87234f7d0f8aa9b88f30c473d81e37e76e5de3bb30f9ee
 
 name:           advent-of-code
 version:        0.1.0.0
@@ -30,6 +30,7 @@ data-files:
     data/testdata/2020/day/2/example.input.txt
     data/testdata/2020/day/20/example.input.txt
     data/testdata/2020/day/21/example.input.txt
+    data/testdata/2020/day/22/example.input.txt
     data/testdata/2020/day/3/example.input.txt
     data/testdata/2020/day/4/example.input.txt
     data/testdata/2020/day/5/example.input.txt
@@ -41,6 +42,7 @@ data-files:
     data/testdata/2021/day/2/example.input.txt
     data/testdata/2021/day/3/example.input.txt
     data/testdata/2021/day/4/example.input.txt
+    data/testdata/2021/day/5/example.input.txt
     data/testdata/2020/day/1/example.expect.txt
     data/testdata/2020/day/10/example.expect.txt
     data/testdata/2020/day/11/example.expect.txt
@@ -66,6 +68,7 @@ data-files:
     data/testdata/2021/day/2/example.expect.txt
     data/testdata/2021/day/3/example.expect.txt
     data/testdata/2021/day/4/example.expect.txt
+    data/testdata/2021/day/5/example.expect.txt
 
 source-repository head
   type: git
@@ -94,6 +97,7 @@ library
       Javran.AdventOfCode.Y2020.Day2
       Javran.AdventOfCode.Y2020.Day20
       Javran.AdventOfCode.Y2020.Day21
+      Javran.AdventOfCode.Y2020.Day22
       Javran.AdventOfCode.Y2020.Day3
       Javran.AdventOfCode.Y2020.Day4
       Javran.AdventOfCode.Y2020.Day5
@@ -106,6 +110,7 @@ library
       Javran.AdventOfCode.Y2021.Day2
       Javran.AdventOfCode.Y2021.Day3
       Javran.AdventOfCode.Y2021.Day4
+      Javran.AdventOfCode.Y2021.Day5
       Javran.AdventOfCode.Y2021.Main
   other-modules:
       Paths_advent_of_code

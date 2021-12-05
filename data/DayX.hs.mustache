@@ -49,4 +49,4 @@ instance Solution Day{{day}} where
   solutionIndex _ = ({{year}}, {{day}})
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     xs <- fmap id . lines <$> getInputS
-    print (length xs)
+    mapM_ print xs
