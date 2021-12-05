@@ -56,5 +56,5 @@ instance Solution Day25 where
   solutionIndex _ = (2020, 25)
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     cPk : dPk : _ <- fmap (fromIntegral @_ @ModP . read @Int) . lines <$> getInputS
-    let (cSk, _) = head [(i, x) | i <- [1 :: Int ..], let x = 7 ^% i, x == cPk]
+    let (cSk, _) = head [(i, x) | i <- [0 :: Int ..], let x = 7 ^% i, x == cPk]
     print $ unMod $ dPk ^% cSk
