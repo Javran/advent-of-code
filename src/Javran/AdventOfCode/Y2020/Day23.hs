@@ -1,8 +1,6 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -18,7 +16,7 @@ import Data.Char
 import Data.Function
 import Data.List
 import Data.STRef
-import qualified Data.Vector.Mutable as VM
+import qualified Data.Vector as V
 import Javran.AdventOfCode.Prelude
 
 data Day23
@@ -58,17 +56,18 @@ mixCups xs len opCount = runST simulate
     simulate :: forall s cup. cup ~ Cup (STRef s) => ST s [Int]
     simulate = do
       -- let vec[i] represent cup of label i+1.
-      cups <- VM.unsafeNew len
-      forM_ [1 .. len] $ \lbl -> do
-        let i = lbl - 1
+      cups <- V.generateM len $ \i -> do
+        let lbl = i + 1
         r <- newSTRef (error $ "label " <> show lbl)
-        VM.write cups i (Cup lbl r)
+        pure (Cup lbl r)
       let labels = xs <> [10 .. len]
-          getCup lbl = VM.read cups (lbl -1)
-      forM_ ((last labels, head labels) : zip labels (tail labels)) $ \(lblFrom, lblTo) -> do
-        (Cup _ r) <- getCup lblFrom
-        nTo <- getCup lblTo
-        writeSTRef r nTo
+          getCup lbl = V.unsafeIndex cups (lbl -1)
+      forM_
+        ((last labels, head labels) : zip labels (tail labels))
+        $ \(lblFrom, lblTo) -> do
+          let (Cup _ r) = getCup lblFrom
+              nTo = getCup lblTo
+          writeSTRef r nTo
       let performMove :: cup -> ST s cup
           performMove (Cup focLbl focRef) = do
             c1@(Cup lbl1 r1) <- readSTRef focRef
@@ -82,22 +81,22 @@ mixCups xs len opCount = runST simulate
                     tail $ iterate nextDest focLbl
                   where
                     nextDest i = if i == 1 then len else i -1
-            (Cup _ rDest) <- getCup destCupLbl
+                (Cup _ rDest) = getCup destCupLbl
             -- insert
             afterDest <- readSTRef rDest
             writeSTRef rDest c1
             writeSTRef r3 afterDest
             -- return next cup to be operated upon.
             pure cNext
-      getCup (head xs)
-        >>= fix
-          (\loop cnt cup ->
-             unless (cnt == 0) do
-               performMove cup >>= loop (cnt-1))
-          opCount
+      fix
+        (\loop cnt cup ->
+           unless (cnt == 0) do
+             performMove cup >>= loop (cnt -1))
+        opCount
+        (getCup (head xs))
 
       do
-        (Cup _ r0) <- getCup 1
+        let (Cup _ r0) = getCup 1
         (Cup lbl1 r1) <- readSTRef r0
         (Cup lbl2 _) <- readSTRef r1
         pure [lbl1, lbl2]
