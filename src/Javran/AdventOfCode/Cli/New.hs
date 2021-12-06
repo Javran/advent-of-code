@@ -6,6 +6,11 @@ module Javran.AdventOfCode.Cli.New
   )
 where
 
+{-
+  Command for create a new solution from template and
+  do other appropriate setups.
+ -}
+
 import Data.Aeson
 import qualified Data.HashMap.Strict as HM
 import qualified Data.Text.Lazy.IO as TL
@@ -17,14 +22,6 @@ import System.Exit
 import System.FilePath.Posix
 import Text.Microstache
 
-{-
-  TODO:
-
-  - create module file by applying the template.
-  - perform sync.
-  - create an empty testdata input file.
-
- -}
 newCommand :: String -> IO ()
 newCommand cmdHelpPrefix =
   getArgs >>= \case

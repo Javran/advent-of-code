@@ -10,14 +10,17 @@ module Javran.AdventOfCode.Cli.ProgressReport
 where
 
 {-
-  TODO: it's tempting that we import all solutions from Javran.AdventOfCode.Solutions,
-  which will result in a cyclilar module dependency, understandably.
+  It's tempting that we import all solutions from Javran.AdventOfCode.Solutions,
+  and use the information there for solving status.
+
+  However it might be the case that the binary is called before rebuilding,
+  in which case the module won't even exist within the binary.
 
   So instead we do the following:
 
   - Scan src/ to find solution files
-  - to determine solution status: we probably need to organize those modules in some other ways,
-    this is for future me to figure out.
+  - to determine solution status: if we can find the Solution, use the info there,
+    otherwise assume unsolved.
 
  -}
 
@@ -28,6 +31,7 @@ import qualified Data.List.Ordered as LOrdered
 import Data.Ord
 import qualified Filesystem.Path.CurrentOS as FP
 import Javran.AdventOfCode.Infra
+import Javran.AdventOfCode.Solutions
 import Text.ParserCombinators.ReadP
 import Text.Printf
 import Turtle.Prelude
@@ -53,7 +57,11 @@ computeProgressReport = do
     [_dot, yearRaw, dayRaw] <- pure (FP.encodeString <$> FP.splitDirectories fp)
     Just year <- pure (consumeAllWithReadP (char 'Y' *> decimal1P <* char '/') yearRaw)
     Just day <- pure (consumeAllWithReadP (string "Day" *> decimal1P <* string ".hs") dayRaw)
-    pure (year, (day, error "TODO: don't use this field."))
+    let solved = case getSolution year day of
+          Nothing -> False
+          Just (SomeSolution s) -> solutionSolved s
+
+    pure (year, (day, solved))
   pure $
     IM.toDescList $
       IM.fromListWith (LOrdered.unionBy (comparing fst)) do
@@ -65,8 +73,8 @@ computeProgressReport = do
 Renders something like:
 
 - Year 2020
-  + [Day 1](src/Javran/AdventOfCode/Y2020/Day1.hs)
-  + [Day 2](src/Javran/AdventOfCode/Y2020/Day2.hs)
+  + [X] [Day 1](src/Javran/AdventOfCode/Y2020/Day1.hs)
+  + [ ] [Day 2](src/Javran/AdventOfCode/Y2020/Day2.hs)
 
  -}
 
@@ -76,9 +84,10 @@ renderRawMarkdown = concatMap (uncurry renderYear)
     renderYear year days = ("- Year " <> show year) : fmap (uncurry renderDay) days
       where
         renderDay :: Int -> Bool -> String
-        renderDay day _ =
+        renderDay day solved =
           printf
-            "  + [Day %d](src/Javran/AdventOfCode/Y%d/Day%d.hs)"
+            "  + [%c] [Day %d](src/Javran/AdventOfCode/Y%d/Day%d.hs)"
+            (if solved then 'X' else ' ')
             day
             year
             day
@@ -88,5 +97,5 @@ progressReportCommand _ = do
   xs <- computeProgressReport
   forM_ xs $ \(year, days) -> do
     putStrLn $ "Year " <> show year <> ":"
-    forM_ days $ \(day, _) -> do
-      putStrLn $ "- Day " <> show day
+    forM_ days $ \(day,solved) -> do
+      putStrLn $ "- Day " <> show day <> if solved then "" else " (unsolved)"

@@ -27,6 +27,10 @@ module Javran.AdventOfCode.Infra
   , exampleRawInputRelativePath
   , consumeAllWithReadP
   , decimal1P
+  , extractSection
+  , ExtractSectionCallback
+  , mayEditFileWithSpecialSection
+  , consumeExtraLeadingLines
   )
 where
 
@@ -48,6 +52,7 @@ import System.Environment
 import System.Exit
 import System.FilePath.Posix
 import System.IO
+import qualified System.IO.Strict
 import Text.ParserCombinators.ReadP
 import qualified Turtle.Bytes as TBytes
 
@@ -206,3 +211,74 @@ runSolutionWithLoginInput p = runSolutionWithInputGetter p getRawInput
 
 data SomeSolution
   = forall sol. Solution sol => SomeSolution (Proxy sol)
+
+type ExtractSectionCallback line result =
+  [line] -> line -> [line] -> line -> [line] -> result
+
+extractSection
+  :: Eq t
+  => t -- begin marker
+  -> t -- end marker
+  -> a -- default value if this section does not exist
+  -> ExtractSectionCallback t a
+  -> [t] -- file lines
+  -> a
+extractSection beginMarker endMarker defVal onSuccess xs = fromMaybe defVal $ do
+  (ys0, bm : remaining0) <- pure $ span (/= beginMarker) xs
+  (ys1, em : remaining1) <- pure $ span (/= endMarker) remaining0
+  pure $ onSuccess ys0 bm ys1 em remaining1
+
+{-
+  Examples could contain smaller examples with smaller extra parameters than
+  the actual input - to allow solutions to deal with this situation,
+  a special section can be introduced to the input data,
+  which must be the first section of the input file:
+
+  > # EXAMPLE_EXTRA_BEGIN
+  > ... some extra lines ...
+  > ... some more extra lines ...
+  > # EXAMPLE_EXTRA_END
+
+  and `consumeExtraLeadingLines` cuts this extra section
+  as a separate bit of input for a solution to consume.
+ -}
+consumeExtraLeadingLines :: String -> (Maybe [String], String)
+consumeExtraLeadingLines raw =
+  extractSection
+    "# EXAMPLE_EXTRA_BEGIN"
+    "# EXAMPLE_EXTRA_END"
+    (Nothing, raw)
+    (\_pre _bm sec _em post -> (Just sec, unlines post))
+    (lines raw)
+
+mayEditFileWithSpecialSection
+  :: FilePath
+  -> String
+  -> String
+  -> String
+  -> ExtractSectionCallback
+       String
+       ( [String]
+       , Maybe Bool {- if this part is `Just False`, we guarantee not to scrutinize `fst` part -}
+       )
+  -> IO ()
+mayEditFileWithSpecialSection fp prefix bm em extractSecCb = do
+  mainModuleContents <- System.IO.Strict.readFile fp
+  let contentLines = lines mainModuleContents
+      editResult :: ([String], Maybe Bool)
+      editResult =
+        extractSection
+          bm
+          em
+          -- when the section is not found.
+          (contentLines, Nothing)
+          extractSecCb
+          contentLines
+  case editResult of
+    (_, Nothing) -> do
+      putStrLn $ prefix <> "Abort editing as no section is recognized."
+    (_, Just False) -> do
+      putStrLn $ prefix <> "No edit required."
+    (xs, Just True) -> do
+      writeFile fp (unlines xs)
+      putStrLn $ prefix <> "File edited."

@@ -3,6 +3,7 @@
 
 module Javran.AdventOfCode.Cli.TestdataDigest
   ( computeTestdataDirDigestTextRep
+    , performTestdataSpecHashSync
   )
 where
 
@@ -20,6 +21,9 @@ import Numeric
 import System.Environment
 import Turtle.Prelude hiding (sort)
 import Turtle.Shell
+import Javran.AdventOfCode.Infra
+import System.FilePath.Posix
+
 
 digestTextRep :: BS.ByteString -> String
 digestTextRep = ($ []) . foldr (\i f -> paddedHex i . f) id . BS.unpack
@@ -58,3 +62,25 @@ computeTestdataDirDigestTextRep = do
   let payload = BSL.intercalate (BSL.singleton 0) $ fmap BSL.fromStrict dirs
       digest = SHA256.hashlazy payload
   pure $ digestTextRep digest
+
+performTestdataSpecHashSync :: IO ()
+performTestdataSpecHashSync = do
+  projectHome <- getEnv "PROJECT_HOME"
+  let fp = projectHome </> "test" </> "Javran" </> "AdventOfCode" </> "TestdataSpec.hs"
+  digest <- computeTestdataDirDigestTextRep
+  let extractSecCb =
+        (\prevSec bm sec em postSec ->
+           if sec == [digest]
+             then -- no need for editing, nothing is changed.
+               (sec, Just False)
+             else
+               ( prevSec <> [bm] <> [digest] <> [em] <> postSec
+               , Just True
+               ))
+
+  mayEditFileWithSpecialSection
+    fp
+    "Edit TestdataSpec: "
+    "FORCE_RECOMP_HASH_BEGIN"
+    "FORCE_RECOMP_HASH_END"
+    extractSecCb

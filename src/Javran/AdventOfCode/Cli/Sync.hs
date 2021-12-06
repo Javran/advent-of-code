@@ -5,7 +5,6 @@
 module Javran.AdventOfCode.Cli.Sync
   ( syncCommand
   , performSync
-  , performTestdataSpecHashSync
   )
 where
 
@@ -15,10 +14,11 @@ import Data.Maybe
 import Javran.AdventOfCode.Cli.ProgressReport as ProgressReport
 import Javran.AdventOfCode.Cli.TestdataDigest
 import Javran.AdventOfCode.Prelude
+import Javran.AdventOfCode.Infra
 import System.Directory
 import System.Environment
 import System.FilePath.Posix
-import qualified System.IO.Strict
+
 import Text.ParserCombinators.ReadP
 import Text.Printf
 
@@ -35,38 +35,6 @@ generateModuleImports yyyy dds = do
 
 syncCommand :: String -> IO ()
 syncCommand _cmdHelpPrefix = performSync
-
-mayEditFileWithSpecialSection
-  :: FilePath
-  -> String
-  -> String
-  -> String
-  -> ExtractSectionCallback
-       String
-       ( [String]
-       , Maybe Bool {- if this part is `Just False`, we guarantee not to scrutinize `fst` part -}
-       )
-  -> IO ()
-mayEditFileWithSpecialSection fp prefix bm em extractSecCb = do
-  mainModuleContents <- System.IO.Strict.readFile fp
-  let contentLines = lines mainModuleContents
-      editResult :: ([String], Maybe Bool)
-      editResult =
-        extractSection
-          bm
-          em
-          -- when the section is not found.
-          (contentLines, Nothing)
-          extractSecCb
-          contentLines
-  case editResult of
-    (_, Nothing) -> do
-      putStrLn $ prefix <> "Abort editing as no section is recognized."
-    (_, Just False) -> do
-      putStrLn $ prefix <> "No edit required."
-    (xs, Just True) -> do
-      writeFile fp (unlines xs)
-      putStrLn $ prefix <> "File edited."
 
 performYearlyModuleSync :: IO ()
 performYearlyModuleSync = do
@@ -102,27 +70,6 @@ performYearlyModuleSync = do
         extractSecCb
     Nothing -> pure ()
 
-performTestdataSpecHashSync :: IO ()
-performTestdataSpecHashSync = do
-  projectHome <- getEnv "PROJECT_HOME"
-  let fp = projectHome </> "test" </> "Javran" </> "AdventOfCode" </> "TestdataSpec.hs"
-  digest <- computeTestdataDirDigestTextRep
-  let extractSecCb =
-        (\prevSec bm sec em postSec ->
-           if sec == [digest]
-             then -- no need for editing, nothing is changed.
-               (sec, Just False)
-             else
-               ( prevSec <> [bm] <> [digest] <> [em] <> postSec
-               , Just True
-               ))
-
-  mayEditFileWithSpecialSection
-    fp
-    "Edit TestdataSpec: "
-    "FORCE_RECOMP_HASH_BEGIN"
-    "FORCE_RECOMP_HASH_END"
-    extractSecCb
 
 performReadmeProgressSync :: IO ()
 performReadmeProgressSync = do

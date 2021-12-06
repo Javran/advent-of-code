@@ -15,7 +15,7 @@ import Control.Monad
 import Data.Char
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
-import Javran.AdventOfCode.Cli.Sync
+import Javran.AdventOfCode.Cli.TestdataDigest
 import Javran.AdventOfCode.Infra
 import System.Directory
 import System.Environment
