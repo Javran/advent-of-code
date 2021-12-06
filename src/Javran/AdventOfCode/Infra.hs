@@ -81,7 +81,7 @@ prepareDataPath rsc = do
          (ExitSuccess, raw) <-
            TBytes.procStrict
              "curl"
-             ["--cookie", "session=" <> T.pack mySession, T.pack url]
+             ["--cookie", "session=" <> T.pack mySession, T.pack url, "--fail"]
              ""
          BS.writeFile actualFp raw)
 
