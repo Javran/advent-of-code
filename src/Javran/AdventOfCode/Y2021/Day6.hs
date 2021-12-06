@@ -31,13 +31,27 @@ step m = case m IM.!? 0 of
   where
     tickDown = IM.mapKeysMonotonic pred
 
+{-
+  Side note: we could speed up transformation by using square matrix:
+
+  [ 0 0 0 0 0 0 0 0 1
+  ; 1 0 0 0 0 0 0 0 0
+  ; 0 1 0 0 0 0 0 0 1
+  ; 0 0 1 0 0 0 0 0 0
+  ; 0 0 0 1 0 0 0 0 0
+  ; 0 0 0 0 1 0 0 0 0
+  ; 0 0 0 0 0 1 0 0 0
+  ; 0 0 0 0 0 0 1 0 0
+  ; 0 0 0 0 0 0 0 1 0
+  ]
+
+  raise it to 256 power, and we can get a result by right-mult initial state to it.
+
+ -}
 instance Solution Day6 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     [xs] <- lines <$> getInputS
     let initFs = fmap (read @Int) $ splitOn "," xs
         history = iterate step (dense initFs)
-    putStrLn "A"
     answerShow $ sum (history !! 80)
-    putStrLn "B"
     answerShow $ sum (history !! 256)
-    putStrLn "C"
