@@ -83,6 +83,7 @@ source-repository head
 library
   exposed-modules:
       Javran.AdventOfCode.Cli.New
+      Javran.AdventOfCode.Cli.ProgressReport
       Javran.AdventOfCode.Cli.Sync
       Javran.AdventOfCode.Infra
       Javran.AdventOfCode.Main

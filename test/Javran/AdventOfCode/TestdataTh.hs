@@ -10,12 +10,11 @@ where
 import Control.Monad
 import Control.Monad.IO.Class
 import qualified Data.ByteString.Lazy as BSL
-import qualified Data.Map.Strict as M
+import Data.Maybe
 import qualified Data.Text.IO as T
+import Javran.AdventOfCode.Cli.ProgressReport (getSolution)
 import Javran.AdventOfCode.Infra
 import Javran.AdventOfCode.Tester
-import qualified Javran.AdventOfCode.Y2020.Main as Y2020
-import qualified Javran.AdventOfCode.Y2021.Main as Y2021
 import Language.Haskell.TH
 import Test.Hspec hiding (runIO)
 
@@ -24,15 +23,6 @@ import Test.Hspec hiding (runIO)
 
   probably related: https://github.com/haskell/haskell-language-server/issues/2314
  -}
-
-getSolution :: Int -> Int -> SomeSolution
-getSolution year day = allSolutions M.! (year, day)
-  where
-    allSolutions = M.fromList $ do
-      someSol@(SomeSolution s) <- Y2020.allSolutions <> Y2021.allSolutions
-      let sInd = solutionIndex s
-      pure (sInd, someSol)
-
 collectTests :: Q Exp
 collectTests = do
   d <- runIO scanTestdata
@@ -52,7 +42,7 @@ mkSpecFromStructuredTestdata = mapM_ (uncurry handleYear)
             forM_ tds $
               \TestdataInfo {tag, inputFilePath, mExpectFilePath} -> do
                 specify tag $ do
-                  case getSolution year day of
+                  case fromJust $ getSolution year day of
                     SomeSolution s -> do
                       output <-
                         liftIO $
