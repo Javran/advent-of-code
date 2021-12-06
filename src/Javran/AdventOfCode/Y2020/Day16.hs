@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -6,17 +7,17 @@ module Javran.AdventOfCode.Y2020.Day16
   )
 where
 
-
 import Control.Monad
 import qualified Data.IntMap.Strict as IM
 import qualified Data.IntSet as IS
 import Data.List
 import Data.Maybe
 import Data.Ord
+import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP
 
-data Day16
+data Day16 deriving (Generic)
 
 type Range = (Int, Int)
 
@@ -42,7 +43,6 @@ solve clues solution
     solve clues' ((k, v) : solution)
 
 instance Solution Day16 where
-  solutionIndex _ = (2020, 16)
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     let parseInts :: String -> [Int]
         parseInts = fmap read . splitOn ","

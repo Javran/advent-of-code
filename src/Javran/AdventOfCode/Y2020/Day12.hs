@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -9,10 +10,11 @@ where
 import Data.Bifunctor
 import Data.Maybe
 import Data.Monoid
+import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP
 
-data Day12
+data Day12 deriving (Generic)
 
 -- coord = (x, y), N: +y, S: -y, W: -x, E: +x
 type Coord = (Int, Int)
@@ -99,7 +101,6 @@ interpret2 si = case si of
   SiForward t -> \((x, y), w@(dx, dy)) -> ((x + dx * t, y + dy * t), w)
 
 instance Solution Day12 where
-  solutionIndex _ = (2020, 12)
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     rawLines <- lines <$> getInputS
     let instrs = fmap (fromJust . consumeAllWithReadP actionP) rawLines

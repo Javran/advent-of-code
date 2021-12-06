@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TupleSections #-}
@@ -11,11 +12,12 @@ import Control.Monad
 import Data.Bifunctor
 import qualified Data.List.Ordered as LOrdered
 import Data.Ord
+import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Math.NumberTheory.Moduli.Chinese
 import Math.NumberTheory.Moduli.Class
 
-data Day13
+data Day13 deriving (Generic)
 
 -- Ref: https://github.com/Bodigrim/arithmoi/issues/69
 chineseRemainder :: [SomeMod] -> Maybe SomeMod
@@ -28,7 +30,6 @@ mkMults p v = fmap (p,) [z, z + p ..]
     z = (v `div` p) * p
 
 instance Solution Day13 where
-  solutionIndex _ = (2020, 13)
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     [rawN, rawStops] <- lines <$> getInputS
     let n :: Int

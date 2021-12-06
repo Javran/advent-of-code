@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -10,10 +11,11 @@ import Control.Monad
 import Data.List
 import Data.Maybe
 import Data.Word
+import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP
 
-data Day5
+data Day5 deriving (Generic)
 
 seatIdP :: ReadP Word16
 seatIdP = do
@@ -34,7 +36,6 @@ findSeat xs = case xs of
   _ -> error "not found"
 
 instance Solution Day5 where
-  solutionIndex _ = (2020, 5)
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     rawLines <- lines <$> getInputS
     let xs = sort $ fmap seatIdFromString rawLines

@@ -1,4 +1,5 @@
 {-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -15,10 +16,11 @@ import Data.Bits
 import qualified Data.Map.Strict as M
 import Data.Maybe
 import Data.Monoid
+import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (count, many)
 
-data Day24
+data Day24 deriving (Generic)
 
 data Dir = E | SE | SW | W | NW | NE deriving (Show, Bounded, Enum)
 
@@ -81,7 +83,6 @@ step m = M.fromList do
       pure (ax', 1 :: Int)
 
 instance Solution Day24 where
-  solutionIndex _ = (2020, 24)
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     xs <- fmap (fromJust . consumeAllWithReadP (many dirP)) . lines <$> getInputS
     let tiles = M.fromListWith xor $ do

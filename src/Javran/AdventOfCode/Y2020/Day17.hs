@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE NamedFieldPuns #-}
@@ -15,10 +16,11 @@ import qualified Data.Map.Strict as M
 import Data.Maybe
 import Data.Semigroup
 import qualified Data.Set as S
+import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (many)
 
-data Day17
+data Day17 deriving (Generic)
 
 cellP :: ReadP Bool
 cellP = (False <$ char '.') <++ (True <$ char '#')
@@ -86,7 +88,6 @@ pprUniv uPre = do
     putStrLn ""
 
 instance Solution Day17 where
-  solutionIndex _ = (2020, 17)
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     xs <-
       fmap (fromJust . consumeAllWithReadP (many cellP)) . lines <$> getInputS

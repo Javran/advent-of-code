@@ -1,4 +1,5 @@
 {-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE NamedFieldPuns #-}
 
 module Javran.AdventOfCode.Y2020.Day21
@@ -14,10 +15,11 @@ import qualified Data.Map.Strict as M
 import Data.Maybe
 import Data.Semigroup
 import qualified Data.Set as S
+import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (many)
 
-data Day21
+data Day21 deriving (Generic)
 
 type AllergenInfo = ([String], [String])
 
@@ -45,7 +47,6 @@ solve possibleAllergens assns
     solve possibleAllergens' (M.insert l r assns)
 
 instance Solution Day21 where
-  solutionIndex _ = (2020, 21)
   solutionRun _ SolutionContext {getInputS, answerS, answerShow} = do
     algInfo <- fmap (fromJust . consumeAllWithReadP allergenInfoP) . lines <$> getInputS
     {-

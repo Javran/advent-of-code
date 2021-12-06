@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
@@ -13,15 +14,15 @@ import Data.Char
 import qualified Data.Map.Strict as M
 import Data.Maybe
 import qualified Data.Set as S
+import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP
 
 type Record = S.Set String
 
-data Day4
+data Day4 deriving (Generic)
 
 instance Solution Day4 where
-  solutionIndex _ = (2020, 4)
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     raw <- getInputS
     let rawRecords = fmap toRawRecord . splitOn [""] . lines $ raw

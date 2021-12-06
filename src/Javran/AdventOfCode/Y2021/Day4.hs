@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE NamedFieldPuns #-}
 
 module Javran.AdventOfCode.Y2021.Day4
@@ -9,9 +10,10 @@ import Control.Monad.State.Strict
 import Data.Bifunctor
 import qualified Data.IntSet as IS
 import Data.List
+import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 
-data Day4
+data Day4 deriving (Generic)
 
 type Board = [[Int]]
 
@@ -51,7 +53,6 @@ callNumber getBoard n = do
     pure (winner, (sum unmarkedNums, n))
 
 instance Solution Day4 where
-  solutionIndex _ = (2021, 4)
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     [callSeqRaw] : bdsRaw <- splitOn [""] . lines <$> getInputS
     let callSeq :: [Int]

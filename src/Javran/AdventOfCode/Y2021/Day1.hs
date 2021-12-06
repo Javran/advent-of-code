@@ -9,7 +9,7 @@ module Javran.AdventOfCode.Y2021.Day1
 where
 
 import Data.List.Split
-import GHC.Generics
+import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 
 data Day1 deriving (Generic)

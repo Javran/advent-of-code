@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -11,9 +12,10 @@ import Control.Monad.ST
 import Data.Function
 import qualified Data.Vector.Unboxed.Mutable as VUM
 import Data.Word
+import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 
-data Day15
+data Day15 deriving (Generic)
 
 solve :: [(Word32, Word32)] -> Int -> Word32
 solve xs size = runST $ do
@@ -36,7 +38,6 @@ solve xs size = runST $ do
     startN
 
 instance Solution Day15 where
-  solutionIndex _ = (2020, 15)
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     (extraOpts, rawInput) <- consumeExtraLeadingLines <$> getInputS
     let [raw] = lines rawInput

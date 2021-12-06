@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -9,10 +10,11 @@ where
 import Control.Monad.State.Strict
 import Data.Bifunctor
 import Data.Maybe
+import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP
 
-data Day2
+data Day2 deriving (Generic)
 
 data Op
   = OpFwd Int
@@ -45,10 +47,9 @@ interpret2 op = case op of
   OpUp x -> modify (second (subtract x))
   OpFwd x -> do
     aim <- gets snd
-    modify (first (bimap (+x) (+ aim * x)))
+    modify (first (bimap (+ x) (+ aim * x)))
 
 instance Solution Day2 where
-  solutionIndex _ = (2021, 2)
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     ops <- fmap (fromJust . consumeAllWithReadP opP) . lines <$> getInputS
     do

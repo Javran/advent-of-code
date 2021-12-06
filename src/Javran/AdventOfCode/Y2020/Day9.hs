@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
@@ -12,12 +13,12 @@ import Data.List
 import Data.Semigroup
 import qualified Data.Set as S
 import qualified Data.Vector as V
+import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 
-data Day9
+data Day9 deriving (Generic)
 
 instance Solution Day9 where
-  solutionIndex _ = (2020, 9)
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     (mExtra, xsPre) <- consumeExtraLeadingLines <$> getInputS
     let preambleLength = maybe 25 (read . unlines) mExtra

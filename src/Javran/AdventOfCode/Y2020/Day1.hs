@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
@@ -8,12 +9,12 @@ module Javran.AdventOfCode.Y2020.Day1
 where
 
 import qualified Data.IntSet as IS
+import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 
-data Day1
+data Day1 deriving (Generic)
 
 instance Solution Day1 where
-  solutionIndex _ = (2020, 1)
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     xs <- IS.fromList . fmap (read @Int) . words <$> getInputS
     answerShow (head (solutions xs))

@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE TypeApplications #-}
 
@@ -14,10 +15,11 @@ import qualified Data.IntMap.Strict as IM
 import Data.List.Split hiding (sepBy)
 import Data.Maybe
 import qualified Data.Set as S
+import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (many)
 
-data Day19
+data Day19 deriving (Generic)
 
 {-
   Note that it is intentional that this Rule definition
@@ -89,7 +91,6 @@ isElemLenConsistent s = do
   pure l
 
 instance Solution Day19 where
-  solutionIndex _ = (2020, 19)
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     [rawRules, messages] <- splitOn [""] . lines <$> getInputS
     let rulePairP = (,) <$> (decimal1P <* string ": ") <*> ruleP

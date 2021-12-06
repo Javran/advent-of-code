@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -10,12 +11,12 @@ import Control.Monad
 import Data.List
 import Data.Monoid
 import qualified Data.Vector as V
+import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 
-data Day3
+data Day3 deriving (Generic)
 
 instance Solution Day3 where
-  solutionIndex _ = (2020, 3)
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     tm <- mkTreeMap . lines <$> getInputS
     answerShow $ getSum (countTrees tm (1, 3))

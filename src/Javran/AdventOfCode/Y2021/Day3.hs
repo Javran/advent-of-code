@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE TypeApplications #-}
 
@@ -9,9 +10,10 @@ where
 import Data.Function
 import Data.List
 import qualified Data.Map.Strict as M
+import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 
-data Day3
+data Day3 deriving (Generic)
 
 computeFreq :: Ord a => [a] -> [(a, Int)]
 computeFreq xs = sortOn snd $
@@ -41,7 +43,6 @@ positionalFilter isOxygen xs i = case transpose xs of
      in filter (\x -> x !! i == ft) xs
 
 instance Solution Day3 where
-  solutionIndex _ = (2021, 3)
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     let tr '0' = False
         tr '1' = True

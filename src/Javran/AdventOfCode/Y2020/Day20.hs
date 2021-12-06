@@ -1,4 +1,5 @@
 {-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE RankNTypes #-}
@@ -24,10 +25,11 @@ import Data.Semigroup
 import qualified Data.Set as S
 import qualified Data.Vector as V
 import Data.Word
+import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (many)
 
-data Day20
+data Day20 deriving (Generic)
 
 tileLen :: Int
 tileLen = 10
@@ -318,7 +320,6 @@ findSeaMonsters seaLen (viewer, backTranslate) = do
   pure (S.map backTranslate translatedSm)
 
 instance Solution Day20 where
-  solutionIndex _ = (2020, 20)
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     tracedTiles <- fmap parseTile . filter (not . null) . splitOn [""] . lines <$> getInputS
     let tracedEdgeNums = (fmap . second) tileEdgeNums tracedTiles

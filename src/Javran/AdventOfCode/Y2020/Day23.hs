@@ -1,4 +1,5 @@
 {-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
@@ -17,9 +18,10 @@ import Data.Function
 import Data.List
 import Data.STRef
 import qualified Data.Vector as V
+import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 
-data Day23
+data Day23 deriving (Generic)
 
 chInt :: Char -> Int
 chInt v = ord v - ord '0'
@@ -102,7 +104,6 @@ mixCups xs len opCount = runST simulate
         pure [lbl1, lbl2]
 
 instance Solution Day23 where
-  solutionIndex _ = (2020, 23)
   solutionRun _ SolutionContext {getInputS, answerShow, answerS} = do
     (extraOpts, rawInput) <- consumeExtraLeadingLines <$> getInputS
     let xs = fmap chInt . head . lines $ rawInput

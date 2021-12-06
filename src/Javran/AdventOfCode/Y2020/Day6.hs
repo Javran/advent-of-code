@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -7,12 +8,12 @@ module Javran.AdventOfCode.Y2020.Day6
 where
 
 import qualified Data.Set as S
+import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 
-data Day6
+data Day6 deriving (Generic)
 
 instance Solution Day6 where
-  solutionIndex _ = (2020, 6)
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     rawLines <- lines <$> getInputS
     let groups = fmap S.fromList <$> splitOn [""] rawLines

@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -8,13 +9,13 @@ where
 
 import Control.Monad
 import Data.Maybe
+import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP
 
-data Day2
+data Day2 deriving (Generic)
 
 instance Solution Day2 where
-  solutionIndex _ = (2020, 2)
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     rawLines <- lines <$> getInputS
     answerShow . countLength id . fmap (isValidLine buildValidator) $ rawLines

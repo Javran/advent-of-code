@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 
@@ -8,10 +9,11 @@ where
 
 import Control.Monad.Combinators.Expr
 import Data.Maybe
+import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP
 
-data Day18
+data Day18 deriving (Generic)
 
 data Op = Plus | Mult deriving (Show)
 
@@ -71,7 +73,6 @@ eval = \case
       (eval r)
 
 instance Solution Day18 where
-  solutionIndex _ = (2020, 18)
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     rawLines <- lines <$> getInputS
     do

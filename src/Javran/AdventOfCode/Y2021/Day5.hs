@@ -1,4 +1,5 @@
 {-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE TupleSections #-}
@@ -11,10 +12,11 @@ where
 import Data.Bifunctor
 import qualified Data.Map.Strict as M
 import Data.Maybe
+import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (many)
 
-data Day5
+data Day5 deriving (Generic)
 
 type Coord = (Int, Int)
 
@@ -30,7 +32,6 @@ getAllInRange :: (Ord a, Enum a) => a -> a -> [a]
 getAllInRange x y = if x <= y then [x .. y] else [y .. x]
 
 instance Solution Day5 where
-  solutionIndex _ = (2021, 5)
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     pLines <- fmap (fromJust . consumeAllWithReadP lineP) . lines <$> getInputS
     let coverage :: (Line -> [(Coord, Int)]) -> M.Map Coord Int

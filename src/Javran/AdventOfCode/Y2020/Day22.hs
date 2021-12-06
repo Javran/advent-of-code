@@ -1,4 +1,5 @@
 {-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE NamedFieldPuns #-}
 
 module Javran.AdventOfCode.Y2020.Day22
@@ -10,9 +11,10 @@ import Control.Monad.State.Strict
 import Data.List
 import Data.List.Split hiding (sepBy)
 import qualified Data.Set as S
+import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 
-data Day22
+data Day22 deriving (Generic)
 
 type GameState = ([Int], [Int])
 
@@ -67,7 +69,6 @@ computeWinnerScore :: GameState -> Int
 computeWinnerScore (ls, rs) = sum $ zipWith (*) [1 ..] (reverse $ ls <> rs)
 
 instance Solution Day22 where
-  solutionIndex _ = (2020, 22)
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     ["Player 1:" : xsRaw, "Player 2:" : ysRaw] <- splitOn [""] . lines <$> getInputS
     let xs, ys :: [Int]

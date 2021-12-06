@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -15,6 +16,7 @@ import Control.Monad
 import Data.Maybe
 import Data.Monoid
 import qualified Data.Vector as V
+import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (many)
 
@@ -27,7 +29,7 @@ import Text.ParserCombinators.ReadP hiding (many)
 
  -}
 
-data Day11
+data Day11 deriving (Generic)
 
 type Cell = Maybe Bool
 
@@ -123,7 +125,6 @@ stepCell2 dims w coord cur = case cur of
     ns = countLength (== SeatOccupied) $ torpedoNeighbors dims w coord
 
 instance Solution Day11 where
-  solutionIndex _ = (2020, 11)
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     rawLines <- lines <$> getInputS
     let initWorld :: World Cell

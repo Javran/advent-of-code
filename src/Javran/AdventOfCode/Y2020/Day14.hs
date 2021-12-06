@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -8,17 +9,19 @@ where
 
 import Control.Monad
 import Control.Monad.State.Strict
+import Data.Bifunctor
 import Data.Bits
 import qualified Data.IntMap.Strict as IM
 import Data.Maybe
 import Data.Monoid
+import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP
-import Data.Bifunctor
 
-data Day14
+data Day14 deriving (Generic)
 
 data MaskElem = MX | M0 | M1
+
 type Mask = [MaskElem]
 
 data Instr
@@ -45,7 +48,7 @@ instrP = setMaskP <++ assignP
       pure $ InstrAssign x y
 
 maskToModifier :: Mask -> Int -> Int
-maskToModifier xs = appEndo . foldMap (Endo . mk) $ zip [35,34..] xs
+maskToModifier xs = appEndo . foldMap (Endo . mk) $ zip [35, 34 ..] xs
   where
     mk :: (Int, MaskElem) -> Int -> Int
     mk (i, m) = case m of
@@ -62,11 +65,11 @@ interpret instr = case instr of
     modify (first (IM.insert addr val))
 
 maskToAddrModifier :: Mask -> Int -> [Int]
-maskToAddrModifier xs addr = fmap pack  (sequence nondetAddr)
+maskToAddrModifier xs addr = fmap pack (sequence nondetAddr)
   where
-    pack ds =  foldl (\acc i -> acc * 2 + if i then 1 else 0) 0 ds
+    pack ds = foldl (\acc i -> acc * 2 + if i then 1 else 0) 0 ds
     nondetAddr :: [] [Bool]
-    nondetAddr = zipWith (\loc m -> maskElemToModifier m (testBit addr loc)) [35,34..] xs
+    nondetAddr = zipWith (\loc m -> maskElemToModifier m (testBit addr loc)) [35, 34 ..] xs
     maskElemToModifier :: MaskElem -> Bool -> [Bool]
     maskElemToModifier m v = case m of
       M0 -> [v]
@@ -87,9 +90,8 @@ interpret2 instr = case instr of
     modify (first (IM.union newM))
 
 instance Solution Day14 where
-  solutionIndex _ = (2020, 14)
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    instrs <- fmap (fromJust . consumeAllWithReadP instrP ) . lines <$> getInputS
+    instrs <- fmap (fromJust . consumeAllWithReadP instrP) . lines <$> getInputS
     do
       let (mem, _) = execState (mapM_ interpret instrs) (IM.empty, id)
       answerShow (sum mem)

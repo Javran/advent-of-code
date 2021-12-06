@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -14,10 +15,11 @@ import Data.Function.Memoize (memoFix)
 import qualified Data.Map.Strict as M
 import Data.Maybe
 import qualified Data.Set as S
+import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP
 
-data Day7
+data Day7 deriving (Generic)
 
 type Bag = String
 
@@ -41,7 +43,6 @@ containRuleP = do
   pure (stuff, items)
 
 instance Solution Day7 where
-  solutionIndex _ = (2020, 7)
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     rawRules <- lines <$> getInputS
     let containRules = fmap (fromJust . consumeAllWithReadP containRuleP) rawRules

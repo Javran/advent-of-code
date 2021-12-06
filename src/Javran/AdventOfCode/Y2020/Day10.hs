@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -13,12 +14,12 @@ import Data.Function.Memoize (memoFix)
 import qualified Data.IntSet as IS
 import Data.List
 import qualified Data.Map.Strict as M
+import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 
-data Day10
+data Day10 deriving (Generic)
 
 instance Solution Day10 where
-  solutionIndex _ = (2020, 10)
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     xs <- fmap (read @Int) . lines <$> getInputS
     let builtInJolt = maximum xs + 3

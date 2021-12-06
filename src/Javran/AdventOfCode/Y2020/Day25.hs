@@ -1,5 +1,6 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE TypeApplications #-}
 
@@ -11,11 +12,12 @@ where
 import Control.Monad
 import qualified Data.HashMap.Strict as HM
 import Data.Mod
+import GHC.Generics (Generic)
 import GHC.Natural
 import GHC.TypeNats (KnownNat, natVal)
 import Javran.AdventOfCode.Prelude
 
-data Day25
+data Day25 deriving (Generic)
 
 type ModP = Mod 20201227
 
@@ -43,7 +45,6 @@ babyStepGiantStep alpha beta = giantStep beta 0
 
 -- https://en.wikipedia.org/wiki/Baby-step_giant-step#The_algorithm
 instance Solution Day25 where
-  solutionIndex _ = (2020, 25)
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     cPk : dPk : _ <- fmap (fromIntegral @_ @ModP . read @Int) . lines <$> getInputS
     let subject :: ModP

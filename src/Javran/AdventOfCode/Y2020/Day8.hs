@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -11,10 +12,11 @@ import Data.Bifunctor
 import qualified Data.IntSet as IS
 import Data.Maybe
 import qualified Data.Vector as V
+import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP
 
-data Day8
+data Day8 deriving (Generic)
 
 data Instr
   = Nop Int
@@ -39,7 +41,6 @@ instrP = do
   mk . numMod <$> decimal1P
 
 instance Solution Day8 where
-  solutionIndex _ = (2020, 8)
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     rawInstrs <- lines <$> getInputS
     let originalInstrs =
