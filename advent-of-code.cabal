@@ -85,12 +85,12 @@ library
       Javran.AdventOfCode.Cli.New
       Javran.AdventOfCode.Cli.ProgressReport
       Javran.AdventOfCode.Cli.Sync
+      Javran.AdventOfCode.Cli.TestdataDigest
       Javran.AdventOfCode.Infra
       Javran.AdventOfCode.Main
       Javran.AdventOfCode.MainMaker
       Javran.AdventOfCode.Prelude
       Javran.AdventOfCode.Solutions
-      Javran.AdventOfCode.Tester
       Javran.AdventOfCode.TH
       Javran.AdventOfCode.Y2020.Day1
       Javran.AdventOfCode.Y2020.Day10
@@ -176,8 +176,13 @@ executable run-advent-of-code
     , base
     , bytestring
     , containers
+    , directory
+    , filepath
+    , foldl
+    , system-filepath
     , template-haskell
     , text
+    , turtle
   default-language: Haskell2010
 
 test-suite hspec
@@ -198,7 +203,12 @@ test-suite hspec
     , base
     , bytestring
     , containers
+    , directory
+    , filepath
+    , foldl
     , hspec
+    , system-filepath
     , template-haskell
     , text
+    , turtle
   default-language: Haskell2010

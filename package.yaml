@@ -12,6 +12,11 @@ dependencies:
 - bytestring
 - template-haskell
 - containers
+- foldl
+- system-filepath
+- turtle
+- directory
+- filepath
 
 data-files:
 - data/testdata/**/*.input.txt
@@ -22,13 +27,10 @@ library:
   dependencies:
     - vector
     - vector-algorithms
-    - filepath
     - http-types
     - http-client
     - http-client-tls
-    - directory
     - time
-    - turtle
     - split
     - once
     - mtl
@@ -41,8 +43,6 @@ library:
     - aeson
     - parser-combinators
     - mod
-    - system-filepath
-    - foldl
     - cryptohash-sha256
   ghc-options:
     - -Wall

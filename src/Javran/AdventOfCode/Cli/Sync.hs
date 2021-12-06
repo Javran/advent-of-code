@@ -13,8 +13,8 @@ import Control.Monad
 import Data.List
 import Data.Maybe
 import Javran.AdventOfCode.Cli.ProgressReport as ProgressReport
+import Javran.AdventOfCode.Cli.TestdataDigest
 import Javran.AdventOfCode.Prelude
-import Javran.AdventOfCode.Tester (computeTestdataDirDigestTextRep)
 import System.Directory
 import System.Environment
 import System.FilePath.Posix

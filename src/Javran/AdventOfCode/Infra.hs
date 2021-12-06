@@ -43,7 +43,6 @@ import Data.Text.Encoding
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.Builder as TLB
 import GHC.Generics
-import qualified Paths_advent_of_code as StockData
 import System.Directory
 import System.Environment
 import System.Exit
@@ -85,10 +84,6 @@ prepareDataPath rsc = do
              ""
          BS.writeFile actualFp raw)
 
-{-
-  TODO: we probably want to pass down a context rather than String, which should allow
-  passing a reading IO action that can read input from somewhere else - we can allow easier testing this way.
- -}
 type SubCmdHandlers = [(String, String -> IO ())]
 
 dispatchToSubCmds :: String -> SubCmdHandlers -> IO ()
@@ -118,11 +113,14 @@ exampleRawInputRelativePath yyyy dd =
 getExampleRawInput :: Int -> Int -> IO BSL.ByteString
 getExampleRawInput yyyy dd = do
   projectHome <- getEnv "PROJECT_HOME"
-  dataDir <- StockData.getDataDir
+  {-
+    Avoid using Paths_ here, as this module is the dependency of many solutions,
+    we don't want to pull in all of them because of some random updates to Paths_ file.
+   -}
   let subPath = exampleRawInputRelativePath yyyy dd
       exampleInputFileName = "example.input.txt"
       fp =
-        dataDir
+        projectHome
           </> subPath
           </> exampleInputFileName
   e <- doesFileExist fp
