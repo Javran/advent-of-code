@@ -1,14 +1,18 @@
-{-
-  This module contains intrastructure that keep things working.
- -}
+{-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
+
+{-
+  This module contains intrastructure that keep things working.
+ -}
 
 module Javran.AdventOfCode.Infra
   ( prepareDataPath
@@ -21,6 +25,8 @@ module Javran.AdventOfCode.Infra
   , runSolutionWithExampleInput
   , SomeSolution (..)
   , exampleRawInputRelativePath
+  , consumeAllWithReadP
+  , decimal1P
   )
 where
 
@@ -28,19 +34,31 @@ import Control.Monad
 import Control.Once
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BSL
+import Data.Char
 import Data.IORef
+import Data.Maybe
 import Data.Proxy
 import qualified Data.Text as T
 import Data.Text.Encoding
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.Builder as TLB
+import GHC.Generics
 import qualified Paths_advent_of_code as StockData
 import System.Directory
 import System.Environment
 import System.Exit
 import System.FilePath.Posix
 import System.IO
+import Text.ParserCombinators.ReadP
 import qualified Turtle.Bytes as TBytes
+
+consumeAllWithReadP :: ReadP a -> String -> Maybe a
+consumeAllWithReadP p xs = case readP_to_S (p <* eof) xs of
+  [(v, "")] -> pure v
+  _ -> Nothing
+
+decimal1P :: (Read i, Integral i) => ReadP i
+decimal1P = read <$> munch1 isDigit
 
 {-
   Ensure that the resource is available locally.
@@ -126,9 +144,32 @@ data SolutionContext = SolutionContext
   , answerT :: T.Text -> IO ()
   }
 
+moduleNameToYearDayP :: ReadP (Int, Int)
+moduleNameToYearDayP =
+  (,)
+    <$> (do
+           _ <- string "Javran.AdventOfCode.Y"
+           decimal1P)
+    <*> (do
+           _ <- string ".Day"
+           decimal1P)
+
 class Solution sol where
   -- year and day
   solutionIndex :: forall p. p sol -> (Int, Int)
+  default solutionIndex
+    :: forall d f.
+    ( Generic sol
+    , Rep sol ~ M1 D d f
+    , Datatype d
+    )
+    => forall p. p sol -> (Int, Int)
+  solutionIndex _ =
+    fromJust $
+      consumeAllWithReadP
+        moduleNameToYearDayP
+        (moduleName (from @sol undefined))
+
   solutionRun :: forall p. p sol -> SolutionContext -> IO ()
 
 runSolutionWithInputGetter :: forall p sol. Solution sol => p sol -> (Int -> Int -> IO BSL.ByteString) -> IO T.Text
@@ -142,6 +183,7 @@ runSolutionWithInputGetter p inputGetter = do
         atomicModifyIORef' outRef (\b -> (b <> TLB.fromText output <> "\n", ()))
       answerS output =
         atomicModifyIORef' outRef (\b -> (b <> TLB.fromString output <> "\n", ()))
+      answerShow :: forall a. Show a => a -> IO ()
       answerShow = answerS . show
   solutionRun
     p

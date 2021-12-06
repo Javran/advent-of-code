@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
@@ -8,15 +9,15 @@ module Javran.AdventOfCode.Y2021.Day1
 where
 
 import Data.List.Split
+import GHC.Generics
 import Javran.AdventOfCode.Prelude
 
-data Day1
+data Day1 deriving (Generic)
 
 countIncr :: [Int] -> Int
 countIncr xs = countLength id $ zipWith (<) xs (tail xs)
 
 instance Solution Day1 where
-  solutionIndex _ = (2021, 1)
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     xs <- fmap (read @Int) . lines <$> getInputS
     answerShow $ countIncr xs

@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -43,13 +44,13 @@ import Data.Semigroup
 import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Vector as V
+import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
-import Text.ParserCombinators.ReadP hiding (many, count)
+import Text.ParserCombinators.ReadP hiding (count, many)
 
-data Day{{day}}
+data Day{{day}} deriving (Generic)
 
 instance Solution Day{{day}} where
-  solutionIndex _ = ({{year}}, {{day}})
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     xs <- fmap id . lines <$> getInputS
     mapM_ print xs
