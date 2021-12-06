@@ -19,5 +19,14 @@ Files under `data/download/` directory (intentionally ignored from VCS) are down
 
 Files with name `example.input.txt` or `example.expect.txt` under `data/testdata/` directory are manually maintained but its original author is [Advent of Code](https://adventofcode.com/).
 
+## Navigation
 
-[//]: # (test to see if this thing works: https://stackoverflow.com/a/20885980/315302)
+[//]: # (how to comment in MD: https://stackoverflow.com/a/20885980/315302)
+[//]: # (LINK_AUTOGEN_BEGIN)
+
+- Year 2020
+  + [X] [Day 1](src/Javran/AdventOfCode/Y2020/Day1.hs)
+  + [ ] [Day 2](src/Javran/AdventOfCode/Y2020/Day2.hs)
+- Year 2021
+
+[//]: # (LINK_AUTOGEN_END)
