@@ -89,6 +89,7 @@ library
       Javran.AdventOfCode.Main
       Javran.AdventOfCode.MainMaker
       Javran.AdventOfCode.Prelude
+      Javran.AdventOfCode.Solutions
       Javran.AdventOfCode.Tester
       Javran.AdventOfCode.TH
       Javran.AdventOfCode.Y2020.Day1

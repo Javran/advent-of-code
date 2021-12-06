@@ -4,11 +4,11 @@ module Javran.AdventOfCode.Main
 where
 
 import qualified Javran.AdventOfCode.Cli.New as CliNew
+import qualified Javran.AdventOfCode.Cli.ProgressReport as CliReport
 import qualified Javran.AdventOfCode.Cli.Sync as CliSync
 import Javran.AdventOfCode.Infra
 import qualified Javran.AdventOfCode.Y2020.Main as Y2020
 import qualified Javran.AdventOfCode.Y2021.Main as Y2021
-import qualified Javran.AdventOfCode.Cli.ProgressReport as CliReport
 
 main :: IO ()
 main =

@@ -12,7 +12,7 @@ import Control.Monad.IO.Class
 import qualified Data.ByteString.Lazy as BSL
 import Data.Maybe
 import qualified Data.Text.IO as T
-import Javran.AdventOfCode.Cli.ProgressReport (getSolution)
+import Javran.AdventOfCode.Solutions (getSolution)
 import Javran.AdventOfCode.Infra
 import Javran.AdventOfCode.Tester
 import Language.Haskell.TH

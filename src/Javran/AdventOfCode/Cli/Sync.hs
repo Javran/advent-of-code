@@ -12,6 +12,7 @@ where
 import Control.Monad
 import Data.List
 import Data.Maybe
+import Javran.AdventOfCode.Cli.ProgressReport as ProgressReport
 import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.Tester (computeTestdataDirDigestTextRep)
 import System.Directory
@@ -123,7 +124,31 @@ performTestdataSpecHashSync = do
     "FORCE_RECOMP_HASH_END"
     extractSecCb
 
+performReadmeProgressSync :: IO ()
+performReadmeProgressSync = do
+  projectHome <- getEnv "PROJECT_HOME"
+  let fp = projectHome </> "README.md"
+  rendered0 <- renderRawMarkdown <$> computeProgressReport
+
+  let rendered = "" : rendered0 <> [""]
+      extractSecCb =
+        (\prevSec bm sec em postSec ->
+           if sec == rendered
+             then -- no need for editing, nothing is changed.
+               (sec, Just False)
+             else
+               ( prevSec <> [bm] <> rendered <> [em] <> postSec
+               , Just True
+               ))
+  mayEditFileWithSpecialSection
+    fp
+    "Edit README: "
+    "[//]: # (PROGRESS_AUTOGEN_BEGIN)"
+    "[//]: # (PROGRESS_AUTOGEN_END)"
+    extractSecCb
+
 performSync :: IO ()
 performSync = do
   performYearlyModuleSync
   performTestdataSpecHashSync
+  performReadmeProgressSync
