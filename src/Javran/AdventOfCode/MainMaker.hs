@@ -57,7 +57,7 @@ runSolutionWithExampleAndWriteExpect :: forall p sol. Solution sol => p sol -> I
 runSolutionWithExampleAndWriteExpect p = do
   projectHome <- getEnv "PROJECT_HOME"
   let (yyyy, dd) = solutionIndex p
-  actualOutput <- runSolutionWithExampleInput p
+  actualOutput <- runSolutionWithExampleInput p True
   let fpTarget = projectHome </> subPath </> "example.expect.txt"
       subPath = exampleRawInputRelativePath yyyy dd
   T.writeFile fpTarget actualOutput
@@ -67,8 +67,8 @@ runSolutionWithExampleAndWriteExpect p = do
 runSomeSolution :: SomeSolution -> String -> IO ()
 runSomeSolution (SomeSolution s) cmdHelpPrefix = do
   args <- getArgs
-  let runLogin = runSolutionWithLoginInput s >>= T.putStr
-      runExample = runSolutionWithExampleInput s >>= T.putStr
+  let runLogin = runSolutionWithLoginInput s True >>= T.putStr
+      runExample = runSolutionWithExampleInput s True >>= T.putStr
   case args of
     [] ->
       runLogin

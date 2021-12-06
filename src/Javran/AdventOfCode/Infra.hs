@@ -44,6 +44,7 @@ import Data.Maybe
 import Data.Proxy
 import qualified Data.Text as T
 import Data.Text.Encoding
+import qualified Data.Text.IO as T
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.Builder as TLB
 import GHC.Generics
@@ -178,16 +179,26 @@ class Solution sol where
 
   solutionRun :: forall p. p sol -> SolutionContext -> IO ()
 
-runSolutionWithInputGetter :: forall p sol. Solution sol => p sol -> (Int -> Int -> IO BSL.ByteString) -> IO T.Text
-runSolutionWithInputGetter p inputGetter = do
+runSolutionWithInputGetter
+  :: forall p sol.
+  Solution sol
+  => p sol
+  -> (Int -> Int -> IO BSL.ByteString)
+  -> Bool
+  -> IO T.Text
+runSolutionWithInputGetter p inputGetter interleaveAnswer = do
   let (yyyy, dd) = solutionIndex p
   getInputBs <- once (inputGetter yyyy dd)
   outRef <- newIORef @TLB.Builder ""
   let getInputT = decodeUtf8 . BSL.toStrict <$> getInputBs
       getInputS = T.unpack <$> getInputT
-      answerT output =
+      answerT output = do
+        when interleaveAnswer $
+          T.putStrLn $ "Answer: " <> output
         atomicModifyIORef' outRef (\b -> (b <> TLB.fromText output <> "\n", ()))
-      answerS output =
+      answerS output = do
+        when interleaveAnswer $
+          putStrLn $ "Answer: " <> output
         atomicModifyIORef' outRef (\b -> (b <> TLB.fromString output <> "\n", ()))
       answerShow :: forall a. Show a => a -> IO ()
       answerShow = answerS . show
@@ -203,10 +214,10 @@ runSolutionWithInputGetter p inputGetter = do
   answer <- readIORef outRef
   pure $ TL.toStrict $ TLB.toLazyText answer
 
-runSolutionWithExampleInput :: forall p sol. Solution sol => p sol -> IO T.Text
+runSolutionWithExampleInput :: forall p sol. Solution sol => p sol -> Bool -> IO T.Text
 runSolutionWithExampleInput p = runSolutionWithInputGetter p getExampleRawInput
 
-runSolutionWithLoginInput :: forall p sol. Solution sol => p sol -> IO T.Text
+runSolutionWithLoginInput :: forall p sol. Solution sol => p sol -> Bool -> IO T.Text
 runSolutionWithLoginInput p = runSolutionWithInputGetter p getRawInput
 
 data SomeSolution
