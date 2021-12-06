@@ -1,57 +1,40 @@
-{-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE PatternGuards #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# OPTIONS_GHC -Wno-deprecations #-}
-{-# OPTIONS_GHC -Wno-typed-holes #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -Wno-unused-matches #-}
-{-# OPTIONS_GHC -fdefer-typed-holes #-}
 
 module Javran.AdventOfCode.Y2021.Day6
   (
   )
 where
 
-{- HLINT ignore -}
-
-import Control.Applicative
-import Control.Monad
-import Data.Bifunctor
-import Data.Bool
-import Data.Char
-import Data.Function
-import Data.Function.Memoize (memoFix)
 import qualified Data.IntMap.Strict as IM
-import qualified Data.IntSet as IS
-import Data.List
 import Data.List.Split hiding (sepBy)
-import qualified Data.Map.Strict as M
-import Data.Maybe
-import Data.Monoid
-import Data.Semigroup
-import qualified Data.Set as S
-import qualified Data.Text as T
-import qualified Data.Vector as V
 import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
-import Text.ParserCombinators.ReadP hiding (count, many)
 
 data Day6 deriving (Generic)
 
+type FishState = IM.IntMap Int -- key: time before reproduce, value: how many
+
+dense :: [Int] -> FishState
+dense = IM.fromListWith (+) . fmap (,1)
+
+step :: FishState -> FishState
+step m = case m IM.!? 0 of
+  Nothing -> tickDown m
+  Just cnt ->
+    IM.unionWith
+      (+)
+      (IM.fromList [(6, cnt), (8, cnt)])
+      $ tickDown $ IM.delete 0 m
+  where
+    tickDown = IM.mapKeysMonotonic pred
+
 instance Solution Day6 where
-  solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    xs <- fmap id . lines <$> getInputS
-    mapM_ print xs
+    [xs] <- lines <$> getInputS
+    let initFs = fmap (read @Int) $ splitOn "," xs
+        history = iterate step (dense initFs)
+    answerShow $ sum (history !! 80)
+    answerShow $ sum (history !! 256)
