@@ -157,6 +157,7 @@ library
     , strict
     , system-filepath
     , template-haskell
+    , terminfo
     , text
     , time
     , turtle

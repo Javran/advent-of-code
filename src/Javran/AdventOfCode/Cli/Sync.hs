@@ -33,8 +33,8 @@ generateModuleImports yyyy dds = do
   dd <- dds
   pure $ printf "import Javran.AdventOfCode.Y%d.Day%d ()" yyyy dd
 
-syncCommand :: String -> IO ()
-syncCommand _cmdHelpPrefix = performSync
+syncCommand :: SubCmdContext -> IO ()
+syncCommand _ctxt = performSync
 
 performYearlyModuleSync :: IO ()
 performYearlyModuleSync = do

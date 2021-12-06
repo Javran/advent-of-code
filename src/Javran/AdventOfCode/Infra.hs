@@ -6,6 +6,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
@@ -18,6 +19,7 @@ module Javran.AdventOfCode.Infra
   ( prepareDataPath
   , SubCmdHandlers
   , dispatchToSubCmds
+  , SubCmdContext (..)
   , Solution (..)
   , SolutionContext (..)
   , runSolutionWithInputGetter
@@ -48,6 +50,7 @@ import qualified Data.Text.IO as T
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.Builder as TLB
 import GHC.Generics
+import System.Console.Terminfo
 import System.Directory
 import System.Environment
 import System.Exit
@@ -90,14 +93,20 @@ prepareDataPath rsc = do
              ""
          BS.writeFile actualFp raw)
 
-type SubCmdHandlers = [(String, String -> IO ())]
+data SubCmdContext = SubCmdContext
+  { mTerm :: Maybe Terminal
+  , cmdHelpPrefix :: String
+  }
 
-dispatchToSubCmds :: String -> SubCmdHandlers -> IO ()
-dispatchToSubCmds cmdHelpPrefix subCmdHandlers =
+type SubCmdHandlers = [(String, SubCmdContext -> IO ())]
+
+dispatchToSubCmds :: SubCmdContext -> SubCmdHandlers -> IO ()
+dispatchToSubCmds ctxt subCmdHandlers = do
+  let SubCmdContext {cmdHelpPrefix} = ctxt
   getArgs >>= \case
     subCmd : args
       | Just handler <- lookup subCmd subCmdHandlers ->
-        withArgs args (handler (cmdHelpPrefix <> subCmd <> " "))
+        withArgs args (handler ctxt {cmdHelpPrefix = cmdHelpPrefix <> subCmd <> " "})
     _ -> do
       forM_ subCmdHandlers $ \(sub, _) ->
         putStrLn $ cmdHelpPrefix <> sub <> " ..."
@@ -185,20 +194,35 @@ runSolutionWithInputGetter
   => p sol
   -> (Int -> Int -> IO BSL.ByteString)
   -> Bool
+  -> Maybe Terminal
   -> IO T.Text
-runSolutionWithInputGetter p inputGetter interleaveAnswer = do
+runSolutionWithInputGetter p inputGetter interleaveAnswer mTerm = do
   let (yyyy, dd) = solutionIndex p
   getInputBs <- once (inputGetter yyyy dd)
   outRef <- newIORef @TLB.Builder ""
   let getInputT = decodeUtf8 . BSL.toStrict <$> getInputBs
       getInputS = T.unpack <$> getInputT
+      mFancyTermOutputLn :: Maybe (String -> IO ())
+      mFancyTermOutputLn = do
+        let mFg = do
+              term <- mTerm
+              (term,) <$> getCapability term (withForegroundColor @TermOutput)
+        case mFg of
+          Nothing -> Nothing
+          Just (term, fg) ->
+            pure $ \xs -> runTermOutput term $ fg Cyan (termText (xs <> "\n"))
       answerT output = do
-        when interleaveAnswer $
-          T.putStrLn $ "Answer: " <> output
+        when interleaveAnswer $ do
+          case mFancyTermOutputLn of
+            Nothing -> T.putStrLn $ "Answer: " <> output
+            Just termOutput -> termOutput (T.unpack output)
         atomicModifyIORef' outRef (\b -> (b <> TLB.fromText output <> "\n", ()))
+      answerS :: String -> IO ()
       answerS output = do
-        when interleaveAnswer $
-          putStrLn $ "Answer: " <> output
+        when interleaveAnswer $ do
+          case mFancyTermOutputLn of
+            Nothing -> putStrLn $ "Answer: " <> output
+            Just termOutput -> termOutput output
         atomicModifyIORef' outRef (\b -> (b <> TLB.fromString output <> "\n", ()))
       answerShow :: forall a. Show a => a -> IO ()
       answerShow = answerS . show
@@ -214,10 +238,10 @@ runSolutionWithInputGetter p inputGetter interleaveAnswer = do
   answer <- readIORef outRef
   pure $ TL.toStrict $ TLB.toLazyText answer
 
-runSolutionWithExampleInput :: forall p sol. Solution sol => p sol -> Bool -> IO T.Text
+runSolutionWithExampleInput :: forall p sol. Solution sol => p sol -> Bool -> Maybe Terminal -> IO T.Text
 runSolutionWithExampleInput p = runSolutionWithInputGetter p getExampleRawInput
 
-runSolutionWithLoginInput :: forall p sol. Solution sol => p sol -> Bool -> IO T.Text
+runSolutionWithLoginInput :: forall p sol. Solution sol => p sol -> Bool -> Maybe Terminal -> IO T.Text
 runSolutionWithLoginInput p = runSolutionWithInputGetter p getRawInput
 
 data SomeSolution

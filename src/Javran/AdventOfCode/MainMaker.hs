@@ -1,3 +1,4 @@
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
@@ -22,7 +23,7 @@ import System.Environment
 import System.Exit
 import System.FilePath.Posix
 import qualified Turtle.Bytes as TBytes
-
+import System.Console.Terminfo
 editExample :: Int -> Int -> IO ()
 editExample yyyy dd = do
   mEditorCmd <- lookupEnv "EDITOR"
@@ -53,22 +54,22 @@ editExample yyyy dd = do
   TODO: expect files are not used for now - in future might use it as unit test.
   TODO: write-expect should scan all examples and write to them.
  -}
-runSolutionWithExampleAndWriteExpect :: forall p sol. Solution sol => p sol -> IO ()
-runSolutionWithExampleAndWriteExpect p = do
+runSolutionWithExampleAndWriteExpect :: forall p sol. Solution sol => p sol -> Maybe Terminal -> IO ()
+runSolutionWithExampleAndWriteExpect p mTerm = do
   projectHome <- getEnv "PROJECT_HOME"
   let (yyyy, dd) = solutionIndex p
-  actualOutput <- runSolutionWithExampleInput p True
+  actualOutput <- runSolutionWithExampleInput p True mTerm
   let fpTarget = projectHome </> subPath </> "example.expect.txt"
       subPath = exampleRawInputRelativePath yyyy dd
   T.writeFile fpTarget actualOutput
   putStrLn $ "Written to: " <> fpTarget
   performTestdataSpecHashSync
 
-runSomeSolution :: SomeSolution -> String -> IO ()
-runSomeSolution (SomeSolution s) cmdHelpPrefix = do
+runSomeSolution :: SomeSolution -> SubCmdContext -> IO ()
+runSomeSolution (SomeSolution s) SubCmdContext{cmdHelpPrefix, mTerm} = do
   args <- getArgs
-  let runLogin = runSolutionWithLoginInput s True >>= T.putStr
-      runExample = runSolutionWithExampleInput s True >>= T.putStr
+  let runLogin = void $ runSolutionWithLoginInput s True mTerm
+      runExample = void $ runSolutionWithExampleInput s True mTerm
   case args of
     [] ->
       runLogin
@@ -80,11 +81,11 @@ runSomeSolution (SomeSolution s) cmdHelpPrefix = do
       let (yyyy, dd) = solutionIndex s
        in editExample yyyy dd
     ["write-expect"] ->
-      runSolutionWithExampleAndWriteExpect s
+      runSolutionWithExampleAndWriteExpect s mTerm
     _ ->
       die $ cmdHelpPrefix <> "[e|example|l|login|edit-example|write-expect]"
 
-mkYearlyMain :: Int -> [SomeSolution] -> String -> IO ()
+mkYearlyMain :: Int -> [SomeSolution] -> SubCmdContext -> IO ()
 mkYearlyMain year collectedSolutions = yearlyMain
   where
     solutionRunners = mk <$> collectedSolutions
@@ -95,8 +96,8 @@ mkYearlyMain year collectedSolutions = yearlyMain
               (show dd, runSomeSolution ss)
           solInd -> error $ "Invalid solution index: " <> show solInd
 
-    yearlyMain :: String -> IO ()
-    yearlyMain cmdHelpPrefix = do
+    yearlyMain ::SubCmdContext -> IO ()
+    yearlyMain ctxt = do
       dispatchToSubCmds
-        cmdHelpPrefix
+        ctxt
         solutionRunners

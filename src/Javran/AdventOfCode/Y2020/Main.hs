@@ -45,5 +45,5 @@ allSolutions =
     (\(SomeSolution s) -> solutionIndex s)
     $collectSolutions
 
-subMain :: String -> IO ()
+subMain :: SubCmdContext -> IO ()
 subMain = mkYearlyMain 2020 allSolutions

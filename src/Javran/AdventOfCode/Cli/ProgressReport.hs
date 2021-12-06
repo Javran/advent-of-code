@@ -92,7 +92,7 @@ renderRawMarkdown = concatMap (uncurry renderYear)
             year
             day
 
-progressReportCommand :: String -> IO ()
+progressReportCommand :: SubCmdContext -> IO ()
 progressReportCommand _ = do
   xs <- computeProgressReport
   forM_ xs $ \(year, days) -> do

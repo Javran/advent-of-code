@@ -36,5 +36,8 @@ instance Solution Day6 where
     [xs] <- lines <$> getInputS
     let initFs = fmap (read @Int) $ splitOn "," xs
         history = iterate step (dense initFs)
+    putStrLn "A"
     answerShow $ sum (history !! 80)
+    putStrLn "B"
     answerShow $ sum (history !! 256)
+    putStrLn "C"

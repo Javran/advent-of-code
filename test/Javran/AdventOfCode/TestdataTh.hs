@@ -109,7 +109,7 @@ mkSpecFromStructuredTestdata = mapM_ (uncurry handleYear)
                     SomeSolution s -> do
                       output <-
                         liftIO $
-                          runSolutionWithInputGetter s (\_ _ -> BSL.readFile inputFilePath) False
+                          runSolutionWithInputGetter s (\_ _ -> BSL.readFile inputFilePath) False Nothing
                       case mExpectFilePath of
                         Nothing -> do
                           pendingWith "*.expect.txt not found"

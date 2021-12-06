@@ -1,3 +1,4 @@
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -16,14 +17,15 @@ import qualified Data.HashMap.Strict as HM
 import qualified Data.Text.Lazy.IO as TL
 import Javran.AdventOfCode.Cli.Sync (performSync)
 import Javran.AdventOfCode.MainMaker
+import Javran.AdventOfCode.Infra
 import System.Directory
 import System.Environment
 import System.Exit
 import System.FilePath.Posix
 import Text.Microstache
 
-newCommand :: String -> IO ()
-newCommand cmdHelpPrefix =
+newCommand :: SubCmdContext -> IO ()
+newCommand SubCmdContext{cmdHelpPrefix} =
   getArgs >>= \case
     [yearRaw, dayRaw]
       | [(year, "")] <- reads yearRaw
