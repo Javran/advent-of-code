@@ -43,7 +43,7 @@ mayEditFileWithSpecialSection
   -> ExtractSectionCallback
        String
        ( [String]
-       , Maybe Bool {- if this part is `Just False`, we guaranteed not to scrutinize `fst` part -}
+       , Maybe Bool {- if this part is `Just False`, we guarantee not to scrutinize `fst` part -}
        )
   -> IO ()
 mayEditFileWithSpecialSection fp prefix bm em extractSecCb = do
