@@ -170,6 +170,9 @@ class Solution sol where
         moduleNameToYearDayP
         (moduleName (from @sol undefined))
 
+  solutionSolved :: forall p. p sol -> Bool
+  solutionSolved _ = True
+
   solutionRun :: forall p. p sol -> SolutionContext -> IO ()
 
 runSolutionWithInputGetter :: forall p sol. Solution sol => p sol -> (Int -> Int -> IO BSL.ByteString) -> IO T.Text

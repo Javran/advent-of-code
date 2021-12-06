@@ -51,6 +51,7 @@ import Text.ParserCombinators.ReadP hiding (count, many)
 data Day{{day}} deriving (Generic)
 
 instance Solution Day{{day}} where
+  solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     xs <- fmap id . lines <$> getInputS
     mapM_ print xs
