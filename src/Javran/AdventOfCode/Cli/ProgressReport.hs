@@ -33,21 +33,12 @@ import Data.Ord
 import qualified Filesystem.Path.CurrentOS as FP
 import Javran.AdventOfCode.Infra
 import Javran.AdventOfCode.Solutions
-import Text.ParserCombinators.ReadP
-import Text.Printf
-import Turtle.Prelude
-import Turtle.Shell
-
-import Control.Monad
-import Data.List
-import Data.Maybe
-import Javran.AdventOfCode.Cli.TestdataDigest
-import Javran.AdventOfCode.Infra
-import System.Directory
 import System.Environment
 import System.FilePath.Posix
 import Text.ParserCombinators.ReadP
 import Text.Printf
+import Turtle.Prelude
+import Turtle.Shell
 
 type ProgressReport =
   [ ( Int -- year, descending.
@@ -63,8 +54,7 @@ computeProgressReport = do
   Just prjHomePre <- need "PROJECT_HOME"
   let prjHome = FP.fromText prjHomePre
   gathered <- reduce Foldl.list do
-    let (</>) = (FP.</>)
-    pushd (prjHome </> "src" </> "Javran" </> "AdventOfCode")
+    pushd (prjHome FP.</> "src" FP.</> "Javran" FP.</> "AdventOfCode")
     fp <- lstree "."
     [_dot, yearRaw, dayRaw] <- pure (FP.encodeString <$> FP.splitDirectories fp)
     Just year <- pure (consumeAllWithReadP (char 'Y' *> decimal1P <* char '/') yearRaw)
@@ -109,15 +99,17 @@ progressReportCommand _ = do
   xs <- computeProgressReport
   forM_ xs $ \(year, days) -> do
     putStrLn $ "Year " <> show year <> ":"
-    forM_ days $ \(day,solved) -> do
+    forM_ days $ \(day, solved) -> do
       putStrLn $ "- Day " <> show day <> if solved then "" else " (unsolved)"
+
 performReadmeProgressSync :: IO ()
 performReadmeProgressSync = do
   projectHome <- getEnv "PROJECT_HOME"
   let fp = projectHome </> "README.md"
   rendered0 <- renderRawMarkdown <$> computeProgressReport
-
-  let rendered = "" : rendered0 <> [""]
+  let rendered =
+        -- need padding on both sides, or it would result in some weird renderings.
+        "" : rendered0 <> [""]
       extractSecCb =
         (\prevSec bm sec em postSec ->
            if sec == rendered
