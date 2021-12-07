@@ -1,11 +1,12 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 module Javran.AdventOfCode.Solutions
-  ( getSolution
+  ( allSolutions
+  , allSolutionsSorted
+  , getSolution
   )
 where
 
-import Data.List
 import qualified Data.Map.Strict as M
 import Javran.AdventOfCode.Infra
 import Javran.AdventOfCode.TH
@@ -44,16 +45,14 @@ import Javran.AdventOfCode.Y2021.Day5 ()
 import Javran.AdventOfCode.Y2021.Day6 ()
 {- ORMOLU_ENABLE -}
 
-allSolutions :: [SomeSolution]
-allSolutions =
-  sortOn
-    (\(SomeSolution s) -> solutionIndex s)
-    $collectSolutions
+allSolutions :: M.Map (Int, Int) SomeSolution
+allSolutions = M.fromList $ do
+  someSol@(SomeSolution s) <- $collectSolutions
+  let sInd = solutionIndex s
+  pure (sInd, someSol)
+
+allSolutionsSorted :: [SomeSolution]
+allSolutionsSorted = fmap snd $ M.toAscList allSolutions
 
 getSolution :: Int -> Int -> Maybe SomeSolution
-getSolution year day = allSolutions' M.!? (year, day)
-  where
-    allSolutions' = M.fromList $ do
-      someSol@(SomeSolution s) <- allSolutions
-      let sInd = solutionIndex s
-      pure (sInd, someSol)
+getSolution year day = allSolutions M.!? (year, day)
