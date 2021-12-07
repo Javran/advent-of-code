@@ -13,7 +13,6 @@ import Javran.AdventOfCode.Prelude
 data Day1 deriving (Generic)
 
 instance Solution Day1 where
-  solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     xs <- fmap (read @Int) . lines <$> getInputS
     let fuelCost = subtract 2 . floor @Double @Int . (/ 3) . fromIntegral

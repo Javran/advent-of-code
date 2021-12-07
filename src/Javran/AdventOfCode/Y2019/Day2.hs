@@ -44,7 +44,6 @@ interpret pc = do
     _ -> error "Something went wrong"
 
 instance Solution Day2 where
-  solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     (extraOps, rawInput) <- consumeExtraLeadingLines <$> getInputS
     let xs = fmap (read @Int) . splitOn "," . head . lines $ rawInput
