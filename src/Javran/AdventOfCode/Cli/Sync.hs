@@ -13,12 +13,11 @@ import Data.List
 import Data.Maybe
 import Javran.AdventOfCode.Cli.ProgressReport as ProgressReport
 import Javran.AdventOfCode.Cli.TestdataDigest
-import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.Infra
+import Javran.AdventOfCode.Prelude
 import System.Directory
 import System.Environment
 import System.FilePath.Posix
-
 import Text.ParserCombinators.ReadP
 import Text.Printf
 
@@ -41,7 +40,7 @@ performYearlyModuleSync = do
   projectHome <- getEnv "PROJECT_HOME"
   let baseDir = projectHome </> "src" </> "Javran" </> "AdventOfCode"
   yearDs <- listDirectory baseDir >>= filterM (\p -> doesDirectoryExist (baseDir </> p))
-  forM_ yearDs $ \moduleComp -> case consumeAllWithReadP yearModuleP moduleComp of
+  importLines <- fmap concat <$> forM (sort yearDs) $ \moduleComp -> case consumeAllWithReadP yearModuleP moduleComp of
     Just year -> do
       let yearDir = baseDir </> moduleComp
       dayFs <- listDirectory yearDir >>= filterM (\p -> doesFileExist (yearDir </> p))
@@ -68,8 +67,27 @@ performYearlyModuleSync = do
         "{- ORMOLU_DISABLE -}"
         "{- ORMOLU_ENABLE -}"
         extractSecCb
-    Nothing -> pure ()
+      pure importLines
+    Nothing -> pure []
+  -- also write to the Solutions module.
+  do
+    let moduleFp = projectHome </> "src" </> "Javran" </> "AdventOfCode" </> "Solutions.hs"
+        extractSecCb =
+          (\prevSec bm sec em postSec ->
+             if sec == importLines
+               then -- nothing is changed.
+                 (error "no need for editing.", Just False)
+               else
+                 ( prevSec <> [bm] <> importLines <> [em] <> postSec
+                 , Just True
+                 ))
 
+    mayEditFileWithSpecialSection
+      moduleFp
+      "Solutions.hs: "
+      "{- ORMOLU_DISABLE -}"
+      "{- ORMOLU_ENABLE -}"
+      extractSecCb
 
 performReadmeProgressSync :: IO ()
 performReadmeProgressSync = do

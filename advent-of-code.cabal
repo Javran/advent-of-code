@@ -85,6 +85,7 @@ library
   exposed-modules:
       Javran.AdventOfCode.Cli.New
       Javran.AdventOfCode.Cli.ProgressReport
+      Javran.AdventOfCode.Cli.SolutionCommand
       Javran.AdventOfCode.Cli.Sync
       Javran.AdventOfCode.Cli.TestdataDigest
       Javran.AdventOfCode.Infra
