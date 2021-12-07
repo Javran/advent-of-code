@@ -2,7 +2,9 @@
 {-# LANGUAGE NamedFieldPuns #-}
 
 module Javran.AdventOfCode.Cli.SolutionCommand
-  (
+  ( isSolutionCommand
+  , CommandMode (..)
+  , subCommand
   )
 where
 
@@ -25,11 +27,30 @@ where
 
  -}
 
+import Control.Monad
 import Javran.AdventOfCode.Infra
+import Javran.AdventOfCode.Solutions
 import System.Environment
 
-subCommand :: SubCmdContext -> Int -> IO ()
-subCommand ctxt year = do
+data CommandMode
+  = ModeList [String]
+  | ModeYear Int [String]
+  | ModerYearDay Int Int [String]
+
+isSolutionCommand :: [String] -> Maybe CommandMode
+isSolutionCommand = \case
+  "ls" : xs -> pure $ ModeList xs
+  yearRaw : xs | Just year <- consumeAllWithReadP decimal1P yearRaw ->
+    case xs of
+      dayRaw : ys
+        | Just day <- consumeAllWithReadP decimal1P dayRaw ->
+          pure $ ModerYearDay year day ys
+      ys -> pure $ ModeYear year ys
+  _ -> Nothing
+
+subCommand :: SubCmdContext -> CommandMode -> IO ()
+subCommand ctxt mode = do
   let SubCmdContext {cmdHelpPrefix} = ctxt
-  getArgs >>= \case
-    args -> mapM_ print args
+  case mode of
+    ModeList _ -> mapM_ (print . (\(SomeSolution s) -> solutionIndex s)) allSolutionsSorted
+    _ -> error "todo"
