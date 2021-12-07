@@ -17,7 +17,7 @@ to force the build system to recompile (thus re-run TH) this module again.
   which is actually read by the unit tests.
 
 FORCE_RECOMP_HASH_BEGIN
-3304ce910e0855eb90d151207a15831c452d0e3b95c52379a0a092af6fc18f76
+9df98fe756844094d8ef4fc743357294e70403e88e0b8cdcab1d9ade7d41da42
 FORCE_RECOMP_HASH_END
 
  -}

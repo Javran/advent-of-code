@@ -33,3 +33,16 @@ main = do
         , ("new", CliNew.newCommand)
         , ("report", CliReport.progressReportCommand)
         ]
+
+{-
+  TODO: can we submit from cli?
+
+  form data:
+  - level=1&answer=xxxx
+  - level=2&answer=xxxx
+
+  request url: https://adventofcode.com/<year>/day/<day>/answer
+
+  method POST
+
+ -}
