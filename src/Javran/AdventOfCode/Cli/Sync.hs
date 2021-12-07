@@ -14,7 +14,6 @@ import Data.Maybe
 import Javran.AdventOfCode.Cli.ProgressReport as ProgressReport
 import Javran.AdventOfCode.Cli.TestdataDigest
 import Javran.AdventOfCode.Infra
-import Javran.AdventOfCode.Prelude
 import System.Directory
 import System.Environment
 import System.FilePath.Posix

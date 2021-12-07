@@ -83,6 +83,7 @@ source-repository head
 
 library
   exposed-modules:
+      Javran.AdventOfCode.Cli.EditExample
       Javran.AdventOfCode.Cli.New
       Javran.AdventOfCode.Cli.ProgressReport
       Javran.AdventOfCode.Cli.SolutionCommand

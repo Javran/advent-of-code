@@ -9,30 +9,26 @@ module Javran.AdventOfCode.Cli.SolutionCommand
 where
 
 {-
-  TODO: this will handle all solution-specific commands in the future,
+  This module handles all solution-specific commands,
   rather than having each year as a seperated command.
 
-  Plan:
-
-  - import update automation for Javran.AdventOfCode.Solutions
-  - parse command line args in this module, dispatch to specific solutions or actions.
-
-  Parsing:
+  Accepted commands:
 
   - "ls" for listing.
   - any integer value (<year>) commits to this subcommand.
   - <year>: list avaliable day solutions for that year
   - <year> <day> <subcommand> <subcommand args>...: this should preserve
     the old behavior.
-
+  - <year> <day> new: create solution from template
  -}
 
-import Control.Monad
 import qualified Data.IntMap.Strict as IM
+import Javran.AdventOfCode.Cli.New
 import Javran.AdventOfCode.Infra
 import Javran.AdventOfCode.MainMaker
 import Javran.AdventOfCode.Solutions
 import System.Environment
+import System.Exit
 
 data CommandMode
   = ModeList [String]
@@ -52,7 +48,7 @@ parse = \case
 
 subCommand :: SubCmdContext -> CommandMode -> IO ()
 subCommand ctxt mode = do
-  let SubCmdContext {cmdHelpPrefix} = ctxt
+  let SubCmdContext {cmdHelpPrefix = _unused} = ctxt
   case mode of
     ModeList _ ->
       mapM_ (print . (\(SomeSolution s) -> solutionIndex s)) allSolutionsSorted
@@ -68,5 +64,7 @@ subCommand ctxt mode = do
         Just ss ->
           withArgs xs $ runSomeSolution ss ctxt
         Nothing ->
-          -- no solution for this, but we can probably accept a "new" command.
-          putStrLn "TODO"
+          case xs of
+            ["new"] -> newCommandForYearDay year day
+            _ ->
+              die "No solution available, only `new` command is accepted."

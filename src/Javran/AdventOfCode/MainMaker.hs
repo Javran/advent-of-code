@@ -1,5 +1,5 @@
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 
@@ -7,48 +7,20 @@ module Javran.AdventOfCode.MainMaker
   ( runSomeSolution
   , mkYearlyMain
   , exampleRawInputRelativePath
-  , editExample
   , runSolutionWithExampleAndWriteExpect
   )
 where
 
 import Control.Monad
-import Data.Char
-import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import Javran.AdventOfCode.Cli.TestdataDigest
 import Javran.AdventOfCode.Infra
-import System.Directory
+import System.Console.Terminfo
 import System.Environment
 import System.Exit
 import System.FilePath.Posix
-import qualified Turtle.Bytes as TBytes
-import System.Console.Terminfo
-editExample :: Int -> Int -> IO ()
-editExample yyyy dd = do
-  mEditorCmd <- lookupEnv "EDITOR"
-  projectHome <- getEnv "PROJECT_HOME"
-  let subPath = exampleRawInputRelativePath yyyy dd
-      exampleInputFileName = "example.input.txt"
-      exampleDir = projectHome </> subPath
-  createDirectoryIfMissing True exampleDir
-  let exampleFp = exampleDir </> exampleInputFileName
-  -- ensure that the file exists.
-  do
-    e <- doesFileExist exampleFp
-    unless e $ writeFile exampleFp ""
-  case mEditorCmd of
-    Just editorCmd | not (all isSpace editorCmd) -> do
-      ec <- TBytes.proc (T.pack editorCmd) [T.pack $ exampleDir </> exampleInputFileName] ""
-      when
-        (ec == ExitSuccess)
-        performTestdataSpecHashSync
-      exitWith ec
-    _ ->
-      do
-        print mEditorCmd
-        putStrLn "EDITOR is empty, please edit the file manually:"
-        putStrLn exampleFp
+import Javran.AdventOfCode.Cli.New
+import Javran.AdventOfCode.Cli.EditExample
 
 {-
   TODO: expect files are not used for now - in future might use it as unit test.
@@ -66,7 +38,7 @@ runSolutionWithExampleAndWriteExpect p mTerm = do
   performTestdataSpecHashSync
 
 runSomeSolution :: SomeSolution -> SubCmdContext -> IO ()
-runSomeSolution (SomeSolution s) SubCmdContext{cmdHelpPrefix, mTerm} = do
+runSomeSolution (SomeSolution s) SubCmdContext {cmdHelpPrefix, mTerm} = do
   args <- getArgs
   let runLogin = void $ runSolutionWithLoginInput s True mTerm
       runExample = void $ runSolutionWithExampleInput s True mTerm
@@ -82,8 +54,11 @@ runSomeSolution (SomeSolution s) SubCmdContext{cmdHelpPrefix, mTerm} = do
        in editExample yyyy dd
     ["write-expect"] ->
       runSolutionWithExampleAndWriteExpect s mTerm
+    ["new"] ->
+      let (yyyy, dd) = solutionIndex s
+       in newCommandForYearDay yyyy dd
     _ ->
-      die $ cmdHelpPrefix <> "[e|example|l|login|edit-example|write-expect]"
+      die $ cmdHelpPrefix <> "[e|example|l|login|edit-example|write-expect|new]"
 
 mkYearlyMain :: Int -> [SomeSolution] -> SubCmdContext -> IO ()
 mkYearlyMain year collectedSolutions = yearlyMain
@@ -96,7 +71,7 @@ mkYearlyMain year collectedSolutions = yearlyMain
               (show dd, runSomeSolution ss)
           solInd -> error $ "Invalid solution index: " <> show solInd
 
-    yearlyMain ::SubCmdContext -> IO ()
+    yearlyMain :: SubCmdContext -> IO ()
     yearlyMain ctxt = do
       dispatchToSubCmds
         ctxt
