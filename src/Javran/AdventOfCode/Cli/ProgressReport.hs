@@ -43,7 +43,7 @@ import Turtle.Shell
 type ProgressReport =
   [ ( Int -- year, descending.
     , [ ( Int -- day, ascending.
-        , Bool -- solved? (not used)
+        , Bool -- solved?
         )
       ]
     )

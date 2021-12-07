@@ -41,7 +41,7 @@ import System.FilePath.Posix
 
 data CommandMode
   = ModeList [String]
-  | ModeYear Int [String] --
+  | ModeYear Int [String]
   | ModeYearDay Int Int [String]
 
 parse :: [String] -> Maybe CommandMode
@@ -60,6 +60,10 @@ subCommand ctxt mode = do
   let SubCmdContext {cmdHelpPrefix = _unused} = ctxt
   case mode of
     ModeList _ ->
+      {-
+        the difference between this and `report` command is that this one only sees
+        through TH generation and never explore the file system.
+       -}
       mapM_ (print . (\(SomeSolution s) -> solutionIndex s)) allSolutionsSorted
     ModeYear year _ ->
       case allSolutions IM.!? year of
@@ -79,7 +83,6 @@ subCommand ctxt mode = do
               die "No solution available, only `new` command is accepted."
 
 {-
-  TODO: expect files are not used for now - in future might use it as unit test.
   TODO: write-expect should scan all examples and write to them.
  -}
 runSolutionWithExampleAndWriteExpect :: forall p sol. Solution sol => p sol -> Maybe Terminal -> IO ()
