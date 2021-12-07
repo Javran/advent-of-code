@@ -28,6 +28,7 @@ module Javran.AdventOfCode.Infra
   , SomeSolution (..)
   , exampleRawInputRelativePath
   , consumeAllWithReadP
+  , consumeOrDie
   , decimal1P
   , extractSection
   , ExtractSectionCallback
@@ -59,6 +60,10 @@ import System.IO
 import qualified System.IO.Strict
 import Text.ParserCombinators.ReadP
 import qualified Turtle.Bytes as TBytes
+
+consumeOrDie :: ReadP a -> String -> a
+consumeOrDie p = fromJust . consumeAllWithReadP p
+
 
 consumeAllWithReadP :: ReadP a -> String -> Maybe a
 consumeAllWithReadP p xs = case readP_to_S (p <* eof) xs of
