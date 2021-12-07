@@ -52,7 +52,11 @@ import Text.ParserCombinators.ReadP hiding (count, many)
 data Day7 deriving (Generic)
 
 instance Solution Day7 where
-  solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    xs <- fmap id . lines <$> getInputS
-    mapM_ print xs
+    xs <- sort . fmap (read @Int) . splitOn "," . head . lines <$> getInputS
+    let mid = xs !! (length xs `quot` 2)
+    answerShow $ sum $ fmap (\x -> abs (x-mid)) xs
+    let cost x = let y = abs x in (y * (y+1)) `quot` 2
+        computeCost mz = sum (fmap (\x -> cost (x-mz)) xs)
+    answerShow $ minimum $ fmap computeCost [head xs .. last xs]
+

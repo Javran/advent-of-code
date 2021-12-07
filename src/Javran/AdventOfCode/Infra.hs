@@ -64,7 +64,7 @@ import qualified Turtle.Bytes as TBytes
 consumeOrDie :: ReadP a -> String -> a
 consumeOrDie p = fromJust . consumeAllWithReadP p
 
-
+-- TODO: we need a version with traceShow on, so that we know what's going on in case of parsing failure.
 consumeAllWithReadP :: ReadP a -> String -> Maybe a
 consumeAllWithReadP p xs = case readP_to_S (p <* eof) xs of
   [(v, "")] -> pure v
