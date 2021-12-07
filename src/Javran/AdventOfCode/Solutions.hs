@@ -7,7 +7,7 @@ module Javran.AdventOfCode.Solutions
   )
 where
 
-import qualified Data.Map.Strict as M
+import qualified Data.IntMap.Strict as IM
 import Javran.AdventOfCode.Infra
 import Javran.AdventOfCode.TH
 
@@ -45,14 +45,23 @@ import Javran.AdventOfCode.Y2021.Day5 ()
 import Javran.AdventOfCode.Y2021.Day6 ()
 {- ORMOLU_ENABLE -}
 
-allSolutions :: M.Map (Int, Int) SomeSolution
-allSolutions = M.fromList $ do
+allSolutions :: IM.IntMap (IM.IntMap SomeSolution)
+allSolutions = IM.fromListWith (IM.unionWith mergeErr) $ do
   someSol@(SomeSolution s) <- $collectSolutions
-  let sInd = solutionIndex s
-  pure (sInd, someSol)
+  let (yyyy, dd) = solutionIndex s
+  pure (yyyy, IM.singleton dd someSol)
+  where
+    mergeErr (SomeSolution s) _ =
+      error $ "entry not identical: (year,day) = " <> show ind
+      where
+        ind = solutionIndex s
 
 allSolutionsSorted :: [SomeSolution]
-allSolutionsSorted = fmap snd $ M.toAscList allSolutions
+allSolutionsSorted = do
+  (_, yearSols) <- IM.toAscList allSolutions
+  snd <$> IM.toAscList yearSols
 
 getSolution :: Int -> Int -> Maybe SomeSolution
-getSolution year day = allSolutions M.!? (year, day)
+getSolution year day = do
+  yearSols <- allSolutions IM.!? year
+  yearSols IM.!? day
