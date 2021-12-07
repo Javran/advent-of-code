@@ -4,6 +4,7 @@
 module Javran.AdventOfCode.Cli.ProgressReport
   ( ProgressReport
   , progressReportCommand
+  , performReadmeProgressSync
   , computeProgressReport
   , renderRawMarkdown
   )
@@ -36,6 +37,17 @@ import Text.ParserCombinators.ReadP
 import Text.Printf
 import Turtle.Prelude
 import Turtle.Shell
+
+import Control.Monad
+import Data.List
+import Data.Maybe
+import Javran.AdventOfCode.Cli.TestdataDigest
+import Javran.AdventOfCode.Infra
+import System.Directory
+import System.Environment
+import System.FilePath.Posix
+import Text.ParserCombinators.ReadP
+import Text.Printf
 
 type ProgressReport =
   [ ( Int -- year, descending.
@@ -99,3 +111,25 @@ progressReportCommand _ = do
     putStrLn $ "Year " <> show year <> ":"
     forM_ days $ \(day,solved) -> do
       putStrLn $ "- Day " <> show day <> if solved then "" else " (unsolved)"
+performReadmeProgressSync :: IO ()
+performReadmeProgressSync = do
+  projectHome <- getEnv "PROJECT_HOME"
+  let fp = projectHome </> "README.md"
+  rendered0 <- renderRawMarkdown <$> computeProgressReport
+
+  let rendered = "" : rendered0 <> [""]
+      extractSecCb =
+        (\prevSec bm sec em postSec ->
+           if sec == rendered
+             then -- no need for editing, nothing is changed.
+               (sec, Just False)
+             else
+               ( prevSec <> [bm] <> rendered <> [em] <> postSec
+               , Just True
+               ))
+  mayEditFileWithSpecialSection
+    fp
+    "README: "
+    "[//]: # (PROGRESS_AUTOGEN_BEGIN)"
+    "[//]: # (PROGRESS_AUTOGEN_END)"
+    extractSecCb

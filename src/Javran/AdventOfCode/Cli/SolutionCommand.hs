@@ -30,6 +30,7 @@ import qualified Data.IntMap.Strict as IM
 import qualified Data.Text.IO as T
 import Javran.AdventOfCode.Cli.EditExample
 import Javran.AdventOfCode.Cli.New
+import Javran.AdventOfCode.Cli.ProgressReport
 import Javran.AdventOfCode.Cli.TestdataDigest
 import Javran.AdventOfCode.Infra
 import Javran.AdventOfCode.Solutions
@@ -40,7 +41,7 @@ import System.FilePath.Posix
 
 data CommandMode
   = ModeList [String]
-  | ModeYear Int [String]
+  | ModeYear Int [String] --
   | ModeYearDay Int Int [String]
 
 parse :: [String] -> Maybe CommandMode
@@ -90,8 +91,8 @@ runSolutionWithExampleAndWriteExpect p mTerm = do
       subPath = exampleRawInputRelativePath yyyy dd
   T.writeFile fpTarget actualOutput
   putStrLn $ "Written to: " <> fpTarget
-  -- TODO: also update README?
   performTestdataSpecHashSync
+  performReadmeProgressSync
 
 runSomeSolution :: SomeSolution -> SubCmdContext -> IO ()
 runSomeSolution (SomeSolution s) SubCmdContext {cmdHelpPrefix, mTerm} = do
