@@ -1,9 +1,10 @@
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Javran.AdventOfCode.Cli.New
   ( newCommand
+  , newCommandForYearDay
   )
 where
 
@@ -16,48 +17,54 @@ import Data.Aeson
 import qualified Data.HashMap.Strict as HM
 import qualified Data.Text.Lazy.IO as TL
 import Javran.AdventOfCode.Cli.Sync (performSync)
-import Javran.AdventOfCode.MainMaker
 import Javran.AdventOfCode.Infra
+import Javran.AdventOfCode.MainMaker
 import System.Directory
 import System.Environment
 import System.Exit
 import System.FilePath.Posix
 import Text.Microstache
 
+newCommandForYearDay :: Int -> Int -> IO ()
+newCommandForYearDay year day = do
+  projectHome <- getEnv "PROJECT_HOME"
+  let yearDirFp =
+        projectHome
+          </> "src"
+          </> "Javran"
+          </> "AdventOfCode"
+          </> ('Y' : show year)
+
+      moduleFp = yearDirFp </> ("Day" <> show day <> ".hs")
+  createDirectoryIfMissing True yearDirFp
+  -- module file creation.
+  do
+    e <- doesFileExist moduleFp
+    if e
+      then do
+        putStrLn $ "File already exists: " <> moduleFp
+        putStrLn "Skipped module file creation."
+      else do
+        let tmplFp = projectHome </> "data" </> "DayX.hs.mustache"
+            ctxt =
+              Object $
+                HM.fromList
+                  [ ("year", Number $ fromIntegral year)
+                  , ("day", Number $ fromIntegral day)
+                  ]
+
+        tmpl <- compileMustacheFile tmplFp
+        TL.writeFile moduleFp (renderMustache tmpl ctxt)
+        putStrLn $ "Written to: " <> moduleFp
+  -- sync modules
+  performSync
+  editExample year day
+
 newCommand :: SubCmdContext -> IO ()
-newCommand SubCmdContext{cmdHelpPrefix} =
+newCommand SubCmdContext {cmdHelpPrefix} =
   getArgs >>= \case
     [yearRaw, dayRaw]
       | [(year, "")] <- reads yearRaw
-        , [(day, "")] <- reads dayRaw -> do
-        projectHome <- getEnv "PROJECT_HOME"
-        let moduleFp =
-              projectHome
-                </> "src"
-                </> "Javran"
-                </> "AdventOfCode"
-                </> ('Y' : show year)
-                </> ("Day" <> show day <> ".hs")
-        -- module file creation.
-        do
-          e <- doesFileExist moduleFp
-          if e
-            then do
-              putStrLn $ "File already exists: " <> moduleFp
-              putStrLn "Skipped module file creation."
-            else do
-              let tmplFp = projectHome </> "data" </> "DayX.hs.mustache"
-                  ctxt =
-                    Object $
-                      HM.fromList
-                        [ ("year", Number $ fromIntegral year)
-                        , ("day", Number $ fromIntegral day)
-                        ]
-
-              tmpl <- compileMustacheFile tmplFp
-              TL.writeFile moduleFp (renderMustache tmpl ctxt)
-              putStrLn $ "Written to: " <> moduleFp
-        -- sync modules
-        performSync
-        editExample year day
+        , [(day, "")] <- reads dayRaw ->
+        newCommandForYearDay year day
     _ -> die $ cmdHelpPrefix <> "<year> <day>"
