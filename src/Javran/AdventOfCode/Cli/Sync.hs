@@ -89,7 +89,7 @@ performReadmeProgressSync = do
                ))
   mayEditFileWithSpecialSection
     fp
-    "Edit README: "
+    "README: "
     "[//]: # (PROGRESS_AUTOGEN_BEGIN)"
     "[//]: # (PROGRESS_AUTOGEN_END)"
     extractSecCb

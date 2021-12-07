@@ -80,7 +80,7 @@ performTestdataSpecHashSync = do
 
   mayEditFileWithSpecialSection
     fp
-    "Edit TestdataSpec: "
+    "TestdataSpec: "
     "FORCE_RECOMP_HASH_BEGIN"
     "FORCE_RECOMP_HASH_END"
     extractSecCb
