@@ -91,7 +91,6 @@ library
       Javran.AdventOfCode.Cli.TestdataDigest
       Javran.AdventOfCode.Infra
       Javran.AdventOfCode.Main
-      Javran.AdventOfCode.MainMaker
       Javran.AdventOfCode.Prelude
       Javran.AdventOfCode.Solutions
       Javran.AdventOfCode.TH
