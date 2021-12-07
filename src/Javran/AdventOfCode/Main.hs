@@ -10,6 +10,7 @@ import qualified Javran.AdventOfCode.Cli.ProgressReport as CliReport
 import qualified Javran.AdventOfCode.Cli.SolutionCommand as SolutionCommand
 import qualified Javran.AdventOfCode.Cli.Sync as CliSync
 import Javran.AdventOfCode.Infra
+import Javran.AdventOfCode.Network
 import System.Console.Terminfo
 import System.Environment
 
@@ -32,17 +33,5 @@ main = do
         [ ("sync", CliSync.syncCommand)
         , ("new", CliNew.newCommand)
         , ("report", CliReport.progressReportCommand)
+        , ("_dev", const (pure ()))
         ]
-
-{-
-  TODO: can we submit from cli?
-
-  form data:
-  - level=1&answer=xxxx
-  - level=2&answer=xxxx
-
-  request url: https://adventofcode.com/<year>/day/<day>/answer
-
-  method POST
-
- -}

@@ -97,6 +97,7 @@ library
       Javran.AdventOfCode.Cli.TestdataDigest
       Javran.AdventOfCode.Infra
       Javran.AdventOfCode.Main
+      Javran.AdventOfCode.Network
       Javran.AdventOfCode.Prelude
       Javran.AdventOfCode.Solutions
       Javran.AdventOfCode.TH
@@ -152,6 +153,7 @@ library
     , directory
     , filepath
     , foldl
+    , html-conduit
     , http-client
     , http-client-tls
     , http-types
@@ -172,6 +174,7 @@ library
     , unordered-containers
     , vector
     , vector-algorithms
+    , xml-conduit
   default-language: Haskell2010
 
 executable run-advent-of-code

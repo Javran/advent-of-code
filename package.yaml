@@ -45,6 +45,8 @@ library:
     - mod
     - cryptohash-sha256
     - terminfo
+    - html-conduit
+    - xml-conduit
   ghc-options:
     - -Wall
     - -O2
