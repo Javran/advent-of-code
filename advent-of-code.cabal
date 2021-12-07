@@ -120,14 +120,12 @@ library
       Javran.AdventOfCode.Y2020.Day7
       Javran.AdventOfCode.Y2020.Day8
       Javran.AdventOfCode.Y2020.Day9
-      Javran.AdventOfCode.Y2020.Main
       Javran.AdventOfCode.Y2021.Day1
       Javran.AdventOfCode.Y2021.Day2
       Javran.AdventOfCode.Y2021.Day3
       Javran.AdventOfCode.Y2021.Day4
       Javran.AdventOfCode.Y2021.Day5
       Javran.AdventOfCode.Y2021.Day6
-      Javran.AdventOfCode.Y2021.Main
   other-modules:
       Paths_advent_of_code
   autogen-modules:

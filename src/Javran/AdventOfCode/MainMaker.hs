@@ -5,7 +5,6 @@
 
 module Javran.AdventOfCode.MainMaker
   ( runSomeSolution
-  , mkYearlyMain
   , exampleRawInputRelativePath
   , runSolutionWithExampleAndWriteExpect
   )
@@ -35,6 +34,7 @@ runSolutionWithExampleAndWriteExpect p mTerm = do
       subPath = exampleRawInputRelativePath yyyy dd
   T.writeFile fpTarget actualOutput
   putStrLn $ "Written to: " <> fpTarget
+  -- TODO: also update README?
   performTestdataSpecHashSync
 
 runSomeSolution :: SomeSolution -> SubCmdContext -> IO ()
@@ -59,20 +59,3 @@ runSomeSolution (SomeSolution s) SubCmdContext {cmdHelpPrefix, mTerm} = do
        in newCommandForYearDay yyyy dd
     _ ->
       die $ cmdHelpPrefix <> "[e|example|l|login|edit-example|write-expect|new]"
-
-mkYearlyMain :: Int -> [SomeSolution] -> SubCmdContext -> IO ()
-mkYearlyMain year collectedSolutions = yearlyMain
-  where
-    solutionRunners = mk <$> collectedSolutions
-      where
-        mk ss@(SomeSolution s) = case solutionIndex s of
-          (yyyy, dd)
-            | yyyy == year ->
-              (show dd, runSomeSolution ss)
-          solInd -> error $ "Invalid solution index: " <> show solInd
-
-    yearlyMain :: SubCmdContext -> IO ()
-    yearlyMain ctxt = do
-      dispatchToSubCmds
-        ctxt
-        solutionRunners

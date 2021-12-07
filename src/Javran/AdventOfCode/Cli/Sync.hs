@@ -39,36 +39,15 @@ performYearlyModuleSync = do
   projectHome <- getEnv "PROJECT_HOME"
   let baseDir = projectHome </> "src" </> "Javran" </> "AdventOfCode"
   yearDs <- listDirectory baseDir >>= filterM (\p -> doesDirectoryExist (baseDir </> p))
+  -- collect import lines.
   importLines <- fmap concat <$> forM (sort yearDs) $ \moduleComp -> case consumeAllWithReadP yearModuleP moduleComp of
     Just year -> do
       let yearDir = baseDir </> moduleComp
       dayFs <- listDirectory yearDir >>= filterM (\p -> doesFileExist (yearDir </> p))
-      let days =
-            sort $
-              mapMaybe
-                (consumeAllWithReadP dayFileP)
-                dayFs
-          moduleFp = yearDir </> "Main.hs"
-      let importLines = generateModuleImports year days
-          extractSecCb =
-            (\prevSec bm sec em postSec ->
-               if sec == importLines
-                 then -- nothing is changed.
-                   (error "no need for editing.", Just False)
-                 else
-                   ( prevSec <> [bm] <> importLines <> [em] <> postSec
-                   , Just True
-                   ))
-      let prefix = 'Y' : show year <> ": "
-      mayEditFileWithSpecialSection
-        moduleFp
-        prefix
-        "{- ORMOLU_DISABLE -}"
-        "{- ORMOLU_ENABLE -}"
-        extractSecCb
-      pure importLines
+      let days = sort $ mapMaybe (consumeAllWithReadP dayFileP) dayFs
+      pure $ generateModuleImports year days
     Nothing -> pure []
-  -- also write to the Solutions module.
+  -- write to the Solutions module.
   do
     let moduleFp = projectHome </> "src" </> "Javran" </> "AdventOfCode" </> "Solutions.hs"
         extractSecCb =
