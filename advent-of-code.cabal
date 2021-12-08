@@ -103,6 +103,7 @@ library
       Javran.AdventOfCode.Network
       Javran.AdventOfCode.Prelude
       Javran.AdventOfCode.Solutions
+      Javran.AdventOfCode.Testdata
       Javran.AdventOfCode.TH
       Javran.AdventOfCode.Y2019.Day1
       Javran.AdventOfCode.Y2019.Day2
@@ -139,10 +140,6 @@ library
       Javran.AdventOfCode.Y2021.Day6
       Javran.AdventOfCode.Y2021.Day7
       Javran.AdventOfCode.Y2021.Day8
-  other-modules:
-      Paths_advent_of_code
-  autogen-modules:
-      Paths_advent_of_code
   hs-source-dirs:
       src
   ghc-options: -Wall -O2
@@ -183,8 +180,6 @@ library
 
 executable run-advent-of-code
   main-is: Main.hs
-  other-modules:
-      Paths_advent_of_code
   hs-source-dirs:
       exe
   ghc-options: -Wall -O2 -threaded -rtsopts -with-rtsopts=-N

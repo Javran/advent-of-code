@@ -50,8 +50,6 @@ library:
   ghc-options:
     - -Wall
     - -O2
-  generated-other-modules:
-    - Paths_advent_of_code
   # https://github.com/commercialhaskell/stack/issues/5503#issuecomment-799909211
   when:
     - condition: false
@@ -70,6 +68,10 @@ executables:
       - -threaded
       - -rtsopts
       - -with-rtsopts=-N
+    when:
+      - condition: false
+        other-modules:
+          - Paths_advent_of_code
 
 tests:
   hspec:
@@ -89,7 +91,3 @@ tests:
       - -main-is Spec
     generated-other-modules:
       - Paths_advent_of_code
-    when:
-      - condition: false
-        other-modules:
-        - Paths_advent_of_code
