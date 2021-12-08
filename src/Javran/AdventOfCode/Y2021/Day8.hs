@@ -91,8 +91,8 @@ instance Solution Day8 where
     answerShow $
       sum $ do
         (ls, rs) <- xs
-        let [a, b, c, d, e, f, g] = solve ls
-            m = M.fromList $ zip [a, b, c, d, e, f, g] ['a' .. 'g']
+        let solution = solve ls
+            m = M.fromList $ zip solution ['a' .. 'g']
             translate =
               (wireMap M.!)
                 . S.fromList
