@@ -28,7 +28,6 @@ import System.Environment
 import System.Exit
 import System.FilePath.Posix
 import System.IO
-import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BSC
 import Javran.AdventOfCode.Network (submitAnswer)
 data ExampleName

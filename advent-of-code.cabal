@@ -16,6 +16,8 @@ build-type:     Simple
 data-files:
     data/testdata/2019/day/1/example.input.txt
     data/testdata/2019/day/2/example.input.txt
+    data/testdata/2019/day/3/0.input.txt
+    data/testdata/2019/day/3/1.input.txt
     data/testdata/2019/day/3/example.input.txt
     data/testdata/2020/day/1/example.input.txt
     data/testdata/2020/day/10/example.input.txt
@@ -52,6 +54,9 @@ data-files:
     data/testdata/2021/day/8/example.input.txt
     data/testdata/2019/day/1/example.expect.txt
     data/testdata/2019/day/2/example.expect.txt
+    data/testdata/2019/day/3/0.expect.txt
+    data/testdata/2019/day/3/1.expect.txt
+    data/testdata/2019/day/3/example.expect.txt
     data/testdata/2020/day/1/example.expect.txt
     data/testdata/2020/day/10/example.expect.txt
     data/testdata/2020/day/11/example.expect.txt
