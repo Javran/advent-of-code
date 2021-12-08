@@ -13,6 +13,7 @@ module Javran.AdventOfCode.Cli.SolutionCommand.SolutionMain
 where
 
 import Control.Monad
+import qualified Data.ByteString.Lazy as BSL
 import qualified Data.Text.IO as T
 import Javran.AdventOfCode.Cli.EditExample
 import Javran.AdventOfCode.Cli.New
@@ -20,7 +21,9 @@ import Javran.AdventOfCode.Cli.ProgressReport
 import Javran.AdventOfCode.Cli.TestdataDigest
 import Javran.AdventOfCode.Infra
 import Javran.AdventOfCode.Solutions
+import Javran.AdventOfCode.Testdata (TestdataInfo (..), scanForSolution)
 import System.Console.Terminfo
+import System.Directory
 import System.Environment
 import System.Exit
 import System.FilePath.Posix
@@ -43,18 +46,26 @@ data Command
   | CmdWriteExampleExpect
   | CmdNewSolution
 
-{-
-  TODO: write-expect should scan all examples and write to them.
- -}
 runSolutionWithExampleAndWriteExpect :: forall p sol. Solution sol => p sol -> Maybe Terminal -> IO ()
 runSolutionWithExampleAndWriteExpect p mTerm = do
   projectHome <- getEnv "PROJECT_HOME"
-  let (yyyy, dd) = solutionIndex p
-  actualOutput <- runSolutionWithExampleInput p True mTerm
-  let fpTarget = projectHome </> subPath </> "example.expect.txt"
-      subPath = exampleRawInputRelativePath yyyy dd
-  T.writeFile fpTarget actualOutput
-  putStrLn $ "Written to: " <> fpTarget
+  let solInd@(yyyy, dd) = solutionIndex p
+  tis <- scanForSolution projectHome solInd
+  forM_ tis $ \TestdataInfo {inputFilePath, tag} -> do
+    putStrLn $ "Processing tag: " <> tag <> " ..."
+    actualOutput <- runSolutionWithInputGetter p (\_ _ -> BSL.readFile inputFilePath) False mTerm
+    let fpTarget = projectHome </> subPath </> (tag <> ".expect.txt")
+        subPath = exampleRawInputRelativePath yyyy dd
+    mExistingOutput <- do
+      e <- doesFileExist fpTarget
+      if e
+        then Just <$> T.readFile fpTarget
+        else pure Nothing
+    if mExistingOutput == Just actualOutput
+      then putStrLn $ "Unchanged: " <> fpTarget
+      else do
+        T.writeFile fpTarget actualOutput
+        putStrLn $ "Written to: " <> fpTarget
   performTestdataSpecHashSync
   performReadmeProgressSync
 
