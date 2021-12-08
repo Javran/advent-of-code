@@ -10,7 +10,6 @@ import qualified Javran.AdventOfCode.Cli.ProgressReport as CliReport
 import qualified Javran.AdventOfCode.Cli.SolutionCommand as SolutionCommand
 import qualified Javran.AdventOfCode.Cli.Sync as CliSync
 import Javran.AdventOfCode.Infra
-import Javran.AdventOfCode.Network
 import System.Console.Terminfo
 import System.Environment
 

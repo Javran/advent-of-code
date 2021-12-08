@@ -125,8 +125,12 @@ runMainWith SubCmdContext {cmdHelpPrefix, mTerm} year day args = do
           case cmd of
             CmdNewSolution -> error "unreachable"
             CmdRunLogin -> void $ runSolutionWithLoginInput s True mTerm
-            CmdRunExample _e -> void $ runSolutionWithExampleInput s True mTerm
-            CmdEditExample _e -> editExample year day
+            CmdRunExample _e ->
+              -- TODO: example other than `example`
+              void $ runSolutionWithExampleInput s True mTerm
+            CmdEditExample _e ->
+              -- TODO: example other than `example`
+              editExample year day
             CmdWriteExampleExpect ->
               runSolutionWithExampleAndWriteExpect s mTerm
         Nothing ->

@@ -48,6 +48,7 @@ data-files:
     data/testdata/2021/day/5/example.input.txt
     data/testdata/2021/day/6/example.input.txt
     data/testdata/2021/day/7/example.input.txt
+    data/testdata/2021/day/8/example.input.txt
     data/testdata/2019/day/1/example.expect.txt
     data/testdata/2019/day/2/example.expect.txt
     data/testdata/2020/day/1/example.expect.txt
@@ -82,6 +83,7 @@ data-files:
     data/testdata/2021/day/5/example.expect.txt
     data/testdata/2021/day/6/example.expect.txt
     data/testdata/2021/day/7/example.expect.txt
+    data/testdata/2021/day/8/example.expect.txt
 
 source-repository head
   type: git
@@ -136,6 +138,7 @@ library
       Javran.AdventOfCode.Y2021.Day5
       Javran.AdventOfCode.Y2021.Day6
       Javran.AdventOfCode.Y2021.Day7
+      Javran.AdventOfCode.Y2021.Day8
   other-modules:
       Paths_advent_of_code
   autogen-modules:
