@@ -23,6 +23,24 @@ where
   - <year> <day> <subcommand> <subcommand args>...: this should preserve
     the old behavior.
   - <year> <day> new: create solution from template
+
+  (TODO) Example tooling:
+
+  - <prog> <year> <day> edit-example [<arg>]
+
+    + assume "example" if <arg> is not given
+    + reserve "all" to run all examples (not allowed to edit)
+    + if "+", iterate from 0 until one empty file (or non-existing file), and edit it.
+    + otherwise read from <arg>.input.txt
+
+  - <prog> <year> <day> example [<arg>]
+
+    for determining the input file:
+
+    + assume "example" if <arg> is not given
+    + reserve "all" to run all examples
+    + otherwise read from <arg>.input.txt
+
  -}
 
 import Control.Monad
@@ -96,6 +114,16 @@ runSolutionWithExampleAndWriteExpect p mTerm = do
   putStrLn $ "Written to: " <> fpTarget
   performTestdataSpecHashSync
   performReadmeProgressSync
+
+data ExampleName
+  = -- | if an example name can be parsed as an unsigned int, it must.
+    ExNum Word
+  | -- | otherwise we need a name (must be non-empty)
+    ExName String
+  | -- | (only valid for edit) special name for adding examples, should resolve to an empty or non-existing example
+    ExAdd
+  | -- | (only valid for running) special name for running all examples
+    ExAll
 
 runSomeSolution :: SomeSolution -> SubCmdContext -> IO ()
 runSomeSolution (SomeSolution s) SubCmdContext {cmdHelpPrefix, mTerm} = do
