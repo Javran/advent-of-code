@@ -88,14 +88,13 @@ instance Solution Day8 where
     answerShow $
       countLength (`elem` [2, 4, 3, 7]) $
         fmap length $ concatMap snd xs
-    answerShow $
-      sum $ do
-        (ls, rs) <- xs
-        let solution = solve ls
-            m = M.fromList $ zip solution ['a' .. 'g']
-            translate =
-              (wireMap M.!)
-                . S.fromList
-                . fmap (m M.!)
-            digits = fmap translate rs
-        pure (foldl (\acc i -> acc * 10 + i) 0 digits)
+    answerShow $ sum do
+      (ls, rs) <- xs
+      let solution = solve ls
+          m = M.fromList $ zip solution ['a' .. 'g']
+          translate =
+            (wireMap M.!)
+              . S.fromList
+              . fmap (m M.!)
+          digits = fmap translate rs
+      pure (foldl (\acc i -> acc * 10 + i) 0 digits)
