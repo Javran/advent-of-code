@@ -1,3 +1,4 @@
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE LambdaCase #-}
 
 module Javran.AdventOfCode.Main
@@ -12,14 +13,18 @@ import qualified Javran.AdventOfCode.Cli.Sync as CliSync
 import Javran.AdventOfCode.Infra
 import System.Console.Terminfo
 import System.Environment
+import Network.HTTP.Client
+import Network.HTTP.Client.TLS
 
 main :: IO ()
 main = do
   t <- setupTermFromEnv
+  manager <- newManager tlsManagerSettings
   let ctxt =
         SubCmdContext
           { cmdHelpPrefix = "<prog> "
           , mTerm = Just t
+          , manager
           }
   getArgs >>= \case
     args

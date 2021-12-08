@@ -60,6 +60,7 @@ import System.IO
 import qualified System.IO.Strict
 import Text.ParserCombinators.ReadP
 import qualified Turtle.Bytes as TBytes
+import Network.HTTP.Client (Manager)
 
 consumeOrDie :: ReadP a -> String -> a
 consumeOrDie p = fromJust . consumeAllWithReadP p
@@ -101,6 +102,7 @@ prepareDataPath rsc = do
 data SubCmdContext = SubCmdContext
   { mTerm :: Maybe Terminal
   , cmdHelpPrefix :: String
+  , manager :: Manager
   }
 
 type SubCmdHandlers = [(String, SubCmdContext -> IO ())]

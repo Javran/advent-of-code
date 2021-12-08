@@ -28,7 +28,9 @@ import System.Environment
 import System.Exit
 import System.FilePath.Posix
 import System.IO
-
+import qualified Data.ByteString as BS
+import qualified Data.ByteString.Char8 as BSC
+import Javran.AdventOfCode.Network (submitAnswer)
 data ExampleName
   = -- | if an example name can be parsed as an unsigned int, it must.
     ExNum Word
@@ -45,6 +47,7 @@ data Command
   | CmdEditExample ExampleName
   | CmdWriteExampleExpect
   | CmdNewSolution
+  | CmdSubmit Int String
 
 runSolutionWithExampleAndWriteExpect :: forall p sol. Solution sol => p sol -> Maybe Terminal -> IO ()
 runSolutionWithExampleAndWriteExpect p mTerm = do
@@ -101,6 +104,10 @@ parseArgs = \case
             maybe (pure defExample) parseExampleName mx
         | cmd == "write-expect" -> CmdWriteExampleExpect <$ expectNoExtra args
         | cmd == "new" -> CmdNewSolution <$ expectNoExtra args
+        | cmd == "submit" -> do
+            -- TODO: be more rigid on this.
+            let [whichRaw, answer] = args
+            pure $ CmdSubmit (read whichRaw) answer
         | otherwise -> Left $ "Unrecognized: " <> unwords (cmd : args)
   where
     defExample = ExName "example"
@@ -120,7 +127,7 @@ parseArgs = \case
   to here with `<action> <args>...` passed as function parameter to here.
  -}
 runMainWith :: SubCmdContext -> Int -> Int -> [String] -> IO ()
-runMainWith SubCmdContext {cmdHelpPrefix, mTerm} year day args = do
+runMainWith SubCmdContext {cmdHelpPrefix, mTerm, manager} year day args = do
   cmd <- case parseArgs args of
     Left msg -> do
       hPutStrLn stderr msg
@@ -144,5 +151,8 @@ runMainWith SubCmdContext {cmdHelpPrefix, mTerm} year day args = do
               editExample year day
             CmdWriteExampleExpect ->
               runSolutionWithExampleAndWriteExpect s mTerm
+            CmdSubmit part answer -> do
+              mySession <- getEnv "ADVENT_OF_CODE_SESSION"
+              submitAnswer manager (BSC.pack mySession) year day part (BSC.pack answer) >>= mapM_ T.putStrLn
         Nothing ->
           die "No solution available, only `new` command is accepted."
