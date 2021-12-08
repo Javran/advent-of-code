@@ -10,7 +10,6 @@ module Javran.AdventOfCode.Y2021.Day8
   )
 where
 
-import Control.Monad
 import Data.Bifunctor
 import qualified Data.IntMap.Strict as IM
 import Data.List
@@ -50,7 +49,19 @@ solve ds = [a, b, c, d, e, f, g]
     [c] = mustBeCF \\ [f]
     [a] = mustBeACF \\ mustBeCF
 
-    -- clues from freq of appearance
+    {-
+      if we count how many times each letter appear in all 10 digits
+      and use the frequency as key:
+
+      - 4: {e}
+      - 6: {b}
+      - 7: {d,g}
+      - 8: {a,c}
+      - 9: {f}
+
+      this together with clues from digits is sufficient
+      to derive the unique solution.
+     -}
     [ (4, [e])
       , (6, [b])
       , (7, mustBeDG)
@@ -63,9 +74,9 @@ solve ds = [a, b, c, d, e, f, g]
       M.toAscList . M.fromListWith (+) . fmap (,1) . concat $ ds
 
     -- clues from '1' '4' '7'
-    [mustBeCF] = lMap IM.! 2
-    [mustBeBCDF] = lMap IM.! 4
-    [mustBeACF] = lMap IM.! 3
+    [mustBeCF] = lMap IM.! 2 -- 1
+    [mustBeBCDF] = lMap IM.! 4 -- 4
+    [mustBeACF] = lMap IM.! 3 -- 7
     lMap = IM.fromListWith (<>) $ fmap (\v -> (length v, [v])) ds
 
 instance Solution Day8 where
@@ -74,16 +85,17 @@ instance Solution Day8 where
           let [x, y] = splitOn ["|"] . words $ raw
            in (x, y)
     xs <- fmap parseLine . lines <$> getInputS
-    let ys = fmap snd xs
     answerShow $
-      countLength (\v -> v `elem` [2, 4, 3, 7]) $ fmap length $ concat ys
-    ts <- forM xs $ \(ls, rs) -> do
-      let [a, b, c, d, e, f, g] = solve ls
-          m = M.fromList $ zip [a, b, c, d, e, f, g] ['a' .. 'g']
-          translate =
-            (wireMap M.!)
-              . S.fromList
-              . fmap (m M.!)
-          digits = fmap translate rs
-      pure (foldl (\acc i -> acc * 10 + i) 0 digits)
-    answerShow $ sum ts
+      countLength (`elem` [2, 4, 3, 7]) $
+        fmap length $ concatMap snd xs
+    answerShow $
+      sum $ do
+        (ls, rs) <- xs
+        let [a, b, c, d, e, f, g] = solve ls
+            m = M.fromList $ zip [a, b, c, d, e, f, g] ['a' .. 'g']
+            translate =
+              (wireMap M.!)
+                . S.fromList
+                . fmap (m M.!)
+            digits = fmap translate rs
+        pure (foldl (\acc i -> acc * 10 + i) 0 digits)
