@@ -3,7 +3,7 @@
 
 module Javran.AdventOfCode.Cli.TestdataDigest
   ( computeTestdataDirDigestTextRep
-    , performTestdataSpecHashSync
+  , performTestdataSpecHashSync
   )
 where
 
@@ -16,14 +16,13 @@ import Data.List
 import Data.Text.Encoding
 import Data.Word
 import qualified Filesystem.Path.CurrentOS as FP
+import Javran.AdventOfCode.Infra
 import Javran.AdventOfCode.Prelude
 import Numeric
 import System.Environment
+import System.FilePath.Posix
 import Turtle.Prelude hiding (sort)
 import Turtle.Shell
-import Javran.AdventOfCode.Infra
-import System.FilePath.Posix
-
 
 digestTextRep :: BS.ByteString -> String
 digestTextRep = ($ []) . foldr (\i f -> paddedHex i . f) id . BS.unpack

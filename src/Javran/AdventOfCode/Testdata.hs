@@ -13,6 +13,16 @@ module Javran.AdventOfCode.Testdata
   )
 where
 
+{-
+  TODO: testdata related logic are scattered everywhere.
+  if possible, we should consolidate all of those into this module.
+
+  TODO: direct use of directory is a bit awkward that I should
+  probably switch to turtle for this module as well, which
+  should make it easier to merge things from TestdataDigest to here.
+
+ -}
+
 import Control.Monad
 import Data.List
 import Data.Maybe
