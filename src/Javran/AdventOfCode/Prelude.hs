@@ -24,6 +24,7 @@ import Data.Monoid
 import Javran.AdventOfCode.Infra
   ( Solution (..)
   , SolutionContext (..)
+  , consumeOrDie
   , consumeAllWithReadP
   , consumeExtraLeadingLines
   , decimal1P
