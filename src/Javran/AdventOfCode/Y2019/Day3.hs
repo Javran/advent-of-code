@@ -60,7 +60,6 @@ applyInstr (d, n) = replicateM_ n do
     )
 
 instance Solution Day3 where
-  solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     [xs, ys] <- fmap (consumeOrDie (instrP `sepBy` char ',')) . lines <$> getInputS
     let initSt = (((0, 0), 0), M.empty)
