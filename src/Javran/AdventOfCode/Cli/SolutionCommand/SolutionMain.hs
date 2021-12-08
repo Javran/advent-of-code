@@ -13,7 +13,6 @@ module Javran.AdventOfCode.Cli.SolutionCommand.SolutionMain
 where
 
 import Control.Monad
-import Data.Maybe
 import qualified Data.Text.IO as T
 import Javran.AdventOfCode.Cli.EditExample
 import Javran.AdventOfCode.Cli.New
@@ -25,6 +24,7 @@ import System.Console.Terminfo
 import System.Environment
 import System.Exit
 import System.FilePath.Posix
+import System.IO
 
 data ExampleName
   = -- | if an example name can be parsed as an unsigned int, it must.
@@ -57,29 +57,6 @@ runSolutionWithExampleAndWriteExpect p mTerm = do
   putStrLn $ "Written to: " <> fpTarget
   performTestdataSpecHashSync
   performReadmeProgressSync
-
-runSomeSolution :: SomeSolution -> SubCmdContext -> IO ()
-runSomeSolution (SomeSolution s) SubCmdContext {cmdHelpPrefix, mTerm} = do
-  args <- getArgs
-  let runLogin = void $ runSolutionWithLoginInput s True mTerm
-      runExample = void $ runSolutionWithExampleInput s True mTerm
-  case args of
-    [] ->
-      runLogin
-    ["l"] -> runLogin
-    ["login"] -> runLogin
-    ["e"] -> runExample
-    ["example"] -> runExample
-    ["edit-example"] ->
-      let (yyyy, dd) = solutionIndex s
-       in editExample yyyy dd
-    ["write-expect"] ->
-      runSolutionWithExampleAndWriteExpect s mTerm
-    ["new"] ->
-      let (yyyy, dd) = solutionIndex s
-       in newCommandForYearDay yyyy dd
-    _ ->
-      die $ cmdHelpPrefix <> "[e|example|l|login|edit-example|write-expect|new]"
 
 parseExampleName :: String -> Either String ExampleName
 parseExampleName xs
@@ -132,11 +109,25 @@ parseArgs = \case
   to here with `<action> <args>...` passed as function parameter to here.
  -}
 runMainWith :: SubCmdContext -> Int -> Int -> [String] -> IO ()
-runMainWith ctxt year day args = case getSolution year day of
-  Just ss ->
-    withArgs args $ runSomeSolution ss ctxt
-  Nothing ->
-    case args of
-      ["new"] -> newCommandForYearDay year day
-      _ ->
-        die "No solution available, only `new` command is accepted."
+runMainWith SubCmdContext {cmdHelpPrefix, mTerm} year day args = do
+  cmd <- case parseArgs args of
+    Left msg -> do
+      hPutStrLn stderr msg
+      die $ cmdHelpPrefix <> "[e|example|l|login|edit-example|write-expect|new]"
+    Right v -> pure v
+  case cmd of
+    CmdNewSolution ->
+      -- new is valid whether a solution exists or not.
+      newCommandForYearDay year day
+    _ ->
+      case getSolution year day of
+        Just (SomeSolution s) ->
+          case cmd of
+            CmdNewSolution -> error "unreachable"
+            CmdRunLogin -> void $ runSolutionWithLoginInput s True mTerm
+            CmdRunExample _e -> void $ runSolutionWithExampleInput s True mTerm
+            CmdEditExample _e -> editExample year day
+            CmdWriteExampleExpect ->
+              runSolutionWithExampleAndWriteExpect s mTerm
+        Nothing ->
+          die "No solution available, only `new` command is accepted."
