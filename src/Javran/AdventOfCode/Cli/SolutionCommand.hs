@@ -1,6 +1,5 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 
@@ -43,19 +42,10 @@ where
 
  -}
 
-import Control.Monad
 import qualified Data.IntMap.Strict as IM
-import qualified Data.Text.IO as T
-import Javran.AdventOfCode.Cli.EditExample
-import Javran.AdventOfCode.Cli.New
-import Javran.AdventOfCode.Cli.ProgressReport
-import Javran.AdventOfCode.Cli.TestdataDigest
+import Javran.AdventOfCode.Cli.SolutionCommand.SolutionMain
 import Javran.AdventOfCode.Infra
 import Javran.AdventOfCode.Solutions
-import System.Console.Terminfo
-import System.Environment
-import System.Exit
-import System.FilePath.Posix
 
 data CommandMode
   = ModeList [String]
@@ -73,6 +63,13 @@ parse = \case
       ys -> pure $ ModeYear year ys
   _ -> Nothing
 
+{-
+
+  Handles commands dispatched from main entry,
+  in many cases this is further dispatched to SolutionMain.runMainWith
+  if a specific year and day are given.
+
+ -}
 subCommand :: SubCmdContext -> CommandMode -> IO ()
 subCommand ctxt mode = do
   let SubCmdContext {cmdHelpPrefix = _unused} = ctxt
@@ -91,59 +88,4 @@ subCommand ctxt mode = do
         Just yearSols ->
           mapM_ (print . (\(_, SomeSolution s) -> solutionIndex s)) (IM.toAscList yearSols)
     ModeYearDay year day xs ->
-      case getSolution year day of
-        Just ss ->
-          withArgs xs $ runSomeSolution ss ctxt
-        Nothing ->
-          case xs of
-            ["new"] -> newCommandForYearDay year day
-            _ ->
-              die "No solution available, only `new` command is accepted."
-
-{-
-  TODO: write-expect should scan all examples and write to them.
- -}
-runSolutionWithExampleAndWriteExpect :: forall p sol. Solution sol => p sol -> Maybe Terminal -> IO ()
-runSolutionWithExampleAndWriteExpect p mTerm = do
-  projectHome <- getEnv "PROJECT_HOME"
-  let (yyyy, dd) = solutionIndex p
-  actualOutput <- runSolutionWithExampleInput p True mTerm
-  let fpTarget = projectHome </> subPath </> "example.expect.txt"
-      subPath = exampleRawInputRelativePath yyyy dd
-  T.writeFile fpTarget actualOutput
-  putStrLn $ "Written to: " <> fpTarget
-  performTestdataSpecHashSync
-  performReadmeProgressSync
-
-data ExampleName
-  = -- | if an example name can be parsed as an unsigned int, it must.
-    ExNum Word
-  | -- | otherwise we need a name (must be non-empty)
-    ExName String
-  | -- | (only valid for edit) special name for adding examples, should resolve to an empty or non-existing example
-    ExAdd
-  | -- | (only valid for running) special name for running all examples
-    ExAll
-
-runSomeSolution :: SomeSolution -> SubCmdContext -> IO ()
-runSomeSolution (SomeSolution s) SubCmdContext {cmdHelpPrefix, mTerm} = do
-  args <- getArgs
-  let runLogin = void $ runSolutionWithLoginInput s True mTerm
-      runExample = void $ runSolutionWithExampleInput s True mTerm
-  case args of
-    [] ->
-      runLogin
-    ["l"] -> runLogin
-    ["login"] -> runLogin
-    ["e"] -> runExample
-    ["example"] -> runExample
-    ["edit-example"] ->
-      let (yyyy, dd) = solutionIndex s
-       in editExample yyyy dd
-    ["write-expect"] ->
-      runSolutionWithExampleAndWriteExpect s mTerm
-    ["new"] ->
-      let (yyyy, dd) = solutionIndex s
-       in newCommandForYearDay yyyy dd
-    _ ->
-      die $ cmdHelpPrefix <> "[e|example|l|login|edit-example|write-expect|new]"
+      runMainWith ctxt year day xs
