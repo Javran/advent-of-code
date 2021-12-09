@@ -1,11 +1,10 @@
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 
-
 module Javran.AdventOfCode.Cli.EditExample
   ( editExample
+  , editExampleWithName
   )
 where
 
@@ -20,12 +19,12 @@ import System.Exit
 import System.FilePath.Posix
 import qualified Turtle.Bytes as TBytes
 
-editExample :: Int -> Int -> IO ()
-editExample yyyy dd = do
+editExampleWithName :: Int -> Int -> FilePath -> IO ()
+editExampleWithName yyyy dd eName = do
   mEditorCmd <- lookupEnv "EDITOR"
   projectHome <- getEnv "PROJECT_HOME"
   let subPath = exampleRawInputRelativePath yyyy dd
-      exampleInputFileName = "example.input.txt"
+      exampleInputFileName = eName <> ".input.txt"
       exampleDir = projectHome </> subPath
   createDirectoryIfMissing True exampleDir
   let exampleFp = exampleDir </> exampleInputFileName
@@ -45,3 +44,6 @@ editExample yyyy dd = do
         print mEditorCmd
         putStrLn "EDITOR is empty, please edit the file manually:"
         putStrLn exampleFp
+
+editExample :: Int -> Int -> IO ()
+editExample yyyy dd = editExampleWithName yyyy dd "example"

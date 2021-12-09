@@ -62,10 +62,16 @@ data Command
   | CmdNewSolution
   | CmdSubmit Int String
 
+exampleNameToName :: ExampleName -> FilePath
+exampleNameToName = \case
+  ExNum i -> show i
+  ExName n -> n
+  _ -> error "unsupported"
+
 getExampleInputPath :: Int -> Int -> ExampleName -> FilePath
 getExampleInputPath year day = \case
-  ExNum i -> subPath </> (show i <> ".input.txt")
-  ExName n -> subPath </> (n <> ".input.txt")
+  e@ExNum {} -> subPath </> (exampleNameToName e <> ".input.txt")
+  e@ExName {} -> subPath </> (exampleNameToName e <> ".input.txt")
   ExAdd -> todo
   ExAll -> todo
   where
@@ -170,9 +176,8 @@ runMainWith SubCmdContext {cmdHelpPrefix, mTerm, manager} year day args = do
               projectHome <- getEnv "PROJECT_HOME"
               let inputFilePath = projectHome </> getExampleInputPath year day e
               void $ runSolutionWithInputGetter s (\_ _ -> BSL.readFile inputFilePath) True mTerm
-            CmdEditExample _e ->
-              -- TODO: example other than `example`
-              editExample year day
+            CmdEditExample e ->
+              editExampleWithName year day (exampleNameToName e)
             CmdWriteExampleExpect ->
               runSolutionWithExampleAndWriteExpect s mTerm
             CmdSubmit part answer -> do
