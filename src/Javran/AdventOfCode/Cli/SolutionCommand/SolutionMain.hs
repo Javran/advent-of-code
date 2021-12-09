@@ -13,6 +13,7 @@ module Javran.AdventOfCode.Cli.SolutionCommand.SolutionMain
 where
 
 import Control.Monad
+import qualified Data.ByteString.Char8 as BSC
 import qualified Data.ByteString.Lazy as BSL
 import qualified Data.Text.IO as T
 import Javran.AdventOfCode.Cli.EditExample
@@ -20,6 +21,7 @@ import Javran.AdventOfCode.Cli.New
 import Javran.AdventOfCode.Cli.ProgressReport
 import Javran.AdventOfCode.Cli.TestdataDigest
 import Javran.AdventOfCode.Infra
+import Javran.AdventOfCode.Network (submitAnswer)
 import Javran.AdventOfCode.Solutions
 import Javran.AdventOfCode.Testdata (TestdataInfo (..), scanForSolution)
 import System.Console.Terminfo
@@ -28,8 +30,20 @@ import System.Environment
 import System.Exit
 import System.FilePath.Posix
 import System.IO
-import qualified Data.ByteString.Char8 as BSC
-import Javran.AdventOfCode.Network (submitAnswer)
+
+{-
+  TODO: better example naming spec:
+
+  - ExDef: default example, "example"
+
+  - ExNum: a non-negative number (note that "001" and "1" could be regarded as identical,
+    but for now I don't really think this is a problem worth fixing.
+
+  - ExString: other things that cannot be parsed
+    ("all" is a special name that is not allowed to be the name of one specific example).
+
+ -}
+
 data ExampleName
   = -- | if an example name can be parsed as an unsigned int, it must.
     ExNum Word
@@ -104,9 +118,9 @@ parseArgs = \case
         | cmd == "write-expect" -> CmdWriteExampleExpect <$ expectNoExtra args
         | cmd == "new" -> CmdNewSolution <$ expectNoExtra args
         | cmd == "submit" -> do
-            -- TODO: be more rigid on this.
-            let [whichRaw, answer] = args
-            pure $ CmdSubmit (read whichRaw) answer
+          -- TODO: be more rigid on this.
+          let [whichRaw, answer] = args
+          pure $ CmdSubmit (read whichRaw) answer
         | otherwise -> Left $ "Unrecognized: " <> unwords (cmd : args)
   where
     defExample = ExName "example"
