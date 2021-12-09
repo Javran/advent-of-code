@@ -93,6 +93,7 @@ data-files:
     data/testdata/2021/day/6/example.expect.txt
     data/testdata/2021/day/7/example.expect.txt
     data/testdata/2021/day/8/example.expect.txt
+    data/testdata/2021/day/9/example.expect.txt
 
 source-repository head
   type: git

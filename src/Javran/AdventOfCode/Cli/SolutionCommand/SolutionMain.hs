@@ -62,6 +62,16 @@ data Command
   | CmdNewSolution
   | CmdSubmit Int String
 
+getExampleInputPath :: Int -> Int -> ExampleName -> FilePath
+getExampleInputPath year day = \case
+  ExNum i -> subPath </> (show i <> ".input.txt")
+  ExName n -> subPath </> (n <> ".input.txt")
+  ExAdd -> todo
+  ExAll -> todo
+  where
+    subPath = "data" </> "testdata" </> show year </> "day" </> show day
+    todo = error "TODO"
+
 runSolutionWithExampleAndWriteExpect :: forall p sol. Solution sol => p sol -> Maybe Terminal -> IO ()
 runSolutionWithExampleAndWriteExpect p mTerm = do
   projectHome <- getEnv "PROJECT_HOME"
@@ -156,9 +166,10 @@ runMainWith SubCmdContext {cmdHelpPrefix, mTerm, manager} year day args = do
           case cmd of
             CmdNewSolution -> error "unreachable"
             CmdRunLogin -> void $ runSolutionWithLoginInput s True mTerm
-            CmdRunExample _e ->
-              -- TODO: example other than `example`
-              void $ runSolutionWithExampleInput s True mTerm
+            CmdRunExample e -> do
+              projectHome <- getEnv "PROJECT_HOME"
+              let inputFilePath = projectHome </> getExampleInputPath year day e
+              void $ runSolutionWithInputGetter s (\_ _ -> BSL.readFile inputFilePath) True mTerm
             CmdEditExample _e ->
               -- TODO: example other than `example`
               editExample year day
