@@ -53,6 +53,7 @@ data-files:
     data/testdata/2021/day/6/example.input.txt
     data/testdata/2021/day/7/example.input.txt
     data/testdata/2021/day/8/example.input.txt
+    data/testdata/2021/day/9/example.input.txt
     data/testdata/2019/day/1/example.expect.txt
     data/testdata/2019/day/2/example.expect.txt
     data/testdata/2019/day/3/0.expect.txt
@@ -150,6 +151,7 @@ library
       Javran.AdventOfCode.Y2021.Day6
       Javran.AdventOfCode.Y2021.Day7
       Javran.AdventOfCode.Y2021.Day8
+      Javran.AdventOfCode.Y2021.Day9
   hs-source-dirs:
       src
   ghc-options: -Wall -O2
