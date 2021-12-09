@@ -13,6 +13,7 @@ module Javran.AdventOfCode.Prelude
   , universe
   , -- infrastructures
     module Javran.AdventOfCode.Infra
+  , module Petbox
   )
 where
 
@@ -24,11 +25,12 @@ import Data.Monoid
 import Javran.AdventOfCode.Infra
   ( Solution (..)
   , SolutionContext (..)
-  , consumeOrDie
   , consumeAllWithReadP
   , consumeExtraLeadingLines
+  , consumeOrDie
   , decimal1P
   )
+import Petbox
 
 universe :: (Enum a, Bounded a) => [a]
 universe = [minBound .. maxBound]
@@ -44,22 +46,3 @@ errInvalid = error "invalid input"
 
 unreachable :: a
 unreachable = error "unreachable"
-
--- | non-deterministically picking an element from the given list,
---   separating the selected element and all other remaining elements
---   the list order is preserved
---   e.g. pick [1,2,3] == [(1,[2,3]),(2,[1,3]),(3,[1,2])]
-pick :: [a] -> [(a, [a])]
-pick xs = map splitAux (init $ zip (inits xs) (tails xs))
-  where
-    splitAux (ls, v : rs) = (v, ls ++ rs)
-    splitAux _ = error "cannot split empty list"
-
-{-
-  like "pick", but whenever an element picked,
-  all elements before it will be dropped. This has the effect of only picking
-  elements in order.
- -}
-pickInOrder :: [a] -> [] (a, [a])
-pickInOrder [] = []
-pickInOrder (x : xs) = (x, xs) : pickInOrder xs

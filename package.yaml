@@ -47,6 +47,7 @@ library:
     - terminfo
     - html-conduit
     - xml-conduit
+    - petbox
   ghc-options:
     - -Wall
     - -O2
