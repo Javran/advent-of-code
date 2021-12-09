@@ -52,7 +52,13 @@ instance Solution Day2 where
           execState (interpret 0) $
             IM.insert 2 b $
               IM.insert 1 a mem
-        mem' = runWithInput 12 2
+        mem' =
+          {-
+            Note that the problem doesn't seem to specify what are considered
+            valid positions - the input override `12` below puts the example program out of bound,
+            we can probably do something about it, rather than assuming a 0 input value.
+           -}
+          runWithInput 12 2
     answerShow $ mem' IM.! 0
     let target = fromMaybe 19690720 $ do
           [raw] <- extraOps
