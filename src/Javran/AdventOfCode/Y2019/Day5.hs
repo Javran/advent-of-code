@@ -1,54 +1,25 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE PatternGuards #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ViewPatterns #-}
 
 module Javran.AdventOfCode.Y2019.Day5
   (
   )
 where
 
-
-import Control.Applicative
-import Control.Monad
 import Control.Monad.RWS.Strict
 import Control.Monad.ST
-import Control.Monad.State.Strict
-import Control.Monad.Writer
-import Data.Bifunctor
-import Data.Bool
-import Data.Char
 import qualified Data.DList as DL
-import Data.Function
-import Data.Function.Memoize (memoFix)
-import qualified Data.IntMap.Strict as IM
-import qualified Data.IntSet as IS
-import Data.List
 import Data.List.Split hiding (sepBy)
-import qualified Data.Map.Strict as M
-import Data.Maybe
-import Data.Monoid
-import Data.Ord
-import Data.Semigroup
-import qualified Data.Set as S
-import qualified Data.Text as T
 import qualified Data.Vector as V
 import qualified Data.Vector.Mutable as VM
-import Debug.Trace
 import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
-import Text.ParserCombinators.ReadP hiding (count, get, many)
 
 data Day5 deriving (Generic)
 
@@ -98,12 +69,19 @@ runProgram initMem inputs = runST do
                   dst <- readAddr (pc + 3)
                   putNum dst (op v1 v2) pm3
                   runAt (pc + 4)
+                condJump expectZero = do
+                  rand1 <- readAddr (pc + 1)
+                  v1 <- getNum rand1 pm1
+                  rand2 <- readAddr (pc + 2)
+                  v2 <- getNum rand2 pm2
+                  if (if expectZero then v1 == 0 else v1 /= 0)
+                    then runAt v2
+                    else runAt (pc + 3)
+
             case opCode of
               99 -> pure ()
-              1 ->
-                performBin (+)
-              2 -> do
-                performBin (*)
+              1 -> performBin (+)
+              2 -> performBin (*)
               3 -> do
                 inp <- gets head
                 modify tail
@@ -115,13 +93,16 @@ runProgram initMem inputs = runST do
                 out <- getNum rand1 pm1
                 tell (DL.singleton out)
                 runAt (pc + 2)
+              5 -> condJump False
+              6 -> condJump True
+              7 -> performBin (\x y -> if x < y then 1 else 0)
+              8 -> performBin (\x y -> if x == y then 1 else 0)
               _ -> error "Something went wrong"
       runAt 0
       finalMem <- lift $ V.unsafeFreeze mem
       pure finalMem
 
 instance Solution Day5 where
-  solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow, answerS} = do
     (extraOps, rawInput) <- consumeExtraLeadingLines <$> getInputS
     let xs = fmap (read @Int) . splitOn "," . head . lines $ rawInput
@@ -129,11 +110,17 @@ instance Solution Day5 where
     case extraOps of
       Nothing -> do
         -- running with login example
-        let (_afterMem, logs) = runProgram mem [1]
-        answerS "Part 1:"
-        mapM_ answerShow logs
+        do
+          let (_afterMem, logs) = runProgram mem [1]
+          answerS "Part 1:"
+          mapM_ answerShow logs
+        do
+          let (_afterMem, logs) = runProgram mem [5]
+          answerS "Part 2:"
+          mapM_ answerShow logs
       Just rawTestInputs -> do
+        -- running with testdata
         let inputs :: [Int]
-            inputs = fmap read . filter ((/= "#"). take 1) $ rawTestInputs
+            inputs = fmap read . filter ((/= "#") . take 1) $ rawTestInputs
             (_afterMem, logs) = runProgram mem inputs
         mapM_ answerShow logs

@@ -1,0 +1,4 @@
+# EXAMPLE_EXTRA_BEGIN
+# jump if zero (immediate, immediate)
+# EXAMPLE_EXTRA_END
+1106,0,7,1101,1,1,19,4,19,1106,20,16,101,99,19,19,4,19,99,1000
