@@ -1,1 +1,9 @@
-1101,1,2,17,1001,18,2,18,101,3,18,18,0001,17,18,19,99,11,22,33
+# EXAMPLE_EXTRA_BEGIN
+# Test coverage for positional modes
+# - 3 to where 1000 is
+# - 1001+2 = 1003 to where 1001 was
+# - 3+1003 = 1006 to where 1001 was
+# - 3+1006 = 1009 to where 1002 was
+# outputs last 3 values.
+# EXAMPLE_EXTRA_END
+1101,1,2,23,1001,24,2,24,101,3,24,24,0001,23,24,25,4,23,4,24,4,25,99,1000,1001,1002

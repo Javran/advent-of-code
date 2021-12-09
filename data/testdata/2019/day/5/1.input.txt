@@ -1,1 +1,5 @@
+# EXAMPLE_EXTRA_BEGIN
+# Test coverage for op code 3 and 4
+15
+# EXAMPLE_EXTRA_END
 3,9,1,9,9,10,4,10,99,11,22

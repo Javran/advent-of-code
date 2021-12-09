@@ -13,18 +13,12 @@
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE ViewPatterns #-}
-{-# OPTIONS_GHC -Wno-deprecations #-}
-{-# OPTIONS_GHC -Wno-typed-holes #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -Wno-unused-matches #-}
-{-# OPTIONS_GHC -fdefer-typed-holes #-}
 
 module Javran.AdventOfCode.Y2019.Day5
   (
   )
 where
 
-{- HLINT ignore -}
 
 import Control.Applicative
 import Control.Monad
@@ -97,12 +91,12 @@ runProgram initMem inputs = runST do
             opRaw <- readAddr pc
             let (opCode, (pm1, pm2, pm3)) = separateOpCode opRaw
                 performBin op = do
-                  aL <- readAddr (pc + 1)
-                  l <- getNum aL pm1
-                  aR <- readAddr (pc + 2)
-                  r <- getNum aR pm2
+                  rand1 <- readAddr (pc + 1)
+                  v1 <- getNum rand1 pm1
+                  rand2 <- readAddr (pc + 2)
+                  v2 <- getNum rand2 pm2
                   dst <- readAddr (pc + 3)
-                  putNum dst (op l r) pm3
+                  putNum dst (op v1 v2) pm3
                   runAt (pc + 4)
             case opCode of
               99 -> pure ()
@@ -113,12 +107,12 @@ runProgram initMem inputs = runST do
               3 -> do
                 inp <- gets head
                 modify tail
-                dst <- readAddr (pc + 1)
-                putNum dst inp pm1
+                rand1 <- readAddr (pc + 1)
+                putNum rand1 inp pm1
                 runAt (pc + 2)
               4 -> do
-                x <- readAddr (pc + 1)
-                out <- getNum x pm1
+                rand1 <- readAddr (pc + 1)
+                out <- getNum rand1 pm1
                 tell (DL.singleton out)
                 runAt (pc + 2)
               _ -> error "Something went wrong"
@@ -128,7 +122,18 @@ runProgram initMem inputs = runST do
 
 instance Solution Day5 where
   solutionSolved _ = False
-  solutionRun _ SolutionContext {getInputS, answerShow} = do
-    xs <- fmap (read @Int) . splitOn "," . head . lines <$> getInputS
-    let mem = V.fromList xs
-    print $ runProgram mem [1]
+  solutionRun _ SolutionContext {getInputS, answerShow, answerS} = do
+    (extraOps, rawInput) <- consumeExtraLeadingLines <$> getInputS
+    let xs = fmap (read @Int) . splitOn "," . head . lines $ rawInput
+        mem = V.fromList xs
+    case extraOps of
+      Nothing -> do
+        -- running with login example
+        let (_afterMem, logs) = runProgram mem [1]
+        answerS "Part 1:"
+        mapM_ answerShow logs
+      Just rawTestInputs -> do
+        let inputs :: [Int]
+            inputs = fmap read . filter ((/= "#"). take 1) $ rawTestInputs
+            (_afterMem, logs) = runProgram mem inputs
+        mapM_ answerShow logs
