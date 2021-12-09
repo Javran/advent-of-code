@@ -33,6 +33,7 @@ Files with name `example.input.txt` or `example.expect.txt` under `data/testdata
   + [X] [Day 6](src/Javran/AdventOfCode/Y2021/Day6.hs)
   + [X] [Day 7](src/Javran/AdventOfCode/Y2021/Day7.hs)
   + [X] [Day 8](src/Javran/AdventOfCode/Y2021/Day8.hs)
+  + [ ] [Day 9](src/Javran/AdventOfCode/Y2021/Day9.hs)
 - Year 2020
   + [X] [Day 1](src/Javran/AdventOfCode/Y2020/Day1.hs)
   + [X] [Day 2](src/Javran/AdventOfCode/Y2020/Day2.hs)
