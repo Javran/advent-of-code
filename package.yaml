@@ -48,6 +48,7 @@ library:
     - html-conduit
     - xml-conduit
     - petbox
+    - dlist
   ghc-options:
     - -Wall
     - -O2

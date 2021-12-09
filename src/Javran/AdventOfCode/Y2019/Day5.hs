@@ -28,10 +28,14 @@ where
 
 import Control.Applicative
 import Control.Monad
+import Control.Monad.RWS.Strict
+import Control.Monad.ST
 import Control.Monad.State.Strict
+import Control.Monad.Writer
 import Data.Bifunctor
 import Data.Bool
 import Data.Char
+import qualified Data.DList as DL
 import Data.Function
 import Data.Function.Memoize (memoFix)
 import qualified Data.IntMap.Strict as IM
@@ -46,6 +50,7 @@ import Data.Semigroup
 import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Vector as V
+import qualified Data.Vector.Mutable as VM
 import Debug.Trace
 import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
@@ -67,65 +72,63 @@ separateOpCode v = (op, (pm p1, pm p2, pm p3))
     (v1, p1) = v0 `quotRem` 10
     (p3, p2) = v1 `quotRem` 10
 
-type Machine = (IM.IntMap Int, ([Int {- input -}], [Int {- output -}]))
+type IntCodeVmT = RWST () (DL.DList Int) [Int]
 
-interpret :: Int -> StateT Machine IO ()
-interpret pc = do
-  liftIO $ putStrLn $ "PC=" <> show pc
-  mem <- gets fst
-  let debug i = take i $ fmap (mem IM.!) [pc, pc + 1 ..]
-      readAddr i = do
-        v <- gets ((IM.!? i) . fst)
-        pure $ fromMaybe 0 v
-      getNum i = \case
-        Position -> do
-          readAddr i
-        Immediate ->
-          pure i
-      putNum i v = \case
-        Position -> do
-          modify $ first (IM.insert i v)
-        Immediate ->
-          error "target position cannot be immediate"
-  opRaw <- readAddr pc
-  liftIO $ putStrLn $ "RAW OP: " <> show opRaw
-  let d@(opCode, (pm1, pm2, pm3)) = separateOpCode opRaw
-      performBin op = do
-        aL <- readAddr (pc + 1)
-        l <- getNum aL pm1
-        aR <- readAddr (pc + 2)
-        r <- getNum aR pm2
-        dst <- readAddr (pc + 3)
-        putNum dst (op l r) pm3
-        interpret (pc + 4)
-  liftIO $ putStrLn $ "DECODE: " <> show d
-  case opCode of
-    99 -> pure ()
-    1 -> do
-      liftIO $ print ("+", debug 4)
-      performBin (+)
-    2 -> do
-      liftIO $ print ("*", debug 4)
-      performBin (*)
-    3 -> do
-      liftIO $ print ("input", debug 2)
-      inp <- gets (head . fst . snd)
-      modify ((second . first) tail)
-      dst <- readAddr (pc + 1)
-      putNum dst inp pm1
-      interpret (pc + 2)
-    4 -> do
-      liftIO $ print ("output", debug 2)
-      x <- readAddr (pc+1)
-      out <- getNum x pm1
-      modify ((second . second) (<> [out]))
-      interpret (pc + 2)
-    _ -> error "Something went wrong"
+runProgram :: V.Vector Int -> [Int] -> (V.Vector Int, [Int])
+runProgram initMem inputs = runST do
+  (a, _s, w) <- runRWST runProgram' () inputs
+  pure (a, DL.toList w)
+  where
+    runProgram' :: forall s. IntCodeVmT (ST s) (V.Vector Int)
+    runProgram' = do
+      mem <- lift $ V.thaw initMem
+      let readAddr i = lift $ VM.unsafeRead @(ST s) mem i
+          getNum i = \case
+            Position -> do
+              readAddr i
+            Immediate ->
+              pure i
+          putNum i v = \case
+            Position -> do
+              lift $ VM.unsafeWrite @(ST s) mem i v
+            Immediate ->
+              error "target position cannot be immediate"
+          runAt pc = do
+            opRaw <- readAddr pc
+            let (opCode, (pm1, pm2, pm3)) = separateOpCode opRaw
+                performBin op = do
+                  aL <- readAddr (pc + 1)
+                  l <- getNum aL pm1
+                  aR <- readAddr (pc + 2)
+                  r <- getNum aR pm2
+                  dst <- readAddr (pc + 3)
+                  putNum dst (op l r) pm3
+                  runAt (pc + 4)
+            case opCode of
+              99 -> pure ()
+              1 ->
+                performBin (+)
+              2 -> do
+                performBin (*)
+              3 -> do
+                inp <- gets head
+                modify tail
+                dst <- readAddr (pc + 1)
+                putNum dst inp pm1
+                runAt (pc + 2)
+              4 -> do
+                x <- readAddr (pc + 1)
+                out <- getNum x pm1
+                tell (DL.singleton out)
+                runAt (pc + 2)
+              _ -> error "Something went wrong"
+      runAt 0
+      finalMem <- lift $ V.unsafeFreeze mem
+      pure finalMem
 
 instance Solution Day5 where
   solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     xs <- fmap (read @Int) . splitOn "," . head . lines <$> getInputS
-    let mem = IM.fromList $ zip [0 ..] xs
-    e <- execStateT (interpret 0) (mem, ([1], []))
-    print e
+    let mem = V.fromList xs
+    print $ runProgram mem [1]
