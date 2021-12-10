@@ -8,8 +8,6 @@ module Javran.AdventOfCode.Prelude
   , decodeBinary
   , errInvalid
   , unreachable
-  , pick
-  , pickInOrder
   , universe
   , -- infrastructures
     module Javran.AdventOfCode.Infra
