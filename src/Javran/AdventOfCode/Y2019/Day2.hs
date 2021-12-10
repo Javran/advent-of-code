@@ -1,9 +1,6 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 
 module Javran.AdventOfCode.Y2019.Day2
@@ -12,66 +9,41 @@ module Javran.AdventOfCode.Y2019.Day2
 where
 
 import Control.Monad
-import Control.Monad.State.Strict
-import qualified Data.IntMap.Strict as IM
+import Control.Monad.IO.Class
+import Data.List
 import Data.List.Split hiding (sepBy)
-import Data.Maybe
+import qualified Data.Vector.Unboxed as VU
 import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
-import Data.List
+import Javran.AdventOfCode.Y2019.IntCode
+import qualified ListT
 
 data Day2 deriving (Generic)
-
-type Machine = IM.IntMap Int
-
-interpret :: Int -> State Machine ()
-interpret pc = do
-  let load i = do
-        v <- gets (IM.!? i)
-        pure $ fromMaybe 0 v
-  opCode <- load pc
-  let performBin op = do
-        lAddr <- load (pc + 1)
-        l <- load lAddr
-        rAddr <- load (pc + 2)
-        r <- load rAddr
-        dst <- load (pc + 3)
-        modify $ IM.insert dst (op l r)
-        interpret (pc + 4)
-  case opCode of
-    99 -> pure ()
-    1 -> performBin (+)
-    2 -> performBin (*)
-    _ -> error "Something went wrong"
 
 instance Solution Day2 where
   solutionRun _ SolutionContext {getInputS, answerShow, answerS} = do
     (extraOps, rawInput) <- consumeExtraLeadingLines <$> getInputS
     let xs = fmap (read @Int) . splitOn "," . head . lines $ rawInput
-        l = length xs
-        mem = IM.fromList $ zip [0 ..] xs
+        mem = VU.fromList xs
     case extraOps of
       Nothing -> do
         -- running with login data.
-        let runWithInput a b =
-              execState (interpret 0) $
-                IM.insert 2 b $
-                  IM.insert 1 a mem
-            mem' =
-              {-
-                Note that the problem doesn't seem to specify what are considered
-                valid positions - the input override `12` below puts the example program out of bound,
-                we can probably do something about it, rather than assuming a 0 input value.
-               -}
-              runWithInput 12 2
-        answerShow $ mem' IM.! 0
+        let runWithInput a b = do
+              let mem' = mem VU.// [(1, a), (2, b)]
+              (mem'', []) <- runProgram mem' []
+              pure (mem'' VU.! 0)
+        p1 <- runWithInput 12 2
+        answerShow p1
         let target = 19690720
-            (n, v) : _ = do
-              a <- [0 .. 99]
-              b <- [0 .. 99]
-              guard $ runWithInput a b IM.! 0 == target
+            performSearch :: ListT.ListT IO (Int, Int)
+            performSearch = ListT.take 1 do
+              a <- ListT.fromFoldable [0 .. 99]
+              b <- ListT.fromFoldable [0 .. 99]
+              result <- liftIO $ runWithInput a b
+              guard $ result == target
               pure (a, b)
+        (n, v) : _ <- ListT.toList performSearch
         answerShow (100 * n + v)
       Just _ -> do
-        let mem' = execState (interpret 0) mem
-        answerS $ intercalate "," $ fmap (show . (mem' IM.!)) [0..l-1]
+        (mem', []) <- runProgram mem []
+        answerS $ intercalate "," . fmap show $ VU.toList mem'

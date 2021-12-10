@@ -199,6 +199,7 @@ library
     , http-client
     , http-client-tls
     , http-types
+    , list-t
     , memoize
     , microstache
     , mod

@@ -49,6 +49,7 @@ library:
     - xml-conduit
     - petbox
     - dlist
+    - list-t
   ghc-options:
     - -Wall
     - -O2
