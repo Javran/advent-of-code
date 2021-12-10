@@ -36,12 +36,12 @@ separateOpCode v = (op, (pm p1, pm p2, pm p3))
     (v1, p1) = v0 `quotRem` 10
     (p3, p2) = v1 `quotRem` 10
 
-data Result input output r
+data Result r
   = Done r
-  | NeedInput (input -> IO (Result input output r))
-  | SentOutput output (IO (Result input output r))
+  | NeedInput (Int -> IO (Result r))
+  | SentOutput Int (IO (Result r))
 
-startProgram :: VU.Vector Int -> IO (Result Int Int (VU.Vector Int))
+startProgram :: VU.Vector Int -> IO (Result (VU.Vector Int))
 startProgram initMem = do
   mem <- VU.thaw initMem
   let readAddr i = VUM.read @IO mem i
@@ -55,7 +55,7 @@ startProgram initMem = do
           VUM.write @IO mem i v
         Immediate ->
           error "target position cannot be immediate"
-      runAt :: Int -> IO (Result Int Int (VU.Vector Int))
+      runAt :: Int -> IO (Result (VU.Vector Int))
       runAt pc = do
         opRaw <- readAddr pc
         let (opCode, (pm1, pm2, pm3)) = separateOpCode opRaw
