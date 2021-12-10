@@ -16,8 +16,8 @@ where
 
 import Control.Monad.RWS.Strict
 import qualified Data.DList as DL
-import qualified Data.Vector as V
-import qualified Data.Vector.Mutable as VM
+import qualified Data.Vector.Unboxed as VU
+import qualified Data.Vector.Unboxed.Mutable as VUM
 
 data ParameterMode
   = Position
@@ -41,10 +41,10 @@ data Result input output r
   | NeedInput (input -> IO (Result input output r))
   | SentOutput output (IO (Result input output r))
 
-startProgram :: V.Vector Int -> IO (Result Int Int (V.Vector Int))
+startProgram :: VU.Vector Int -> IO (Result Int Int (VU.Vector Int))
 startProgram initMem = do
-  mem <- V.thaw initMem
-  let readAddr i = VM.unsafeRead @IO mem i
+  mem <- VU.thaw initMem
+  let readAddr i = VUM.read @IO mem i
       getNum i = \case
         Position -> do
           readAddr i
@@ -52,10 +52,10 @@ startProgram initMem = do
           pure i
       putNum i v = \case
         Position -> do
-          VM.unsafeWrite @IO mem i v
+          VUM.write @IO mem i v
         Immediate ->
           error "target position cannot be immediate"
-      runAt :: Int -> IO (Result Int Int (V.Vector Int))
+      runAt :: Int -> IO (Result Int Int (VU.Vector Int))
       runAt pc = do
         opRaw <- readAddr pc
         let (opCode, (pm1, pm2, pm3)) = separateOpCode opRaw
@@ -78,7 +78,7 @@ startProgram initMem = do
 
         case opCode of
           99 -> do
-            finalMem <- V.unsafeFreeze mem
+            finalMem <- VU.unsafeFreeze mem
             pure $ Done finalMem
           1 -> performBin (+)
           2 -> performBin (*)
@@ -102,12 +102,12 @@ startProgram initMem = do
 
 type IntCodeVm = RWST () (DL.DList Int) [Int]
 
-runProgram :: V.Vector Int -> [Int] -> IO (V.Vector Int, [Int])
+runProgram :: VU.Vector Int -> [Int] -> IO (VU.Vector Int, [Int])
 runProgram initMem inputs = do
   (a, _s, w) <- runRWST (runProgramAux initMem) () inputs
   pure (a, DL.toList w)
 
-runProgramAux :: V.Vector Int -> IntCodeVm IO (V.Vector Int)
+runProgramAux :: VU.Vector Int -> IntCodeVm IO (VU.Vector Int)
 runProgramAux initMem = do
   r <- lift $ startProgram initMem
   let drive = \case
