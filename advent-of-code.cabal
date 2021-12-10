@@ -15,6 +15,10 @@ license:        BSD3
 build-type:     Simple
 data-files:
     data/testdata/2019/day/1/example.input.txt
+    data/testdata/2019/day/2/example-small-0.input.txt
+    data/testdata/2019/day/2/example-small-1.input.txt
+    data/testdata/2019/day/2/example-small-2.input.txt
+    data/testdata/2019/day/2/example-small-3.input.txt
     data/testdata/2019/day/2/example.input.txt
     data/testdata/2019/day/3/0.input.txt
     data/testdata/2019/day/3/1.input.txt
@@ -63,6 +67,10 @@ data-files:
     data/testdata/2021/day/8/example.input.txt
     data/testdata/2021/day/9/example.input.txt
     data/testdata/2019/day/1/example.expect.txt
+    data/testdata/2019/day/2/example-small-0.expect.txt
+    data/testdata/2019/day/2/example-small-1.expect.txt
+    data/testdata/2019/day/2/example-small-2.expect.txt
+    data/testdata/2019/day/2/example-small-3.expect.txt
     data/testdata/2019/day/2/example.expect.txt
     data/testdata/2019/day/3/0.expect.txt
     data/testdata/2019/day/3/1.expect.txt

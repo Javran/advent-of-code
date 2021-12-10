@@ -18,6 +18,7 @@ import Data.List.Split hiding (sepBy)
 import Data.Maybe
 import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
+import Data.List
 
 data Day2 deriving (Generic)
 
@@ -44,28 +45,33 @@ interpret pc = do
     _ -> error "Something went wrong"
 
 instance Solution Day2 where
-  solutionRun _ SolutionContext {getInputS, answerShow} = do
+  solutionRun _ SolutionContext {getInputS, answerShow, answerS} = do
     (extraOps, rawInput) <- consumeExtraLeadingLines <$> getInputS
     let xs = fmap (read @Int) . splitOn "," . head . lines $ rawInput
+        l = length xs
         mem = IM.fromList $ zip [0 ..] xs
-        runWithInput a b =
-          execState (interpret 0) $
-            IM.insert 2 b $
-              IM.insert 1 a mem
-        mem' =
-          {-
-            Note that the problem doesn't seem to specify what are considered
-            valid positions - the input override `12` below puts the example program out of bound,
-            we can probably do something about it, rather than assuming a 0 input value.
-           -}
-          runWithInput 12 2
-    answerShow $ mem' IM.! 0
-    let target = fromMaybe 19690720 $ do
-          [raw] <- extraOps
-          pure $ read @Int raw
-        (n, v) : _ = do
-          a <- [0 .. 99]
-          b <- [0 .. 99]
-          guard $ runWithInput a b IM.! 0 == target
-          pure (a, b)
-    answerShow (100 * n + v)
+    case extraOps of
+      Nothing -> do
+        -- running with login data.
+        let runWithInput a b =
+              execState (interpret 0) $
+                IM.insert 2 b $
+                  IM.insert 1 a mem
+            mem' =
+              {-
+                Note that the problem doesn't seem to specify what are considered
+                valid positions - the input override `12` below puts the example program out of bound,
+                we can probably do something about it, rather than assuming a 0 input value.
+               -}
+              runWithInput 12 2
+        answerShow $ mem' IM.! 0
+        let target = 19690720
+            (n, v) : _ = do
+              a <- [0 .. 99]
+              b <- [0 .. 99]
+              guard $ runWithInput a b IM.! 0 == target
+              pure (a, b)
+        answerShow (100 * n + v)
+      Just _ -> do
+        let mem' = execState (interpret 0) mem
+        answerS $ intercalate "," $ fmap (show . (mem' IM.!)) [0..l-1]
