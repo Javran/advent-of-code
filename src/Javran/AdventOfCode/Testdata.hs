@@ -8,7 +8,7 @@
 module Javran.AdventOfCode.Testdata
   ( StructuredTestdata
   , scanTestdata
-  , TestdataInfo(..)
+  , TestdataInfo (..)
   , scanForSolution
   )
 where
@@ -57,7 +57,7 @@ scanForSolution baseDir (yyyy, dd) = do
              then doesFileExist (targetPath </> fn)
              else pure False)
   let allInputTestTags = mapMaybe (consumeAllWithReadP testInputFileNameP) allFiles
-  pure $ do
+  pure $ sortOn tag do
     tag <- allInputTestTags
     let expectFileName = tag <> ".expect.txt"
     pure $
