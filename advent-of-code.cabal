@@ -69,6 +69,11 @@ data-files:
     data/testdata/2019/day/4/example.expect.txt
     data/testdata/2019/day/5/0.expect.txt
     data/testdata/2019/day/5/1.expect.txt
+    data/testdata/2019/day/5/2.expect.txt
+    data/testdata/2019/day/5/3.expect.txt
+    data/testdata/2019/day/5/example-eq-8.expect.txt
+    data/testdata/2019/day/5/example-gt-8.expect.txt
+    data/testdata/2019/day/5/example.expect.txt
     data/testdata/2020/day/1/example.expect.txt
     data/testdata/2020/day/10/example.expect.txt
     data/testdata/2020/day/11/example.expect.txt

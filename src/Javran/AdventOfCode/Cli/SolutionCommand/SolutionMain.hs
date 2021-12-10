@@ -34,13 +34,16 @@ import System.IO
 {-
   TODO: better example naming spec:
 
-  - ExDef: default example, "example"
+  - "all": reserved name meant for running all examples, not allowed as name of a specific example.
 
-  - ExNum: a non-negative number (note that "001" and "1" could be regarded as identical,
-    but for now I don't really think this is a problem worth fixing.
+  - ExNum: if the file name can be parsed as a non-negative number without padding in front,
+    it should.
 
-  - ExString: other things that cannot be parsed
-    ("all" is a special name that is not allowed to be the name of one specific example).
+  - ExString: other things. including numbers that has zeros in front.
+
+  The purpose of separating ExNum from ExString is that that auto-increment can work.
+  (e.g. `edit-example +` scans examples concerning only ExNum alternative and find the first empty
+  or non-existing one to edit).
 
  -}
 
