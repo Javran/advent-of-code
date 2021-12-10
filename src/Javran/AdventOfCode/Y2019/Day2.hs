@@ -35,7 +35,7 @@ instance Solution Day2 where
         p1 <- runWithInput 12 2
         answerShow p1
         let target = 19690720
-        (n, v) : _ <- ListT.toList $ ListT.take 1 do
+        Just (n, v) <- ListT.head do
           a <- ListT.fromFoldable [0 .. 99]
           b <- ListT.fromFoldable [0 .. 99]
           result <- liftIO $ runWithInput a b
