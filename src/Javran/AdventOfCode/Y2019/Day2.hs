@@ -35,14 +35,12 @@ instance Solution Day2 where
         p1 <- runWithInput 12 2
         answerShow p1
         let target = 19690720
-            performSearch :: ListT.ListT IO (Int, Int)
-            performSearch = ListT.take 1 do
-              a <- ListT.fromFoldable [0 .. 99]
-              b <- ListT.fromFoldable [0 .. 99]
-              result <- liftIO $ runWithInput a b
-              guard $ result == target
-              pure (a, b)
-        (n, v) : _ <- ListT.toList performSearch
+        (n, v) : _ <- ListT.toList $ ListT.take 1 do
+          a <- ListT.fromFoldable [0 .. 99]
+          b <- ListT.fromFoldable [0 .. 99]
+          result <- liftIO $ runWithInput a b
+          guard $ result == target
+          pure (a, b)
         answerShow (100 * n + v)
       Just _ -> do
         (mem', []) <- runProgram mem []
