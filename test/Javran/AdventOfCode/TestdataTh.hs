@@ -21,7 +21,6 @@ import Javran.AdventOfCode.Infra
 import Javran.AdventOfCode.Solutions (getSolution)
 import Javran.AdventOfCode.Testdata
 import Language.Haskell.TH
-import qualified Paths_advent_of_code as StockData
 import Test.Hspec hiding (runIO)
 
 {-
@@ -34,9 +33,7 @@ import Test.Hspec hiding (runIO)
  -}
 collectTests :: Q Exp
 collectTests = do
-  d <- runIO do
-    dataDir <- StockData.getDataDir
-    scanTestdata dataDir
+  d <- runIO $ scanTestdata "."
   [|d :: StructuredTestdata|]
 
 mkSpecFromStructuredTestdata :: StructuredTestdata -> Spec

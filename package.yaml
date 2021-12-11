@@ -92,5 +92,7 @@ tests:
       - -rtsopts
       - -with-rtsopts=-N
       - -main-is Spec
-    generated-other-modules:
-      - Paths_advent_of_code
+    when:
+      - condition: false
+        other-modules:
+          - Paths_advent_of_code
