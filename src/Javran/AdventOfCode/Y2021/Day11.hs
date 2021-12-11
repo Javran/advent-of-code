@@ -41,38 +41,65 @@ adjacents c@(x, y) = do
   guard $ c' /= c
   pure c'
 
+
+{-
+  FlashingOverlay = (s, adj)
+
+  where s is the set of octopus that is flashing.
+
+  adj is a cache that should be equal to
+
+  > adj = M.fromListWith (+) do
+  >   coord <- S.toList s
+  >   coord' <- adjacents coord
+  >   pure (coord', 1 :: Int)
+
+  Note that invalid coords are allowed in this mapping.
+
+  This cache is an optimization so we don't have to compute
+  adj at each step, but one must be careful that incremental updates of
+  adj must be performed correctly.
+
+ -}
+type FlashingOverlay =
+  ( S.Set Coord
+  , M.Map Coord Int
+  )
+
 -- keeps expanding the set of flashing octopus until fixpoint.
-flashingSet :: OctoMap -> S.Set Coord -> S.Set Coord
-flashingSet m alreadyFlashing = M.keysSet m'
+flashingSet :: OctoMap -> FlashingOverlay -> FlashingOverlay
+flashingSet m (flashing, adjFlashes) = (S.union flashing newlyFlashing, adjFlashes')
   where
+    adjFlashes' = M.unionWith (+) adjFlashes $ M.fromListWith (+) do
+      c <- S.toList newlyFlashing
+      c' <- adjacents c
+      guard $ M.member c' m
+      pure (c', 1)
+    newlyFlashing = M.keysSet m'
     m' =
       M.filterWithKey
         (\coord v ->
-           let flashing = v + fromMaybe 0 (adjFlashes M.!? coord) > 9
-            in flashing)
-        m
-    adjFlashes = M.fromListWith (+) do
-      coord <- S.toList alreadyFlashing
-      coord' <- adjacents coord
-      pure (coord', 1 :: Int)
+           let isFlashing = v + fromMaybe 0 (adjFlashes M.!? coord) > 9
+            in isFlashing)
+        $ M.withoutKeys m flashing
 
 flashAux :: OctoMap -> S.Set Coord -> OctoMap
 flashAux m s =
   if S.size s == S.size s'
     then
-      let adjFlashes = M.fromListWith (+) do
-            coord <- S.toList s
-            coord' <- adjacents coord
-            pure (coord', 1 :: Int)
-       in M.merge
-            M.preserveMissing
-            M.dropMissing
-            (M.zipWithMatched (const (+)))
-            m
-            adjFlashes
+      M.merge
+        M.preserveMissing
+        M.dropMissing
+        (M.zipWithMatched (const (+)))
+        m
+        adjFlashes'
     else flashAux m s'
   where
-    s' = flashingSet m s
+    adjFlashes = M.fromListWith (+) do
+      coord <- S.toList s
+      coord' <- adjacents coord
+      pure (coord', 1 :: Int)
+    (s', adjFlashes') = flashingSet m (s, adjFlashes)
 
 flash :: OctoMap -> (S.Set Coord, OctoMap)
 flash m = (S.fromDistinctAscList $ DL.toList s, m'')
