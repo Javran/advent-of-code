@@ -174,7 +174,7 @@ runMainWith SubCmdContext {cmdHelpPrefix, mTerm, manager} year day args = do
         Just (SomeSolution s) ->
           case cmd of
             CmdNewSolution -> error "unreachable"
-            CmdRunLogin -> void $ runSolutionWithLoginInput s True mTerm
+            CmdRunLogin -> void $ runSolutionWithLoginInput s manager True mTerm
             CmdRunExample e -> do
               projectHome <- getEnv "PROJECT_HOME"
               let inputFilePath = projectHome </> getExampleInputPath year day e

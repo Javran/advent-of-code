@@ -94,8 +94,9 @@ dispatchToSubCmds ctxt subCmdHandlers = do
         putStrLn $ cmdHelpPrefix <> sub <> " ..."
       exitFailure
 
-getRawLoginInput :: Int -> Int -> IO BSL.ByteString
-getRawLoginInput yyyy dd = prepareDataPath >>= BSL.readFile
+-- TODO: reading from the same file just written to is a bit stupid.
+getRawLoginInput :: Manager -> Int -> Int -> IO BSL.ByteString
+getRawLoginInput mgr yyyy dd = prepareDataPath >>= BSL.readFile
   where
     rsc = show yyyy </> "day" </> show dd </> "input"
 
@@ -112,9 +113,7 @@ getRawLoginInput yyyy dd = prepareDataPath >>= BSL.readFile
         <$ unless
           e
           (do
-             -- TODO: pass down the manager properly.
-             manager <- newManager tlsManagerSettings
-             raw <- fetchInputData manager (BSC.pack mySession) yyyy dd
+             raw <- fetchInputData mgr (BSC.pack mySession) yyyy dd
              BSL.writeFile actualFp raw)
 
 exampleRawInputRelativePath :: Int -> Int -> FilePath
@@ -241,8 +240,8 @@ runSolutionWithInputGetter p inputGetter interleaveAnswer mTerm = do
 runSolutionWithExampleInput :: forall p sol. Solution sol => p sol -> Bool -> Maybe Terminal -> IO T.Text
 runSolutionWithExampleInput p = runSolutionWithInputGetter p getExampleRawInput
 
-runSolutionWithLoginInput :: forall p sol. Solution sol => p sol -> Bool -> Maybe Terminal -> IO T.Text
-runSolutionWithLoginInput p = runSolutionWithInputGetter p getRawLoginInput
+runSolutionWithLoginInput :: forall p sol. Solution sol => p sol -> Manager -> Bool -> Maybe Terminal -> IO T.Text
+runSolutionWithLoginInput p mgr = runSolutionWithInputGetter p (getRawLoginInput mgr)
 
 data SomeSolution
   = forall sol. Solution sol => SomeSolution (Proxy sol)
