@@ -97,10 +97,10 @@ flash m = (M.keysSet $ M.filter (\v -> v > 9) m', M.map (\v -> if v > 9 then 0 e
 incrAllBy1 :: OctoMap -> OctoMap
 incrAllBy1 = M.map succ
 
-dbg :: OctoMap -> [[Char]]
-dbg m = (fmap . fmap) tr . chunksOf 10 . fmap snd . M.toAscList $ m
+step :: OctoMap -> (Int, OctoMap)
+step m = (S.size s', m')
   where
-    tr x = if x >= 10 then 'X' else chr (x + ord '0')
+    (s', m') = flash . incrAllBy1 $ m
 
 instance Solution Day11 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
@@ -113,12 +113,10 @@ instance Solution Day11 where
     let progression =
           unfoldr
             (\curM ->
-               let (s, m') = flash (incrAllBy1 curM)
-                in Just (S.size s, m'))
+               let w@(_, m') = step curM
+                in Just (w, m'))
             m
-    answerShow $ sum $ take 100 progression
-    let progression2 =
-          zip [0 :: Int ..] $
-            iterate (\curM -> snd $ flash (incrAllBy1 curM)) m
-        (ans, _) : _ = dropWhile (not . all (== 0) . snd) $ progression2
+    answerShow $ sum $ fmap fst $ take 100 progression
+    let (ans :: Int , _) : _ =
+          dropWhile (not . all (== 0) . snd . snd) $ zip [1 ..] progression
     answerShow ans

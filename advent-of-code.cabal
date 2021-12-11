@@ -114,6 +114,7 @@ data-files:
     data/testdata/2020/day/9/example.expect.txt
     data/testdata/2021/day/1/example.expect.txt
     data/testdata/2021/day/10/example.expect.txt
+    data/testdata/2021/day/11/example.expect.txt
     data/testdata/2021/day/2/example.expect.txt
     data/testdata/2021/day/3/example.expect.txt
     data/testdata/2021/day/4/example.expect.txt
