@@ -56,9 +56,9 @@ data Day9 deriving (Generic)
 
 instance Solution Day9 where
   solutionSolved _ = False
-  solutionRun _ SolutionContext {getInputS, answerShow} = do
+  solutionRun _ SolutionContext {getInputS, answerShow, answerS} = do
     (extraOps, rawInput) <- consumeExtraLeadingLines <$> getInputS
     let xs = fmap (read @Int) . splitOn "," . head . lines $ rawInput
-        mem = VU.fromList xs
+        mem = VU.fromList (xs <> replicate 1000 0) -- TODO: support growth.
     (_, outputs) <- runProgram mem []
-    mapM_ answerShow outputs
+    answerS $ intercalate "," (fmap show outputs)
