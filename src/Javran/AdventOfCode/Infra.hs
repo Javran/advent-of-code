@@ -109,7 +109,6 @@ getRawLoginInput mgr yyyy dd = do
       BSL.writeFile actualFp raw
       pure raw
 
-
 exampleRawInputRelativePath :: Int -> Int -> FilePath
 exampleRawInputRelativePath yyyy dd =
   "data"
@@ -231,10 +230,24 @@ runSolutionWithInputGetter p inputGetter interleaveAnswer mTerm = do
   answer <- readIORef outRef
   pure $ TL.toStrict $ TLB.toLazyText answer
 
-runSolutionWithExampleInput :: forall p sol. Solution sol => p sol -> Bool -> Maybe Terminal -> IO T.Text
+runSolutionWithExampleInput
+  :: forall p sol.
+  Solution sol
+  => p sol
+  -> Bool
+  -> Maybe Terminal
+  -> IO T.Text
 runSolutionWithExampleInput p = runSolutionWithInputGetter p getExampleRawInput
 
-runSolutionWithLoginInput :: forall p sol. Solution sol => p sol -> Manager -> Bool -> Maybe Terminal -> IO T.Text
+runSolutionWithLoginInput
+  :: forall p sol.
+  Solution
+    sol
+  => p sol
+  -> Manager
+  -> Bool
+  -> Maybe Terminal
+  -> IO T.Text
 runSolutionWithLoginInput p mgr = runSolutionWithInputGetter p (getRawLoginInput mgr)
 
 data SomeSolution
