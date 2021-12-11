@@ -61,21 +61,22 @@ runVmResult r s0 = do
 
 startProgram :: VU.Vector Int -> IO (VmResult IO (VU.Vector Int))
 startProgram initMem = do
-  s <- initiate
-  (r0, s') <- runStateT (startProgramAux initMem) s
+  s <- initiate initMem
+  (r0, s') <- runStateT startProgramAux s
   runVmResult (pure r0) s'
 
-type ExtraSt = ()
+type ExtraSt = VUM.IOVector Int
 
-initiate :: IO ExtraSt
-initiate = pure ()
+initiate :: VU.Vector Int -> IO ExtraSt
+initiate = VU.thaw
 
 type VM = StateT ExtraSt IO
 
-startProgramAux :: VU.Vector Int -> VM (VmResult VM (VU.Vector Int))
-startProgramAux initMem = do
-  mem <- VU.thaw initMem
-  let readAddr i = lift $ VUM.read @IO mem i
+startProgramAux :: VM (VmResult VM (VU.Vector Int))
+startProgramAux = do
+  let readAddr i = do
+        mem <- get
+        lift $ VUM.read @IO mem i
       getNum i = \case
         Position -> do
           readAddr i
@@ -83,6 +84,7 @@ startProgramAux initMem = do
           pure i
       putNum i v = \case
         Position -> do
+          mem <- get
           lift $ VUM.write @IO mem i v
         Immediate ->
           error "target position cannot be immediate"
@@ -109,6 +111,7 @@ startProgramAux initMem = do
 
         case opCode of
           99 -> do
+            mem <- get
             finalMem <- VU.unsafeFreeze mem
             pure $ Done finalMem
           1 -> performBin (+)
