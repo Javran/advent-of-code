@@ -124,7 +124,6 @@ startProgramAux = do
                 then pure m'
                 else do
                   let targetSize = findGrowTarget curSize i
-                  liftIO $ putStrLn $ "New size demanded, growing: " <> show curSize <> " -> " <> show targetSize
                   newM <- lift $ VUM.grow m' (targetSize - curSize)
                   modify (\vms -> vms {vmsMem = newM})
                   pure newM
