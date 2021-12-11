@@ -1,10 +1,6 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Javran.AdventOfCode.Y2021.Day11
@@ -15,7 +11,6 @@ where
 import Control.Monad
 import Data.Bifunctor
 import Data.Char
-import qualified Data.DList as DL
 import Data.List
 import qualified Data.Map.Merge.Strict as M
 import qualified Data.Map.Strict as M
@@ -84,33 +79,26 @@ flashingSet m (flashing, adjFlashes) =
              v + fromMaybe 0 (adjFlashes M.!? coord) > 9)
           $ M.withoutKeys m flashing
 
-flashAux :: OctoMap -> FlashingOverlay -> OctoMap
-flashAux m overlay@(_, adjFlashes) =
+flash :: OctoMap -> FlashingOverlay -> (S.Set Coord, OctoMap)
+flash m overlay@(s, adjFlashes) =
   case flashingSet m overlay of
     Just overlay' ->
-      flashAux m overlay'
+      flash m overlay'
     Nothing ->
-      M.merge
-        M.preserveMissing
-        M.dropMissing
-        (M.zipWithMatched (const (+)))
-        m
-        adjFlashes
-
-flash :: OctoMap -> (S.Set Coord, OctoMap)
-flash m = (S.fromDistinctAscList $ DL.toList s, m'')
-  where
-    -- resets flashing octopus and accumulates those octopus into a set of coords.
-    (s, m'') = M.mapAccumWithKey go DL.empty m'
-      where
-        go xs k v =
-          if v > 9
-            then (xs <> DL.singleton k, 0)
-            else (xs, v)
-    m' = flashAux m mempty
+      ( s
+      , -- reset flashes
+        M.map (\v -> if v > 9 then 0 else v) $
+          -- merge in adjFlashes, throw out invalid coords.
+          M.merge
+            M.preserveMissing
+            M.dropMissing
+            (M.zipWithMatched (const (+)))
+            m
+            adjFlashes
+      )
 
 step :: OctoMap -> (Int, OctoMap)
-step = first S.size . flash . M.map succ
+step = first S.size . (\m -> flash m mempty) . M.map succ
 
 instance Solution Day11 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
