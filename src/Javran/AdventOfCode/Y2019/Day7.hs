@@ -46,14 +46,78 @@ import Data.Semigroup
 import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Vector as V
+import qualified Data.Vector.Unboxed as VU
 import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
+import Javran.AdventOfCode.Y2019.IntCode
 import Text.ParserCombinators.ReadP hiding (count, many)
 
 data Day7 deriving (Generic)
 
+pipeProgram
+  :: IO (Result (VU.Vector Int))
+  -> IO (Result (VU.Vector Int))
+  -> IO (Result (VU.Vector Int))
+pipeProgram lProg rProg = do
+  r <- rProg
+  case r of
+    Done v -> pure (Done v)
+    NeedInput rK -> do
+      l <- lProg
+      case l of
+        Done _ -> error "input exhausted"
+        NeedInput lK ->
+          pure $
+            NeedInput $ \input ->
+              pipeProgram (lK input) (pure (NeedInput rK))
+        SentOutput lOut lK ->
+          pipeProgram lK (rK lOut)
+    SentOutput o rK -> pure $ SentOutput o (pipeProgram lProg rK)
+
 instance Solution Day7 where
   solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    xs <- fmap id . lines <$> getInputS
-    mapM_ print xs
+    xs <- fmap (read @Int) . splitOn "," . head . lines <$> getInputS
+    let mem = VU.fromList xs
+        disablePart1 = True
+    unless disablePart1 $
+      do
+        signals <- forM (permutations [0 .. 4]) $ \config -> do
+          progs <- forM config $ \c -> do
+            r <- startProgram mem
+            case r of
+              NeedInput k ->
+                pure $ k c
+              _ -> error "unexpected"
+          let pipeline = foldl1 pipeProgram progs
+          r0 <- pipeline
+          case r0 of
+            NeedInput k -> do
+              r1 <- k 0
+              case r1 of
+                SentOutput o _ -> pure o
+                _ -> error "unexpected"
+            _ -> error "unexpected"
+        answerShow $ maximum signals
+    do
+      signals <- forM (permutations [5 .. 9]) $ \config -> do
+        progs <- forM config $ \c -> do
+          r <- startProgram mem
+          case r of
+            NeedInput k ->
+              pure $ k c
+            _ -> error "unexpected"
+        let pipeline = foldl1 pipeProgram progs
+        Just result <-
+          fix
+            (\loopback curProg nextInput lastOut -> do
+               r0 <- curProg
+               case r0 of
+                 NeedInput k0 -> loopback (k0 $ fromJust nextInput) Nothing lastOut
+                 SentOutput o k1 -> loopback k1 (Just o) (Just o)
+                 Done {} -> pure lastOut)
+            pipeline
+            (Just 0)
+            Nothing
+        pure result
+      answerShow $ maximum signals
