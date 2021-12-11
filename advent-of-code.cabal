@@ -32,8 +32,8 @@ data-files:
     data/testdata/2019/day/5/opcode-3-and-4.input.txt
     data/testdata/2019/day/5/positional-modes.input.txt
     data/testdata/2019/day/6/example.input.txt
-    data/testdata/2019/day/7/example-0.input.txt
-    data/testdata/2019/day/7/example-1.input.txt
+    data/testdata/2019/day/7/example-part1-0.input.txt
+    data/testdata/2019/day/7/example-part1-1.input.txt
     data/testdata/2019/day/7/example-part2-0.input.txt
     data/testdata/2019/day/7/example-part2-1.input.txt
     data/testdata/2019/day/7/example.input.txt
@@ -91,6 +91,11 @@ data-files:
     data/testdata/2019/day/5/opcode-3-and-4.expect.txt
     data/testdata/2019/day/5/positional-modes.expect.txt
     data/testdata/2019/day/6/example.expect.txt
+    data/testdata/2019/day/7/example-part1-0.expect.txt
+    data/testdata/2019/day/7/example-part1-1.expect.txt
+    data/testdata/2019/day/7/example-part2-0.expect.txt
+    data/testdata/2019/day/7/example-part2-1.expect.txt
+    data/testdata/2019/day/7/example.expect.txt
     data/testdata/2020/day/1/example.expect.txt
     data/testdata/2020/day/10/example.expect.txt
     data/testdata/2020/day/11/example.expect.txt
