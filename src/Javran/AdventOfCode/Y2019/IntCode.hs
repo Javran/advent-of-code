@@ -3,6 +3,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 
@@ -25,6 +26,7 @@ import qualified Data.Vector.Unboxed.Mutable as VUM
 data ParameterMode
   = Position
   | Immediate
+  | Relative
   deriving (Show)
 
 separateOpCode :: Int -> (Int, (ParameterMode, ParameterMode, ParameterMode))
@@ -33,6 +35,7 @@ separateOpCode v = (op, (pm p1, pm p2, pm p3))
     pm = \case
       0 -> Position
       1 -> Immediate
+      2 -> Relative
       x -> error $ "Unknown parameter mode: " <> show x
 
     (v0, op) = v `quotRem` 100
@@ -47,7 +50,7 @@ data VmResult m r
 
 type Result = VmResult IO
 
-runVmResult :: VM (VmResult VM a) -> ExtraSt -> IO (VmResult IO a)
+runVmResult :: VM (VmResult VM a) -> VmState -> IO (VmResult IO a)
 runVmResult r s0 = do
   (r0, s1) <- runStateT r s0
   case r0 of
@@ -65,29 +68,40 @@ startProgram initMem = do
   (r0, s') <- runStateT startProgramAux s
   runVmResult (pure r0) s'
 
-type ExtraSt = VUM.IOVector Int
+data VmState = VmState
+  { vmsMem :: VUM.IOVector Int
+  , vmsRelBase :: Int
+  }
 
-initiate :: VU.Vector Int -> IO ExtraSt
-initiate = VU.thaw
+initiate :: VU.Vector Int -> IO VmState
+initiate initMem = do
+  vmsMem <- VU.thaw initMem
+  pure VmState {vmsMem, vmsRelBase = 0}
 
-type VM = StateT ExtraSt IO
+type VM = StateT VmState IO
 
 startProgramAux :: VM (VmResult VM (VU.Vector Int))
 startProgramAux = do
   let readAddr i = do
-        mem <- get
+        mem <- gets vmsMem
         lift $ VUM.read @IO mem i
       getNum i = \case
         Position -> do
           readAddr i
         Immediate ->
           pure i
+        Relative -> do
+          VmState {vmsMem, vmsRelBase} <- get
+          lift $ VUM.read @IO vmsMem (vmsRelBase + i)
       putNum i v = \case
         Position -> do
-          mem <- get
+          mem <- gets vmsMem
           lift $ VUM.write @IO mem i v
         Immediate ->
           error "target position cannot be immediate"
+        Relative -> do
+          VmState {vmsMem, vmsRelBase} <- get
+          lift $ VUM.write @IO vmsMem (vmsRelBase + i) v
       runAt :: Int -> VM (VmResult VM (VU.Vector Int))
       runAt pc = do
         opRaw <- readAddr pc
@@ -111,7 +125,7 @@ startProgramAux = do
 
         case opCode of
           99 -> do
-            mem <- get
+            mem <- gets vmsMem
             finalMem <- VU.unsafeFreeze mem
             pure $ Done finalMem
           1 -> performBin (+)
@@ -131,6 +145,11 @@ startProgramAux = do
           6 -> condJump True
           7 -> performBin (\x y -> if x < y then 1 else 0)
           8 -> performBin (\x y -> if x == y then 1 else 0)
+          9 -> do
+            rand1 <- readAddr (pc + 1)
+            v1 <- getNum rand1 pm1
+            modify (\vms -> vms {vmsRelBase = vmsRelBase vms + v1})
+            runAt (pc + 2)
           _ -> error "Something went wrong"
   runAt 0
 
