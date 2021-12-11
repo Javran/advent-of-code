@@ -15,6 +15,7 @@ where
 import Control.Monad
 import Data.Bifunctor
 import Data.Char
+import qualified Data.DList as DL
 import Data.List
 import qualified Data.Map.Merge.Strict as M
 import qualified Data.Map.Strict as M
@@ -74,8 +75,15 @@ flashAux m s =
     s' = flashingSet m s
 
 flash :: OctoMap -> (S.Set Coord, OctoMap)
-flash m = (M.keysSet $ M.filter (\v -> v > 9) m', M.map (\v -> if v > 9 then 0 else v) m')
+flash m = (S.fromDistinctAscList $ DL.toList s, m'')
   where
+    -- resets flashing octopus and accumulates those octopus into a set of coords.
+    (s, m'') = M.mapAccumWithKey go DL.empty m'
+      where
+        go xs k v =
+          if v > 9
+            then (xs <> DL.singleton k, 0)
+            else (xs, v)
     m' = flashAux m S.empty
 
 step :: OctoMap -> (Int, OctoMap)
