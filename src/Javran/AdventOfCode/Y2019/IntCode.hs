@@ -1,4 +1,5 @@
 {-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
@@ -8,13 +9,15 @@
 module Javran.AdventOfCode.Y2019.IntCode
   ( ParameterMode (..)
   , separateOpCode
-  , Result (..)
+  , VmResult (..)
+  , Result
   , runProgram
   , startProgram
   )
 where
 
 import Control.Monad.RWS.Strict
+import Control.Monad.State.Strict
 import qualified Data.DList as DL
 import qualified Data.Vector.Unboxed as VU
 import qualified Data.Vector.Unboxed.Mutable as VUM
@@ -36,15 +39,43 @@ separateOpCode v = (op, (pm p1, pm p2, pm p3))
     (v1, p1) = v0 `quotRem` 10
     (p3, p2) = v1 `quotRem` 10
 
-data Result r
+data VmResult m r
   = Done r
-  | NeedInput (Int -> IO (Result r))
-  | SentOutput Int (IO (Result r))
+  | NeedInput (Int -> m (VmResult m r))
+  | SentOutput Int (m (VmResult m r))
+  deriving (Functor)
 
-startProgram :: VU.Vector Int -> IO (Result (VU.Vector Int))
+type Result = VmResult IO
+
+runVmResult :: VM (VmResult VM a) -> ExtraSt -> IO (VmResult IO a)
+runVmResult r s0 = do
+  (r0, s1) <- runStateT r s0
+  case r0 of
+    Done v -> pure $ Done v
+    NeedInput k -> pure $ NeedInput \input -> do
+      (a, s2) <- runStateT (k input) s1
+      runVmResult (pure a) s2
+    SentOutput o k -> pure $ SentOutput o (runVmResult k s1)
+
+-- TODO: see if we can do this with monad-control.
+
+startProgram :: VU.Vector Int -> IO (VmResult IO (VU.Vector Int))
 startProgram initMem = do
+  s <- initiate
+  (r0, s') <- runStateT (startProgramAux initMem) s
+  runVmResult (pure r0) s'
+
+type ExtraSt = ()
+
+initiate :: IO ExtraSt
+initiate = pure ()
+
+type VM = StateT ExtraSt IO
+
+startProgramAux :: VU.Vector Int -> VM (VmResult VM (VU.Vector Int))
+startProgramAux initMem = do
   mem <- VU.thaw initMem
-  let readAddr i = VUM.read @IO mem i
+  let readAddr i = lift $ VUM.read @IO mem i
       getNum i = \case
         Position -> do
           readAddr i
@@ -52,10 +83,10 @@ startProgram initMem = do
           pure i
       putNum i v = \case
         Position -> do
-          VUM.write @IO mem i v
+          lift $ VUM.write @IO mem i v
         Immediate ->
           error "target position cannot be immediate"
-      runAt :: Int -> IO (Result (VU.Vector Int))
+      runAt :: Int -> VM (VmResult VM (VU.Vector Int))
       runAt pc = do
         opRaw <- readAddr pc
         let (opCode, (pm1, pm2, pm3)) = separateOpCode opRaw
@@ -82,10 +113,10 @@ startProgram initMem = do
             pure $ Done finalMem
           1 -> performBin (+)
           2 -> performBin (*)
-          3 -> do
+          3 ->
             pure $
-              NeedInput
-                (\input -> do
+              NeedInput $ \input ->
+                (do
                    rand1 <- readAddr (pc + 1)
                    putNum rand1 input pm1
                    runAt (pc + 2))

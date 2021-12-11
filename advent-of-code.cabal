@@ -102,6 +102,7 @@ library
     , memoize
     , microstache
     , mod
+    , monad-control
     , mtl
     , once
     , parser-combinators
