@@ -51,8 +51,7 @@ import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.Builder as TLB
 import GHC.Generics
 import Javran.AdventOfCode.Network
-import Network.HTTP.Client (Manager, newManager)
-import Network.HTTP.Client.TLS
+import Network.HTTP.Client (Manager)
 import System.Console.Terminfo
 import System.Directory
 import System.Environment
@@ -94,27 +93,22 @@ dispatchToSubCmds ctxt subCmdHandlers = do
         putStrLn $ cmdHelpPrefix <> sub <> " ..."
       exitFailure
 
--- TODO: reading from the same file just written to is a bit stupid.
 getRawLoginInput :: Manager -> Int -> Int -> IO BSL.ByteString
-getRawLoginInput mgr yyyy dd = prepareDataPath >>= BSL.readFile
-  where
-    rsc = show yyyy </> "day" </> show dd </> "input"
+getRawLoginInput mgr yyyy dd = do
+  projectHome <- getEnv "PROJECT_HOME"
+  mySession <- getEnv "ADVENT_OF_CODE_SESSION"
+  let rsc = show yyyy </> "day" </> show dd </> "input"
+      actualFp = projectHome </> "data" </> "download" </> rsc
+      (actualDir, _) = splitFileName actualFp
+  createDirectoryIfMissing True actualDir
+  e <- doesFileExist actualFp
+  if e
+    then BSL.readFile actualFp
+    else do
+      raw <- fetchInputData mgr (BSC.pack mySession) yyyy dd
+      BSL.writeFile actualFp raw
+      pure raw
 
-    prepareDataPath :: IO FilePath
-    prepareDataPath = do
-      projectHome <- getEnv "PROJECT_HOME"
-      mySession <- getEnv "ADVENT_OF_CODE_SESSION"
-
-      let actualFp = projectHome </> "data" </> "download" </> rsc
-          (actualDir, _) = splitFileName actualFp
-      createDirectoryIfMissing True actualDir
-      e <- doesFileExist actualFp
-      actualFp
-        <$ unless
-          e
-          (do
-             raw <- fetchInputData mgr (BSC.pack mySession) yyyy dd
-             BSL.writeFile actualFp raw)
 
 exampleRawInputRelativePath :: Int -> Int -> FilePath
 exampleRawInputRelativePath yyyy dd =
