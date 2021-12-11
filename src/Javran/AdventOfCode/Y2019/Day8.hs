@@ -31,6 +31,7 @@ import Control.Monad
 import Data.Bifunctor
 import Data.Bool
 import Data.Char
+import Data.Coerce
 import Data.Either
 import Data.Function
 import Data.Function.Memoize (memoFix)
@@ -52,8 +53,31 @@ import Text.ParserCombinators.ReadP hiding (count, many)
 
 data Day8 deriving (Generic)
 
+countLayerPixel :: String -> (Int, (Int, Int))
+countLayerPixel =
+  coerce
+    . foldMap
+      (\x ->
+         ( if x == '0' then 1 :: Sum Int else 0
+         , ( if x == '1' then 1 :: Sum Int else 0
+           , if x == '2' then 1 :: Sum Int else 0
+           )
+         ))
+
+{-
+  combinePixel u v combines u on top of v.
+ -}
+combinePixel :: Char -> Char -> Char
+combinePixel u v =  if u /= '2' then u else v
+
 instance Solution Day8 where
   solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    xs <- fmap id . lines <$> getInputS
-    mapM_ print xs
+    let (width, height) = (25, 6)
+    xs <- chunksOf (width * height) . head . lines <$> getInputS
+    let counted = fmap countLayerPixel xs
+    let (_, (u, v)) = minimumBy (comparing fst) counted
+    answerShow $ u * v
+    let tr '1' = '#'
+        tr '0' = ' '
+    mapM_ (putStrLn . fmap tr)  $ chunksOf width $ foldr1 (zipWith combinePixel) xs
