@@ -20,6 +20,9 @@ where
 import Control.Monad.RWS.Strict
 import Control.Monad.State.Strict
 import qualified Data.DList as DL
+import qualified Data.List.Ordered as LOrd
+import qualified Data.IntMap as IM
+import Data.Maybe
 import qualified Data.Vector.Unboxed as VU
 import qualified Data.Vector.Unboxed.Mutable as VUM
 
@@ -71,37 +74,76 @@ startProgram initMem = do
 data VmState = VmState
   { vmsMem :: VUM.IOVector Int
   , vmsRelBase :: Int
+  , vmsSparse :: IM.IntMap Int
   }
+
+{-
+  Defines the maximum space vector is allowed to occupy.
+
+  - allowed vector indices are: [0..maxVectorSize-1]
+  - vmsSpace stores any index >= maxVectorSize
+  - vector growth on write demands.
+
+ -}
+maxVectorSize :: Int
+maxVectorSize = 0xFFFF
+
+findGrowTarget :: Int -> Int -> Int
+findGrowTarget curSize i = head $ filter (\sz -> i < sz) sizes
+ where
+   sizes = LOrd.union (iterate (* 2) curSize) [maxVectorSize]
 
 initiate :: VU.Vector Int -> IO VmState
 initiate initMem = do
   vmsMem <- VU.thaw initMem
-  pure VmState {vmsMem, vmsRelBase = 0}
+  pure VmState {vmsMem, vmsRelBase = 0, vmsSparse = IM.empty}
 
 type VM = StateT VmState IO
 
 startProgramAux :: VM (VmResult VM (VU.Vector Int))
 startProgramAux = do
-  let readAddr i = do
-        mem <- gets vmsMem
-        lift $ VUM.read @IO mem i
+  let readAddr i =
+        if i >= maxVectorSize
+          then do
+            m <- gets ((IM.!? i) . vmsSparse)
+            pure $ fromMaybe 0 m
+          else do
+            mem <- gets vmsMem
+            let sz = VUM.length mem
+            if i >= sz
+              then pure 0
+              else lift $ VUM.read @IO mem i
+      writeAddr i v =
+        if i >= maxVectorSize
+          then modify (\vms -> vms {vmsSparse = IM.insert i v (vmsSparse vms)})
+          else do
+            mem <- do
+              m' <- gets vmsMem
+              let curSize = VUM.length m'
+              if i < curSize
+                then pure m'
+                else do
+                  let targetSize = findGrowTarget curSize i
+                  liftIO $ putStrLn $ "New size demanded, growing: " <> show curSize <> " -> " <> show targetSize
+                  newM <- lift $ VUM.grow m' (targetSize - curSize)
+                  modify (\vms -> vms {vmsMem = newM})
+                  pure newM
+            lift $ VUM.write @IO mem i v
       getNum i = \case
         Position -> do
           readAddr i
         Immediate ->
           pure i
         Relative -> do
-          VmState {vmsMem, vmsRelBase} <- get
-          lift $ VUM.read @IO vmsMem (vmsRelBase + i)
+          VmState {vmsRelBase} <- get
+          readAddr (vmsRelBase + i)
       putNum i v = \case
-        Position -> do
-          mem <- gets vmsMem
-          lift $ VUM.write @IO mem i v
+        Position -> writeAddr i v
         Immediate ->
           error "target position cannot be immediate"
         Relative -> do
-          VmState {vmsMem, vmsRelBase} <- get
-          lift $ VUM.write @IO vmsMem (vmsRelBase + i) v
+          VmState {vmsRelBase} <- get
+          writeAddr (vmsRelBase + i) v
       runAt :: Int -> VM (VmResult VM (VU.Vector Int))
       runAt pc = do
         opRaw <- readAddr pc
