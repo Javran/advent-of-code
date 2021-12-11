@@ -77,10 +77,13 @@ pipeProgram lProg rProg = do
 instance Solution Day7 where
   solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    xs <- fmap (read @Int) . splitOn "," . head . lines <$> getInputS
-    let mem = VU.fromList xs
-        disablePart1 = True
-    unless disablePart1 $
+    (extraOps, rawInput) <- consumeExtraLeadingLines <$> getInputS
+    let xs = fmap (read @Int) . splitOn "," . head . lines $ rawInput
+        mem = VU.fromList xs
+        runPart1 = maybe True ("part1" `elem`) extraOps
+        runPart2 = maybe True ("part2" `elem`) extraOps
+    when
+      runPart1
       do
         signals <- forM (permutations [0 .. 4]) $ \config -> do
           progs <- forM config $ \c -> do
@@ -99,25 +102,27 @@ instance Solution Day7 where
                 _ -> error "unexpected"
             _ -> error "unexpected"
         answerShow $ maximum signals
-    do
-      signals <- forM (permutations [5 .. 9]) $ \config -> do
-        progs <- forM config $ \c -> do
-          r <- startProgram mem
-          case r of
-            NeedInput k ->
-              pure $ k c
-            _ -> error "unexpected"
-        let pipeline = foldl1 pipeProgram progs
-        Just result <-
-          fix
-            (\loopback curProg nextInput lastOut -> do
-               r0 <- curProg
-               case r0 of
-                 NeedInput k0 -> loopback (k0 $ fromJust nextInput) Nothing lastOut
-                 SentOutput o k1 -> loopback k1 (Just o) (Just o)
-                 Done {} -> pure lastOut)
-            pipeline
-            (Just 0)
-            Nothing
-        pure result
-      answerShow $ maximum signals
+    when
+      runPart2
+      do
+        signals <- forM (permutations [5 .. 9]) $ \config -> do
+          progs <- forM config $ \c -> do
+            r <- startProgram mem
+            case r of
+              NeedInput k ->
+                pure $ k c
+              _ -> error "unexpected"
+          let pipeline = foldl1 pipeProgram progs
+          Just result <-
+            fix
+              (\loopback curProg nextInput lastOut -> do
+                 r0 <- curProg
+                 case r0 of
+                   NeedInput k0 -> loopback (k0 $ fromJust nextInput) Nothing lastOut
+                   SentOutput o k1 -> loopback k1 (Just o) (Just o)
+                   Done {} -> pure lastOut)
+              pipeline
+              (Just 0)
+              Nothing
+          pure result
+        answerShow $ maximum signals
