@@ -16,8 +16,7 @@
  -}
 
 module Javran.AdventOfCode.Infra
-  ( prepareDataPath
-  , SubCmdHandlers
+  ( SubCmdHandlers
   , dispatchToSubCmds
   , SubCmdContext (..)
   , Solution (..)
@@ -39,7 +38,7 @@ where
 
 import Control.Monad
 import Control.Once
-import qualified Data.ByteString as BS
+import qualified Data.ByteString.Char8 as BSC
 import qualified Data.ByteString.Lazy as BSL
 import Data.Char
 import Data.IORef
@@ -51,6 +50,9 @@ import qualified Data.Text.IO as T
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.Builder as TLB
 import GHC.Generics
+import Javran.AdventOfCode.Network
+import Network.HTTP.Client (Manager, newManager)
+import Network.HTTP.Client.TLS
 import System.Console.Terminfo
 import System.Directory
 import System.Environment
@@ -59,8 +61,6 @@ import System.FilePath.Posix
 import System.IO
 import qualified System.IO.Strict
 import Text.ParserCombinators.ReadP
-import qualified Turtle.Bytes as TBytes
-import Network.HTTP.Client (Manager)
 
 consumeOrDie :: ReadP a -> String -> a
 consumeOrDie p = fromJust . consumeAllWithReadP p
@@ -73,31 +73,6 @@ consumeAllWithReadP p xs = case readP_to_S (p <* eof) xs of
 
 decimal1P :: (Read i, Integral i) => ReadP i
 decimal1P = read <$> munch1 isDigit
-
-{-
-  Ensure that the resource is available locally.
- -}
-prepareDataPath :: FilePath -> IO FilePath
-prepareDataPath rsc = do
-  projectHome <- getEnv "PROJECT_HOME"
-  mySession <- getEnv "ADVENT_OF_CODE_SESSION"
-
-  let actualFp = projectHome </> "data" </> "download" </> rsc
-      (actualDir, _) = splitFileName actualFp
-  createDirectoryIfMissing True actualDir
-  e <- doesFileExist actualFp
-  actualFp
-    <$ unless
-      e
-      (do
-         -- there are too much bullshit involved to get the fucking CookieJar attached to a request for http-client that I won't bother.
-         let url = "https://adventofcode.com" </> rsc
-         (ExitSuccess, raw) <-
-           TBytes.procStrict
-             "curl"
-             ["--cookie", "session=" <> T.pack mySession, T.pack url, "--fail"]
-             ""
-         BS.writeFile actualFp raw)
 
 data SubCmdContext = SubCmdContext
   { mTerm :: Maybe Terminal
@@ -119,10 +94,28 @@ dispatchToSubCmds ctxt subCmdHandlers = do
         putStrLn $ cmdHelpPrefix <> sub <> " ..."
       exitFailure
 
-getRawInput :: Int -> Int -> IO BSL.ByteString
-getRawInput yyyy dd = prepareDataPath rsc >>= BSL.readFile
+getRawLoginInput :: Int -> Int -> IO BSL.ByteString
+getRawLoginInput yyyy dd = prepareDataPath >>= BSL.readFile
   where
     rsc = show yyyy </> "day" </> show dd </> "input"
+
+    prepareDataPath :: IO FilePath
+    prepareDataPath = do
+      projectHome <- getEnv "PROJECT_HOME"
+      mySession <- getEnv "ADVENT_OF_CODE_SESSION"
+
+      let actualFp = projectHome </> "data" </> "download" </> rsc
+          (actualDir, _) = splitFileName actualFp
+      createDirectoryIfMissing True actualDir
+      e <- doesFileExist actualFp
+      actualFp
+        <$ unless
+          e
+          (do
+             -- TODO: pass down the manager properly.
+             manager <- newManager tlsManagerSettings
+             raw <- fetchInputData manager (BSC.pack mySession) yyyy dd
+             BSL.writeFile actualFp raw)
 
 exampleRawInputRelativePath :: Int -> Int -> FilePath
 exampleRawInputRelativePath yyyy dd =
@@ -249,7 +242,7 @@ runSolutionWithExampleInput :: forall p sol. Solution sol => p sol -> Bool -> Ma
 runSolutionWithExampleInput p = runSolutionWithInputGetter p getExampleRawInput
 
 runSolutionWithLoginInput :: forall p sol. Solution sol => p sol -> Bool -> Maybe Terminal -> IO T.Text
-runSolutionWithLoginInput p = runSolutionWithInputGetter p getRawInput
+runSolutionWithLoginInput p = runSolutionWithInputGetter p getRawLoginInput
 
 data SomeSolution
   = forall sol. Solution sol => SomeSolution (Proxy sol)
