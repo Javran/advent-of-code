@@ -67,19 +67,20 @@ performTestdataSpecHashSync = do
   projectHome <- getEnv "PROJECT_HOME"
   let fp = projectHome </> "test" </> "Javran" </> "AdventOfCode" </> "TestdataSpec.hs"
   digest <- computeTestdataDirDigestTextRep
-  let extractSecCb =
+  let digestContent = ["hashForForceRecompliation = \"" <> digest <> "\""]
+      extractSecCb =
         (\prevSec bm sec em postSec ->
-           if sec == [digest]
+           if sec == digestContent
              then -- no need for editing, nothing is changed.
                (sec, Just False)
              else
-               ( prevSec <> [bm] <> [digest] <> [em] <> postSec
+               ( prevSec <> [bm] <> digestContent <> [em] <> postSec
                , Just True
                ))
 
   mayEditFileWithSpecialSection
     fp
     "TestdataSpec: "
-    "FORCE_RECOMP_HASH_BEGIN"
-    "FORCE_RECOMP_HASH_END"
+    "-- FORCE_RECOMP_HASH_BEGIN"
+    "-- FORCE_RECOMP_HASH_END"
     extractSecCb
