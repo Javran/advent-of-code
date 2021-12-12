@@ -147,6 +147,7 @@ data SolutionContext = SolutionContext
   , answerS :: String -> IO ()
   , answerShow :: forall a. Show a => a -> IO ()
   , answerT :: T.Text -> IO ()
+  , terminal :: Maybe Terminal
   }
 
 moduleNameToYearDayP :: ReadP (Int, Int)
@@ -226,6 +227,7 @@ runSolutionWithInputGetter p inputGetter interleaveAnswer mTerm = do
       , answerT
       , answerS
       , answerShow
+      , terminal = mTerm
       }
   answer <- readIORef outRef
   pure $ TL.toStrict $ TLB.toLazyText answer
