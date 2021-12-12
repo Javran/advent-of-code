@@ -20,8 +20,8 @@ where
 import Control.Monad.RWS.Strict
 import Control.Monad.State.Strict
 import qualified Data.DList as DL
-import qualified Data.List.Ordered as LOrd
 import qualified Data.IntMap as IM
+import qualified Data.List.Ordered as LOrd
 import Data.Maybe
 import qualified Data.Vector.Unboxed as VU
 import qualified Data.Vector.Unboxed.Mutable as VUM
@@ -90,8 +90,8 @@ maxVectorSize = 0xFFFF
 
 findGrowTarget :: Int -> Int -> Int
 findGrowTarget curSize i = head $ filter (\sz -> i < sz) sizes
- where
-   sizes = LOrd.union (iterate (* 2) curSize) [maxVectorSize]
+  where
+    sizes = LOrd.union (iterate (* 2) curSize) [maxVectorSize]
 
 initiate :: VU.Vector Int -> IO VmState
 initiate initMem = do
