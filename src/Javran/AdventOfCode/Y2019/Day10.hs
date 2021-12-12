@@ -13,7 +13,6 @@ import Data.Function
 import Data.List
 import qualified Data.Map.Strict as M
 import Data.Ord
-import Data.Ratio
 import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Linear.Affine
@@ -40,12 +39,7 @@ instance Solution Day10 where
             , M.fromListWith (<>) do
                 cur <- others
                 let d10@(V2 dx dy) = cur .-. c
-                    slope =
-                      if dy == 0
-                        then V2 1 0
-                        else
-                          let r = dx % dy
-                           in V2 (numerator r) (denominator r)
+                    slope = (`div` gcd dx dy) <$> d10
                     sign = signum $ perp slope `crossZ` d10
                 -- with slope with a direction (as sign) to group other asteroids.
                 pure (slope ^* sign, [cur])
