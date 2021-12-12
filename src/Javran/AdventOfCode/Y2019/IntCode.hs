@@ -63,8 +63,6 @@ runVmResult r s0 = do
       runVmResult (pure a) s2
     SentOutput o k -> pure $ SentOutput o (runVmResult k s1)
 
--- TODO: see if we can do this with monad-control.
-
 startProgram :: VU.Vector Int -> IO (VmResult IO (VU.Vector Int))
 startProgram initMem = do
   s <- initiate initMem

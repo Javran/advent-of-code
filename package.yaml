@@ -46,7 +46,7 @@ library:
     - petbox
     - dlist
     - list-t
-    - monad-control
+    - linear
   ghc-options:
     - -Wall
     - -O2
