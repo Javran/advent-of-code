@@ -15,6 +15,7 @@ where
 import Control.Monad
 import qualified Data.ByteString.Char8 as BSC
 import qualified Data.ByteString.Lazy as BSL
+import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import Javran.AdventOfCode.Cli.EditExample
 import Javran.AdventOfCode.Cli.New
@@ -185,6 +186,7 @@ runMainWith SubCmdContext {cmdHelpPrefix, mTerm, manager} year day args = do
               runSolutionWithExampleAndWriteExpect s mTerm
             CmdSubmit part answer -> do
               mySession <- getEnv "ADVENT_OF_CODE_SESSION"
-              submitAnswer manager (BSC.pack mySession) year day part (BSC.pack answer) >>= mapM_ T.putStrLn
+              results <- submitAnswer manager (BSC.pack mySession) year day part (BSC.pack answer)
+              T.putStrLn . T.unwords . T.words $ mconcat results
         Nothing ->
           die "No solution available, only `new` command is accepted."
