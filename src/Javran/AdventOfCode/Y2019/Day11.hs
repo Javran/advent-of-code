@@ -124,21 +124,23 @@ performPainting painter = \case
     color <- getCurColor
     SentOutput rawPaintColor k1 <- liftIO $ k0 (if color == Black then 0 else 1)
     SentOutput rawTurn k2 <- liftIO k1
-    -- paint
     (loc, turn) <- gets fst
     let paintColor = case rawPaintColor of
           0 -> Black
           1 -> White
           _ -> errInvalid
-    modify (second (M.insert loc paintColor))
-    -- turn and move forward
-    let turn' = case rawTurn of
+        turn' = case rawTurn of
           0 -> (turn + 3) `rem` 4
           1 -> (turn + 1) `rem` 4
           _ -> errInvalid
         loc' = loc .+^ (dirs !! turn')
-    modify (first (const (loc', turn')))
-    get >>= \s -> liftIO $ painter s
+    modify
+      (bimap
+         (-- turn and move forward
+          const (loc', turn'))
+         (-- paint on current location
+          M.insert loc paintColor))
+    get >>= \s -> liftIO $ painter s -- for debugging
     r3 <- liftIO k2
     performPainting painter r3
   SentOutput {} -> unexpected
@@ -150,19 +152,17 @@ instance Solution Day11 where
   solutionRun _ SolutionContext {getInputS, answerShow, answerS, terminal} = do
     xs <- fmap (read @Int) . splitOn "," . head . lines <$> getInputS
     let mem = VU.fromList xs
+        runWithInitialMap m = do
+          prog <- startProgram mem
+          execStateT
+            (performPainting (const (pure ())) prog)
+            ((P (V2 0 0), 0), m)
+
     do
-      prog <- startProgram mem
-      (_roboSt, m) <-
-        execStateT
-          (performPainting (const (pure ())) prog)
-          ((P (V2 0 0), 0), M.empty)
+      (_roboSt, m) <- runWithInitialMap M.empty
       answerShow (M.size m)
     do
-      prog <- startProgram mem
-      st <-
-        execStateT
-          (performPainting (const (pure ())) prog)
-          ((P (V2 0 0), 0), M.singleton (P $ V2 0 0) White)
+      st <- runWithInitialMap $ M.singleton (P $ V2 0 0) White
       paintState
         (case terminal of
            Nothing -> Left answerS
