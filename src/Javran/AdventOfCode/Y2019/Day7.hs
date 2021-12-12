@@ -41,7 +41,6 @@ pipeProgram lProg rProg = do
     SentOutput o rK -> pure $ SentOutput o (pipeProgram lProg rK)
 
 instance Solution Day7 where
-  solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     (extraOps, rawInput) <- consumeExtraLeadingLines <$> getInputS
     let xs = fmap (read @Int) . splitOn "," . head . lines $ rawInput
