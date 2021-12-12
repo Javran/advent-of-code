@@ -35,6 +35,7 @@ library
       Javran.AdventOfCode.Testdata
       Javran.AdventOfCode.TH
       Javran.AdventOfCode.Y2019.Day1
+      Javran.AdventOfCode.Y2019.Day10
       Javran.AdventOfCode.Y2019.Day2
       Javran.AdventOfCode.Y2019.Day3
       Javran.AdventOfCode.Y2019.Day4
