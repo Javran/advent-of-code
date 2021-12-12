@@ -82,14 +82,14 @@ getExampleInputPath year day = \case
     subPath = "data" </> "testdata" </> show year </> "day" </> show day
     todo = error "TODO"
 
-runSolutionWithExampleAndWriteExpect :: forall p sol. Solution sol => p sol -> Maybe Terminal -> IO ()
-runSolutionWithExampleAndWriteExpect p mTerm = do
+runSolutionWithExampleAndWriteExpect :: forall p sol. Solution sol => p sol -> IO ()
+runSolutionWithExampleAndWriteExpect p = do
   projectHome <- getEnv "PROJECT_HOME"
   let solInd@(yyyy, dd) = solutionIndex p
   tis <- scanForSolution projectHome solInd
   forM_ tis $ \TestdataInfo {inputFilePath, tag} -> do
     putStrLn $ "Processing tag: " <> tag <> " ..."
-    actualOutput <- runSolutionWithInputGetter p (\_ _ -> BSL.readFile inputFilePath) False mTerm
+    actualOutput <- runSolutionWithInputGetter p (\_ _ -> BSL.readFile inputFilePath) False Nothing
     let fpTarget = projectHome </> subPath </> (tag <> ".expect.txt")
         subPath = exampleRawInputRelativePath yyyy dd
     mExistingOutput <- do
@@ -183,7 +183,7 @@ runMainWith SubCmdContext {cmdHelpPrefix, mTerm, manager} year day args = do
             CmdEditExample e ->
               editExampleWithName year day (exampleNameToName e)
             CmdWriteExampleExpect ->
-              runSolutionWithExampleAndWriteExpect s mTerm
+              runSolutionWithExampleAndWriteExpect s
             CmdSubmit part answer -> do
               mySession <- getEnv "ADVENT_OF_CODE_SESSION"
               results <- submitAnswer manager (BSC.pack mySession) year day part (BSC.pack answer)

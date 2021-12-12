@@ -1,0 +1,5 @@
+6
+Modified region: X(col): (-1,1), Y(row): (-1,1)
+.<#
+..#
+##.
