@@ -53,7 +53,7 @@ data VmResult m r
 
 type Result = VmResult IO
 
-runVmResult :: VM (VmResult VM a) -> VmState -> IO (VmResult IO a)
+runVmResult :: VM (VmResult VM a) -> VmState -> IO (Result a)
 runVmResult r s0 = do
   (r0, s1) <- runStateT r s0
   case r0 of
@@ -63,7 +63,7 @@ runVmResult r s0 = do
       runVmResult (pure a) s2
     SentOutput o k -> pure $ SentOutput o (runVmResult k s1)
 
-startProgram :: VU.Vector Int -> IO (VmResult IO (VU.Vector Int))
+startProgram :: VU.Vector Int -> IO (Result (VU.Vector Int))
 startProgram initMem = do
   s <- initiate initMem
   (r0, s') <- runStateT startProgramAux s
