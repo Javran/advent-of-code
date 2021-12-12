@@ -81,7 +81,7 @@ data VmState = VmState
   Defines the maximum space vector is allowed to occupy.
 
   - allowed vector indices are: [0..maxVectorSize-1]
-  - vmsSpace stores any index >= maxVectorSize
+  - vmsSparse stores any index >= maxVectorSize
   - vector growth on write demands.
 
  -}
