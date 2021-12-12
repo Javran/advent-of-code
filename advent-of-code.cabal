@@ -101,11 +101,11 @@ library
     , http-client
     , http-client-tls
     , http-types
+    , linear
     , list-t
     , memoize
     , microstache
     , mod
-    , monad-control
     , mtl
     , once
     , parser-combinators

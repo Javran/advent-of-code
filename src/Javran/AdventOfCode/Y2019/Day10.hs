@@ -49,58 +49,60 @@ import qualified Data.Text as T
 import qualified Data.Vector as V
 import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
+import Linear.Affine
+import Linear.V2
 import Text.ParserCombinators.ReadP hiding (count, many)
 
 data Day10 deriving (Generic)
 
-type Coord = (Int, Int)
+type Coord = Point V2 Int
 
 instance Solution Day10 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    xs <- lines <$> getInputS
+    raws <- lines <$> getInputS
     let asteroids :: [Coord]
         asteroids = do
-          (r, rs) <- zip [0 ..] xs
-          (c, '#') <- zip [0 ..] rs
-          pure (r, c)
+          (y, rs) <- zip [0 ..] raws
+          (x, '#') <- zip [0 ..] rs
+          pure $ P $ V2 x y
+        stations :: [(Point V2 Int, M.Map (V2 Int) [Coord])]
         stations = do
-          (c@(y0, x0), others) <- pick asteroids
-          let vs = fmap (\(y1, x1) -> (y1 - y0, x1 - x0)) others
+          (c@(P (V2 x0 y0)), others) <- pick asteroids
           pure
             ( c
             , M.fromListWith (<>) do
-                cur@(y1, x1) <- others
-                let (dy, dx) = (y1 - y0, x1 - x0)
-                let slope@(sy, sx) =
-                      if dx == 0
+                cur@(P (V2 x1 y1)) <- others
+                let (dx, dy) = (x1 - x0, y1 - y0)
+                let slope@(sx, sy) =
+                      if dy == 0
                         then (1, 0)
                         else
-                          let r = dy % dx
+                          let r = dx % dy
                            in (numerator r, denominator r)
                     sign = signum $ - sx * dx - sy * dy
-                pure ((sx * sign, sy * sign), [cur])
+                pure (V2 (sy * sign) (sx * sign), [cur])
             )
-        bestStation@((bestY, bestX), bestM) = maximumBy (comparing (M.size . snd)) stations
-    -- print (bestCoord, M.size bestM)
+        bestStation@((P (V2 bestX bestY)), bestM) = maximumBy (comparing (M.size . snd)) stations
     answerShow $ M.size bestM
     let toPos v = if v >= pi / 2 then v else v + pi * 2
-        stationDist (y, x) = abs (y - bestY) + abs (x - bestX)
+        stationDist (P (V2 x y)) = abs (x - bestX) + abs (y - bestY)
         ordered =
           fmap snd $
             (fmap . second) (sortOn stationDist) $
               sortOn
-                ((\(y, x) -> toPos $ atan2 @Double (fromIntegral x) (fromIntegral y)) . fst)
+                ((\(V2 x y) -> toPos $ atan2 @Double (fromIntegral x) (fromIntegral y)) . fst)
                 $ M.toList bestM
         elimOrders =
-          unfoldr
-            (\cur -> do
-               guard $ not $ null cur
-               let (hdsPre, tlsPre) = unzip $ fmap (splitAt 1) cur
-                   tls = filter (not . null) tlsPre
-               Just (concat hdsPre, tls))
-            ordered
-    let (y, x) =
-          if length (concat elimOrders) < 200
-            then last $ concat elimOrders
-            else concat elimOrders !! (200 - 1)
+          concat $
+            unfoldr
+              (\cur -> do
+                 _ : _ <- pure cur
+                 let (hdsPre, tlsPre) = unzip $ fmap (splitAt 1) cur
+                     tls = filter (not . null) tlsPre
+                 Just (concat hdsPre, tls))
+              ordered
+    let (P (V2 x y)) =
+          if length elimOrders < 200
+            then last $ elimOrders
+            else elimOrders !! (200 - 1)
     answerShow (x * 100 + y)
