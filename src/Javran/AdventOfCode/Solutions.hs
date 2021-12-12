@@ -57,6 +57,7 @@ import Javran.AdventOfCode.Y2021.Day8 ()
 import Javran.AdventOfCode.Y2021.Day9 ()
 import Javran.AdventOfCode.Y2021.Day10 ()
 import Javran.AdventOfCode.Y2021.Day11 ()
+import Javran.AdventOfCode.Y2021.Day12 ()
 {- ORMOLU_ENABLE -}
 
 allSolutions :: IM.IntMap (IM.IntMap SomeSolution)
