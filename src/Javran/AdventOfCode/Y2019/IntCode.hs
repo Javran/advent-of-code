@@ -16,20 +16,21 @@ module Javran.AdventOfCode.Y2019.IntCode
   , startProgram
   , parseCodeOrDie
   , startProgramFromFoldable
+  , communicate
   )
 where
 
 import Control.Monad.RWS.Strict
 import Control.Monad.State.Strict
 import qualified Data.DList as DL
+import Data.Foldable
 import qualified Data.IntMap as IM
+import Data.List
 import qualified Data.List.Ordered as LOrd
+import Data.List.Split
 import Data.Maybe
 import qualified Data.Vector.Unboxed as VU
 import qualified Data.Vector.Unboxed.Mutable as VUM
-import Data.List.Split
-import Data.List
-import Data.Foldable
 
 data ParameterMode
   = Position
@@ -79,6 +80,39 @@ startProgramFromFoldable xs = do
   s <- initiateFromFoldable xs
   (r0, s') <- runStateT startProgramAux s
   runVmResult (pure r0) s'
+
+{-
+  Send the program a sequence of inputs, and collect an expected
+  amount of outputs.
+ -}
+communicate :: [Int] -> Int -> IO (Result a) -> IO ([Int], IO (Result a))
+communicate inputs outputCount k0 = case inputs of
+  [] ->
+    fix
+      (\loop curK outCnt acc ->
+         if outCnt > 0
+           then do
+             r0 <- curK
+             case r0 of
+               SentOutput o k1 -> do
+                 loop
+                   k1
+                   (outCnt -1)
+                   (acc <> DL.singleton o)
+               _ ->
+                 error $ "expected to collect " <> show outCnt <> " more outputs"
+           else pure (DL.toList acc, curK))
+      k0
+      outputCount
+      DL.empty
+  x : xs -> do
+    r0 <- k0
+    case r0 of
+      NeedInput k -> do
+        r1 <- k x
+        communicate xs outputCount (pure r1)
+      _ ->
+        error $ "expected to need " <> show (length inputs) <> " more inputs."
 
 data VmState = VmState
   { vmsMem :: VUM.IOVector Int

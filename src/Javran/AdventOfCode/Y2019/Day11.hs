@@ -120,10 +120,10 @@ paintState outMethod ((roboLoc, roboTurn), m) = do
 performPainting :: (St -> IO ()) -> Result (VU.Vector Int) -> StateT St IO ()
 performPainting painter = \case
   Done {} -> pure ()
-  NeedInput k0 -> do
+  r@NeedInput {} -> do
     color <- getCurColor
-    SentOutput rawPaintColor k1 <- liftIO $ k0 (if color == Black then 0 else 1)
-    SentOutput rawTurn k2 <- liftIO k1
+    ([rawPaintColor, rawTurn], k2) <- liftIO $
+        communicate [if color == Black then 0 else 1] 2 (pure r)
     (loc, turn) <- gets fst
     let paintColor = case rawPaintColor of
           0 -> Black
