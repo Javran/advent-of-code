@@ -74,31 +74,43 @@ type Moon = (Point V3 Int {- pos -}, V3 Int {- vel -})
 
 type System = [Moon]
 
-stepSystem :: System -> System
-stepSystem xs0 = zip locs' vels'
+moonEnerge :: Moon -> Int
+moonEnerge (P (V3 x y z), V3 vx vy vz) = sum (fmap abs [x, y, z]) * sum (fmap abs [vx, vy, vz])
+
+systemEnerge :: System -> Int
+systemEnerge = sum . fmap moonEnerge
+
+stepOneDim :: [(Int, Int)] -> [(Int, Int)]
+stepOneDim xs0 = zip locs' vels'
   where
     (locs, vels) = unzip xs0
-    vels' = zipWith (^+^) vels gravity
-    locs' = zipWith (.+^) locs vels'
-    gravity :: [V3 Int]
+    vels' = zipWith (+) vels gravity
+    locs' = zipWith (+) locs vels'
+    gravity :: [Int]
     gravity = appEndo (foldMap Endo gravityMods) $ replicate (length xs0) 0
       where
         gravityMods = do
           -- pairwise context, indexed by i and j.
           ((i :: Int, (locA, _)), xs1) <- pickInOrder (zip [0 ..] xs0)
           ((j, (locB, _)), _) <- pickInOrder xs1
-          -- one for modifying Point V3, another for V3.
-          (_dimP, _dimV) <- [(_x, _x), (_y, _y), (_z, _z)]
-          pure $ case compare (locA ^. _dimP) (locB ^. _dimP) of
-            LT -> (& (element i . _dimV) %~ succ) . (& (element j . _dimV) %~ pred)
+          pure $ case compare locA locB of
+            LT -> (& element i %~ succ) . (& element j %~ pred)
             EQ -> id -- do nothing
-            GT -> (& (element i . _dimV) %~ pred) . (& (element j . _dimV) %~ succ)
+            GT -> (& element i %~ pred) . (& element j %~ succ)
 
-moonEnerge :: Moon -> Int
-moonEnerge (P (V3 x y z), V3 vx vy vz) = sum (fmap abs [x, y, z]) * sum (fmap abs [vx, vy, vz])
+stepSystem :: System -> System
+stepSystem moons = zipWith3 combine xs' ys' zs'
+  where
+    combine (px, vx) (py, vy) (pz, vz) =
+      (P (V3 px py pz), (V3 vx vy vz))
 
-systemEnerge :: System -> Int
-systemEnerge = sum . fmap moonEnerge
+    xs = fmap (\(p, v) -> (p ^. _x, v ^. _x)) moons
+    ys = fmap (\(p, v) -> (p ^. _y, v ^. _y)) moons
+    zs = fmap (\(p, v) -> (p ^. _z, v ^. _z)) moons
+
+    xs' = stepOneDim xs
+    ys' = stepOneDim ys
+    zs' = stepOneDim zs
 
 instance Solution Day12 where
   solutionSolved _ = False
