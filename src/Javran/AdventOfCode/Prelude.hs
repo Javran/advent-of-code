@@ -8,6 +8,7 @@ module Javran.AdventOfCode.Prelude
   , decodeBinary
   , errInvalid
   , unreachable
+  , todo
   , universe
   , -- infrastructures
     module Javran.AdventOfCode.Infra
@@ -44,3 +45,6 @@ errInvalid = error "invalid input"
 
 unreachable :: a
 unreachable = error "unreachable"
+
+todo :: a
+todo = error "todo"
