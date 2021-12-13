@@ -48,6 +48,8 @@ library:
     - list-t
     - linear
     - lens
+    - random
+    - array
   ghc-options:
     - -Wall
     - -O2
