@@ -4,7 +4,7 @@
 {-# LANGUAGE TupleSections #-}
 
 module Javran.AdventOfCode.Y2020.Day13
-  (
+  ( chineseRemainder
   )
 where
 

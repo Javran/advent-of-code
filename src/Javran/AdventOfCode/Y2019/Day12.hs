@@ -1,60 +1,28 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
-{-# OPTIONS_GHC -Wno-deprecations #-}
-{-# OPTIONS_GHC -Wno-typed-holes #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -fdefer-typed-holes #-}
 
 module Javran.AdventOfCode.Y2019.Day12
   (
   )
 where
 
-{- HLINT ignore -}
-
-import Control.Applicative
 import Control.Lens
-import Control.Monad
-import Data.Bifunctor
-import Data.Bool
-import Data.Char
-import Data.Either
-import Data.Function
-import Data.Function.Memoize (memoFix)
-import qualified Data.IntMap.Strict as IM
-import qualified Data.IntSet as IS
-import Data.List
-import Data.List.Split hiding (sepBy)
 import qualified Data.Map.Strict as M
-import Data.Maybe
 import Data.Monoid
-import Data.Ord
-import Data.Semigroup
-import qualified Data.Set as S
-import qualified Data.Text as T
-import qualified Data.Vector as V
-import Debug.Trace
 import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
+import Javran.AdventOfCode.Y2020.Day13 (chineseRemainder)
 import Linear.Affine
 import Linear.V3
-import Linear.Vector
+import Math.NumberTheory.Moduli.Class
 import Text.ParserCombinators.ReadP hiding (count, many)
-import Turtle (system)
 
 data Day12 deriving (Generic)
 
@@ -102,7 +70,7 @@ stepSystem :: System -> System
 stepSystem moons = zipWith3 combine xs' ys' zs'
   where
     combine (px, vx) (py, vy) (pz, vz) =
-      (P (V3 px py pz), (V3 vx vy vz))
+      (P (V3 px py pz), V3 vx vy vz)
 
     xs = fmap (\(p, v) -> (p ^. _x, v ^. _x)) moons
     ys = fmap (\(p, v) -> (p ^. _y, v ^. _y)) moons
@@ -111,6 +79,16 @@ stepSystem moons = zipWith3 combine xs' ys' zs'
     xs' = stepOneDim xs
     ys' = stepOneDim ys
     zs' = stepOneDim zs
+
+detectLoop :: Ord a => [a] -> (Int, Int)
+detectLoop xs = detectLoopAux traced M.empty
+  where
+    traced = zip [0 ..] xs
+
+    detectLoopAux ((j, y) : ys) seen = case seen M.!? y of
+      Just i -> (i, j)
+      Nothing -> detectLoopAux ys (M.insert y j seen)
+    detectLoopAux [] _ = unreachable -- expect infinite list
 
 instance Solution Day12 where
   solutionSolved _ = False
@@ -123,3 +101,14 @@ instance Solution Day12 where
           Just xs -> read (head xs)
           Nothing -> 1000
     answerShow $ systemEnerge (iterate stepSystem initSys !! steps)
+    do
+      let xs = fmap (\(p, v) -> (p ^. _x, v ^. _x)) initSys
+          ys = fmap (\(p, v) -> (p ^. _y, v ^. _y)) initSys
+          zs = fmap (\(p, v) -> (p ^. _z, v ^. _z)) initSys
+          answer = chineseRemainder do
+            oneDimSys <- [xs, ys, zs]
+            let (r, p) = detectLoop (iterate stepOneDim oneDimSys)
+            pure $ fromIntegral r `modulo` fromIntegral p
+      answerShow $ case answer of
+        Just (SomeMod m) -> getMod m
+        _ -> unreachable
