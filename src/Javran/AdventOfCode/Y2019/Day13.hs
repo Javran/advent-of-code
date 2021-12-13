@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Javran.AdventOfCode.Y2019.Day13
   (
@@ -10,10 +11,12 @@ where
 
 import Control.Monad
 import Control.Monad.State.Strict
+import qualified Data.Array.IO as AIO
 import Data.Bifunctor
 import Data.Function
 import qualified Data.Map.Strict as M
 import Data.Semigroup
+import Data.Word
 import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.Y2019.IntCode
@@ -46,28 +49,27 @@ printScreen ((minX, maxX), (minY, maxY)) (mScore, screen) = do
       Just x -> show x
 
 data GameState = GameState
-  { gsScreen :: M.Map Coord Int
+  { gsScreen :: AIO.IOUArray (Int, Int) Word8
   , gsScore :: Maybe Int
   , gsPaddleX :: Maybe Int
   , gsBallX :: Maybe Int
   }
 
-playGame :: ScreenDim -> IO (Result a) -> StateT GameState IO (Maybe Int)
-playGame screenDim prog = do
+playGame :: IO (Result a) -> StateT GameState IO (Maybe Int)
+playGame prog = do
   r <- liftIO prog
   case r of
     Done {} ->
       gets gsScore
     NeedInput k -> do
-      GameState {gsPaddleX, gsBallX}<- get
-      let
-          i = case (gsPaddleX, gsBallX) of
+      GameState {gsPaddleX, gsBallX} <- get
+      let i = case (gsPaddleX, gsBallX) of
             (Just pX, Just bX) -> case compare pX bX of
               LT -> 1
               EQ -> 0
               GT -> -1
             _ -> 0
-      playGame screenDim (k i)
+      playGame (k i)
     SentOutput {} -> do
       ([x, y, val], k) <- liftIO $ communicate [] 3 (pure r)
       if (x, y) == (-1, 0)
@@ -75,12 +77,14 @@ playGame screenDim prog = do
         else do
           case val of
             3 ->
-             modify (\gs -> gs {gsPaddleX = Just x})
+              modify (\gs -> gs {gsPaddleX = Just x})
             4 ->
-             modify (\gs -> gs {gsBallX = Just x})
+              modify (\gs -> gs {gsBallX = Just x})
             _ -> pure ()
-          modify (\gs -> gs {gsScreen = M.insert (x, y) val (gsScreen gs)})
-      playGame screenDim k
+          -- TODO: don't need this if we are doing tests.
+          -- arr <- gets gsScreen
+          -- liftIO $ AIO.writeArray arr (x,y) (fromIntegral val)
+      playGame k
 
 instance Solution Day13 where
   solutionSolved _ = False
@@ -106,16 +110,17 @@ instance Solution Day13 where
       -- it seems to be a safe assumption that we can carry screen dimension over to part 2.
       ((minX, maxX), (minY, maxY))
         <$ answerShow (M.size $ M.filter (== 2) screen)
-    print screenDim
     do
+      let ((minX, maxX), (minY, maxY)) = screenDim
+      arr <- AIO.newArray @AIO.IOUArray ((minX, minY), (maxX, maxY)) (0 :: Word8)
       let xs' = 2 : tail xs
           prog = startProgramFromFoldable xs'
           initSt =
             GameState
-              { gsScreen = M.empty
+              { gsScreen = arr
               , gsScore = Nothing
               , gsPaddleX = Nothing
               , gsBallX = Nothing
               }
-      Just v <- evalStateT (playGame screenDim prog) initSt
+      Just v <- evalStateT (playGame prog) initSt
       answerShow v
