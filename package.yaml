@@ -47,6 +47,7 @@ library:
     - dlist
     - list-t
     - linear
+    - lens
   ghc-options:
     - -Wall
     - -O2

@@ -102,6 +102,7 @@ library
     , http-client
     , http-client-tls
     , http-types
+    , lens
     , linear
     , list-t
     , memoize

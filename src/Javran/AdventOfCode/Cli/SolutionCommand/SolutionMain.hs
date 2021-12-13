@@ -25,7 +25,6 @@ import Javran.AdventOfCode.Infra
 import Javran.AdventOfCode.Network (submitAnswer)
 import Javran.AdventOfCode.Solutions
 import Javran.AdventOfCode.Testdata (TestdataInfo (..), scanForSolution)
-import System.Console.Terminfo
 import System.Directory
 import System.Environment
 import System.Exit

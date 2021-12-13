@@ -14,6 +14,8 @@ module Javran.AdventOfCode.Y2019.IntCode
   , Result
   , runProgram
   , startProgram
+  , parseCodeOrDie
+  , startProgramFromFoldable
   )
 where
 
@@ -25,6 +27,9 @@ import qualified Data.List.Ordered as LOrd
 import Data.Maybe
 import qualified Data.Vector.Unboxed as VU
 import qualified Data.Vector.Unboxed.Mutable as VUM
+import Data.List.Split
+import Data.List
+import Data.Foldable
 
 data ParameterMode
   = Position
@@ -69,6 +74,12 @@ startProgram initMem = do
   (r0, s') <- runStateT startProgramAux s
   runVmResult (pure r0) s'
 
+startProgramFromFoldable :: Foldable f => f Int -> IO (Result (VU.Vector Int))
+startProgramFromFoldable xs = do
+  s <- initiateFromFoldable xs
+  (r0, s') <- runStateT startProgramAux s
+  runVmResult (pure r0) s'
+
 data VmState = VmState
   { vmsMem :: VUM.IOVector Int
   , vmsRelBase :: Int
@@ -94,6 +105,11 @@ findGrowTarget curSize i = head $ filter (\sz -> i < sz) sizes
 initiate :: VU.Vector Int -> IO VmState
 initiate initMem = do
   vmsMem <- VU.thaw initMem
+  pure VmState {vmsMem, vmsRelBase = 0, vmsSparse = IM.empty}
+
+initiateFromFoldable :: Foldable f => f Int -> IO VmState
+initiateFromFoldable xs = do
+  vmsMem <- VU.unsafeThaw (VU.fromList (toList xs))
   pure VmState {vmsMem, vmsRelBase = 0, vmsSparse = IM.empty}
 
 type VM = StateT VmState IO
@@ -194,18 +210,18 @@ startProgramAux = do
 
 type IntCodeVm = RWST () (DL.DList Int) [Int]
 
-runProgram :: VU.Vector Int -> [Int] -> IO (VU.Vector Int, [Int])
+runProgram :: Foldable f => f Int -> [Int] -> IO (VU.Vector Int, [Int])
 runProgram initMem inputs = do
   (a, _s, w) <- runRWST (runProgramAux initMem) () inputs
   pure (a, DL.toList w)
 
-runProgramAux :: VU.Vector Int -> IntCodeVm IO (VU.Vector Int)
-runProgramAux initMem = do
-  r <- lift $ startProgram initMem
+runProgramAux :: Foldable f => f Int -> IntCodeVm IO (VU.Vector Int)
+runProgramAux xs = do
+  r <- lift $ startProgramFromFoldable xs
   let drive = \case
         Done v -> pure v
         NeedInput k -> do
-          i <- state (\xs -> (head xs, tail xs))
+          i <- state (\ys -> (head ys, tail ys))
           r' <- liftIO $ k i
           drive r'
         SentOutput out k -> do
@@ -213,3 +229,15 @@ runProgramAux initMem = do
           r' <- liftIO k
           drive r'
   drive r
+
+{-
+  lines starting with `#` are ignored in first pass,
+  then remaining contents are unlined to form a comma-separated list of ints for parsing.
+ -}
+parseCodeOrDie :: String -> [Int]
+parseCodeOrDie =
+  fmap (read @Int)
+    . splitOn ","
+    . unlines
+    . filter (not . ("#" `isPrefixOf`))
+    . lines
