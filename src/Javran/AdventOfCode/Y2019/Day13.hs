@@ -12,41 +12,36 @@ where
 import Control.Monad
 import Control.Monad.State.Strict
 import qualified Data.Array.IO as AIO
-import Data.Bifunctor
-import Data.Function
 import qualified Data.Map.Strict as M
 import Data.Semigroup
 import Data.Word
 import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.Y2019.IntCode
+import System.Console.Terminfo
 
 data Day13 deriving (Generic)
 
-type ScreenDim = ((Int, Int), (Int, Int))
+showGame :: Terminal -> GameState -> IO ()
+showGame _t GameState {gsScreen, gsScore} = do
+  -- threadDelay (1000 * 20)
+  ((minX, minY), (maxX, maxY)) <- AIO.getBounds gsScreen
+  forM_ [minY .. maxY :: Int] $ \y -> do
+    let getAndRender :: Int -> IO String
+        getAndRender x = do
+          v <- AIO.readArray gsScreen (x, y)
+          pure $ case v of
+            0 -> "  "
+            1 -> "██"
+            2 -> "░░"
+            3 -> "━━"
+            4 -> "◖◗"
+            _ -> "  "
+    ts <- mapM getAndRender [minX .. maxX]
 
-type Coord = (Int, Int)
-
-type ScreenState = (Maybe Int, M.Map Coord Int)
-
-printScreen :: ScreenDim -> ScreenState -> IO ()
-printScreen ((minX, maxX), (minY, maxY)) (mScore, screen) = do
-  forM_ [minY .. maxY] $ \y -> do
-    let render coord = case screen M.!? coord of
-          Just 0 -> "  "
-          Just 1 -> "██"
-          Just 2 -> "░░"
-          Just 3 -> "━━"
-          Just 4 -> "()"
-          _ -> "  "
-    putStrLn $
-      concatMap
-        (\x -> render (x, y))
-        [minX .. maxX]
+    putStrLn $ concat ts
   putStrLn $
-    "Current score: " <> case mScore of
-      Nothing -> "?"
-      Just x -> show x
+    "Current score: " <> maybe "?" show gsScore
 
 data GameState = GameState
   { gsScreen :: AIO.IOUArray (Int, Int) Word8
@@ -55,21 +50,24 @@ data GameState = GameState
   , gsBallX :: Maybe Int
   }
 
-playGame :: IO (Result a) -> StateT GameState IO (Maybe Int)
-playGame prog = do
+playGame :: Maybe Terminal -> IO (Result a) -> StateT GameState IO (Maybe Int)
+playGame mTerm prog = do
   r <- liftIO prog
   case r of
     Done {} ->
       gets gsScore
     NeedInput k -> do
       GameState {gsPaddleX, gsBallX} <- get
+      case mTerm of
+        Just t -> get >>= liftIO . showGame t
+        Nothing -> pure ()
       let i = case (gsPaddleX, gsBallX) of
             (Just pX, Just bX) -> case compare pX bX of
               LT -> 1
               EQ -> 0
               GT -> -1
             _ -> 0
-      playGame (k i)
+      playGame mTerm (k i)
     SentOutput {} -> do
       ([x, y, val], k) <- liftIO $ communicate [] 3 (pure r)
       if (x, y) == (-1, 0)
@@ -81,10 +79,12 @@ playGame prog = do
             4 ->
               modify (\gs -> gs {gsBallX = Just x})
             _ -> pure ()
-          -- TODO: don't need this if we are doing tests.
-          -- arr <- gets gsScreen
-          -- liftIO $ AIO.writeArray arr (x,y) (fromIntegral val)
-      playGame k
+          case mTerm of
+            Nothing -> pure ()
+            Just _ -> do
+              arr <- gets gsScreen
+              liftIO $ AIO.writeArray arr (x, y) (fromIntegral val)
+      playGame mTerm k
 
 instance Solution Day13 where
   solutionSolved _ = False
@@ -122,5 +122,5 @@ instance Solution Day13 where
               , gsPaddleX = Nothing
               , gsBallX = Nothing
               }
-      Just v <- evalStateT (playGame prog) initSt
+      Just v <- evalStateT (playGame terminal prog) initSt
       answerShow v
