@@ -70,4 +70,16 @@ instance Solution Day14 where
   solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     xs <- fmap (consumeOrDie reactionP) . lines <$> getInputS
+    {-
+      TODO:
+      - determine order of elimination by topological sort.
+        (if we form graph that has edges from output chem to input chems,
+        we should have a DAG.)
+
+      - perform elimination using rewrites following that order.
+
+      - this can be further fused: as soon as the next element in the list of elimination
+        is determined, the rewrite can be performed.
+
+     -}
     mapM_ print xs
