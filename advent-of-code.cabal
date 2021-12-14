@@ -39,6 +39,7 @@ library
       Javran.AdventOfCode.Y2019.Day11
       Javran.AdventOfCode.Y2019.Day12
       Javran.AdventOfCode.Y2019.Day13
+      Javran.AdventOfCode.Y2019.Day14
       Javran.AdventOfCode.Y2019.Day2
       Javran.AdventOfCode.Y2019.Day3
       Javran.AdventOfCode.Y2019.Day4
@@ -116,6 +117,7 @@ library
     , once
     , parser-combinators
     , petbox
+    , pqueue
     , random
     , split
     , strict

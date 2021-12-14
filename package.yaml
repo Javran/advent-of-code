@@ -50,6 +50,7 @@ library:
     - lens
     - random
     - array
+    - pqueue
   ghc-options:
     - -Wall
     - -O2
