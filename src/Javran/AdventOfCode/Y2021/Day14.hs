@@ -38,7 +38,7 @@ toCompact xs = (recoverFreq,) $ M.fromListWith (+) do
   a <- divvy 2 1 xs
   pure (a, 1)
   where
-    recoverFreq :: CompactRep -> M.Map Char Int
+    recoverFreq :: RecoverFreq
     recoverFreq =
       M.map (`quot` 2)
         . M.adjust succ (head xs)
