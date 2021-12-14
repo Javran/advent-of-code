@@ -64,9 +64,9 @@ instance Solution Day13 where
             S.toList result
     forM_ [minY .. maxY] $ \y -> do
       let (ff, tt) = case terminal of
-            Nothing -> ('.', '#')
-            Just _ -> (' ', '█')
+            Nothing -> (".", "#")
+            Just _ -> ("  ", "██")
       answerS $
-        fmap
+        concatMap
           (\x -> if S.member (x, y) result then tt else ff)
           [minX .. maxX]
