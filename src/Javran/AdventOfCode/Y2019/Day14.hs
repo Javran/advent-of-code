@@ -27,6 +27,7 @@ where
 
 import Control.Applicative
 import Control.Monad
+import Control.Monad.Writer.CPS
 import Data.Bifunctor
 import Data.Bool
 import Data.Char
@@ -70,6 +71,11 @@ reactionP = do
 
 type ReactionTable = M.Map Chem (InputChems, Int)
 
+{-
+  To eliminate a chemical from a demand list is to replace it
+  by the reaction producing it, multipled by a factor
+  that produces just sufficient amount (it might result in some extras)
+ -}
 elim :: ReactionTable -> Chem -> M.Map Chem Int -> M.Map Chem Int
 elim tbl rmTarget m = case m M.!? rmTarget of
   Just needCnt ->
@@ -86,21 +92,27 @@ topologicalSort g = fmap ((\(_, k, _) -> k) . nodeFromVertex) sorted
       (k, vs) <- M.toList g
       pure ((), k, toList vs)
 
+solveFuel :: M.Map Chem (InputChems, Int) -> [Chem] -> Int -> Int
+solveFuel reactions elimOrder n = answer
+  where
+    initNeeds = M.singleton "FUEL" n
+    m = foldl (\demand c -> (elim reactions c demand)) initNeeds elimOrder
+    [("ORE", answer)] = M.toList m
+
 instance Solution Day14 where
-  solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     xs <- fmap (consumeOrDie reactionP) . lines <$> getInputS
     {-
-      TODO:
-      - determine order of elimination by topological sort.
-        (if we form graph that has edges from output chem to input chems,
-        we should have a DAG.)
+      The reason that we could arrive at a suboptimal solution is because
+      that some reactions would introduce extra amount of output chemical
+      that we don't use - to minimize that, should work backwards from
+      1 FUEL, towards ORE. This maximizes the chance that one output chemical
+      can participate in creation other chemicals so to reduce waste.
 
-      - perform elimination using rewrites following that order.
-
-      - this can be further fused: as soon as the next element in the list of elimination
-        is determined, the rewrite can be performed.
-
+      If we form a graph by drawing edges from output chemical to the list
+      of its input chemicals, we should have a DAG that we can run
+      topological sort on - then we can work from 1 FUEL to eliminate
+      chemicals following the topological order. (see `elim` function)
      -}
     let reactions :: ReactionTable
         reactions = M.fromListWith (error "expect no duplicated keys") do
@@ -114,8 +126,21 @@ instance Solution Day14 where
               (inChems, (outChem, _)) <- xs
               pure (outChem, M.keys inChems)
         elimOrder = init (topologicalSort topoPrep)
-        initNeeds = M.singleton "FUEL" 1
-    let [("ORE", answer)] =
-          M.toList
-            (foldl (flip (elim reactions)) initNeeds elimOrder)
-    answerShow answer
+        solve = solveFuel reactions elimOrder
+        answer1 = solve 1
+    answerShow answer1
+    let oneTri = 1000000000000
+        low = floor @Double @Int $ ((/) `on` fromIntegral) oneTri answer1
+        high : _ =
+          -- too lazy to mathmatically work out a upper bound.
+          dropWhile ((<= oneTri) . solve) $ iterate (* 2) low
+        binarySearch l r =
+          -- INVARIANT: `l` is within budget but `r` is not.
+          case compare v oneTri of
+            LT -> if l == mid then l else binarySearch mid r
+            EQ -> mid
+            GT -> if r == mid then l else binarySearch l mid
+          where
+            v = solve mid
+            mid = (l + r) `quot` 2
+    answerShow (binarySearch low high)

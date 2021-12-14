@@ -51,6 +51,7 @@ library:
     - random
     - array
     - pqueue
+    - writer-cps-mtl
   ghc-options:
     - -Wall
     - -O2
