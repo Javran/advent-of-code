@@ -78,8 +78,8 @@ elim tbl rmTarget m = case m M.!? rmTarget of
      in M.unionWith (+) (M.delete rmTarget m) (M.map (* factor) lhs)
   Nothing -> m
 
-topologicalSort2 :: forall f a. (Foldable f, Ord a) => M.Map a (f a) -> [a]
-topologicalSort2 g = fmap ((\(_, k, _) -> k) . nodeFromVertex) sorted
+topologicalSort :: forall f a. (Foldable f, Ord a) => M.Map a (f a) -> [a]
+topologicalSort g = fmap ((\(_, k, _) -> k) . nodeFromVertex) sorted
   where
     sorted = G.topSort graph
     (graph, nodeFromVertex, _vertexFromKey) = G.graphFromEdges do
@@ -107,16 +107,15 @@ instance Solution Day14 where
           (inChems, (outChem, v)) <- xs
           pure (outChem, (inChems, v))
         topoPrep :: M.Map Chem [Chem]
-        topoPrep = M.alter
-          (\case
-             Just v -> Just v
-             Nothing -> Just [])
-          "ORE"
-          $ M.fromList do
-            (inChems, (outChem, _)) <- xs
-            pure (outChem, M.keys inChems)
-        elimOrder = init (topologicalSort2 topoPrep)
+        topoPrep =
+          -- ORE can never appear on RHS.
+          M.insert "ORE" [] $
+            M.fromList do
+              (inChems, (outChem, _)) <- xs
+              pure (outChem, M.keys inChems)
+        elimOrder = init (topologicalSort topoPrep)
         initNeeds = M.singleton "FUEL" 1
-    print elimOrder
-    let elim' = elim reactions
-    print (foldl (\curNeed rm -> elim' rm curNeed) initNeeds elimOrder)
+    let [("ORE", answer)] =
+          M.toList
+            (foldl (flip (elim reactions)) initNeeds elimOrder)
+    answerShow answer
