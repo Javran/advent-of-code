@@ -40,9 +40,9 @@ shortestPath vs = Arr.runSTUArray do
          Seq.Empty -> pure dist
          (u Seq.:<| q0) -> do
            distU <- Arr.readArray dist u
-           performEnqs <- forM (neighbors u) $ \v@(vR, vC) -> do
+           performEnqs <- forM (neighbors u) $ \v -> do
              distV <- Arr.readArray dist v
-             let distV' = distU + vs Arr.! (vR, vC)
+             let distV' = distU + vs Arr.! v
              if distV' < distV
                then Endo (Seq.|> v) <$ Arr.writeArray dist v distV'
                else pure mempty
@@ -58,17 +58,18 @@ instance Solution Day15 where
           pure ((r, c), x)
         rows = length xs
         cols = length (head xs)
-        vsFivefold = Arr.array ((0,0), (rows * 5 -1, cols * 5 -1)) do
-             row5 <- [0 .. rows * 5 -1]
-             col5 <- [0 .. cols * 5 -1]
-             pure ((row5,col5), gen row5 col5)
+        fivefoldBounds = ((0, 0), (rows * 5 -1, cols * 5 -1))
+        vsFivefold = Arr.array fivefoldBounds do
+          let ((rLo, cLo), (rHi, cHi)) = fivefoldBounds
+          row5 <- [rLo .. rHi]
+          col5 <- [cLo .. cHi]
+          pure ((row5, col5), gen row5 col5)
           where
             norm v = let v' = v `rem` 9 in if v' == 0 then 9 else v'
             gen row5 col5 = norm ((vs Arr.! (r', c')) + rowOff + colOff)
               where
                 (rowOff, r') = row5 `quotRem` rows
                 (colOff, c') = col5 `quotRem` cols
-    let ans1 = shortestPath vs
-        ans2 = shortestPath vsFivefold
-    answerShow $ ans1 Arr.! (rows -1, cols -1)
-    answerShow $ ans2 Arr.! (rows * 5 -1, cols * 5 -1)
+    let solve g = let dist = shortestPath g in dist Arr.! snd (Arr.bounds dist)
+    answerShow $ solve vs
+    answerShow $ solve vsFivefold
