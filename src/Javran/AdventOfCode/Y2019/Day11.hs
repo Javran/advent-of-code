@@ -87,7 +87,7 @@ paintState outMethod ((roboLoc, roboTurn), m) = do
   case outMethod of
     OutputForTest outputer ->
       outputInBasicMode outputer
-    OutputBasicTerm ->
+    OutputBasicTerm {} ->
       outputInBasicMode putStrLn
     OutputColorTerm
       ColorfulTerminal

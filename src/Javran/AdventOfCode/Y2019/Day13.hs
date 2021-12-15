@@ -1,5 +1,6 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
@@ -15,32 +16,54 @@ import qualified Data.Array.IO as AIO
 import qualified Data.Map.Strict as M
 import Data.Word
 import GHC.Generics (Generic)
+import Javran.AdventOfCode.ColorfulTerminal
 import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.Y2019.IntCode
-import System.Console.Terminfo
 
 data Day13 deriving (Generic)
 
-showGame :: Terminal -> GameState -> IO ()
-showGame _t GameState {gsScreen, gsScore} = do
-  -- threadDelay (1000 * 20)
-  ((minX, minY), (maxX, maxY)) <- AIO.getBounds gsScreen
-  forM_ [minY .. maxY :: Int] $ \y -> do
-    let getAndRender :: Int -> IO String
-        getAndRender x = do
-          v <- AIO.readArray gsScreen (x, y)
-          pure $ case v of
-            0 -> "  "
-            1 -> "██"
-            2 -> "░░"
-            3 -> "━━"
-            4 -> "◖◗"
-            _ -> "  "
-    ts <- mapM getAndRender [minX .. maxX]
-
-    putStrLn $ concat ts
-  putStrLn $
-    "Current score: " <> maybe "?" show gsScore
+showGame :: OutputMethod -> GameState -> IO ()
+showGame om GameState {gsScreen, gsScore} = case om of
+  OutputForTest {} -> pure ()
+  _ -> showGameOnTerm
+  where
+    showGameOnTerm = do
+      let (runTermOut, render) = case om of
+            OutputForTest {} -> unreachable
+            OutputBasicTerm rto ->
+              ( rto
+              , \v ->
+                  termText $ case v of
+                    0 -> "  "
+                    1 -> "##"
+                    2 -> "[]"
+                    3 -> "--"
+                    4 -> "()"
+                    _ -> error $ "invalid value" <> show v
+              )
+            OutputColorTerm
+              ColorfulTerminal
+                { setForeground = withFg
+                , runTermOut = rto
+                } ->
+                ( rto
+                , \v ->
+                    case v of
+                      0 -> termText "  "
+                      1 -> withFg White $ termText "██"
+                      2 -> withFg Cyan $ termText "░░"
+                      3 -> withFg Magenta $ termText "━━"
+                      4 -> withFg Yellow $ termText "◖◗"
+                      _ -> error $ "invalid value" <> show v
+                )
+      threadDelay (1000 * 20)
+      ((minX, minY), (maxX, maxY)) <- AIO.getBounds gsScreen
+      forM_ [minY .. maxY :: Int] $ \y -> do
+        let getTile x = AIO.readArray gsScreen (x, y)
+        ts <- mapM (fmap render . getTile) [minX .. maxX]
+        runTermOut (mconcat ts <> termText "\n")
+      putStrLn $
+        "Current score: " <> maybe "?" show gsScore
 
 data GameState = GameState
   { gsScreen :: AIO.IOUArray (Int, Int) Word8
@@ -49,24 +72,24 @@ data GameState = GameState
   , gsBallX :: Maybe Int
   }
 
-playGame :: Maybe Terminal -> IO (Result a) -> StateT GameState IO (Maybe Int)
-playGame mTerm prog = do
+playGame :: OutputMethod -> IO (Result a) -> StateT GameState IO (Maybe Int)
+playGame om prog = do
   r <- liftIO prog
   case r of
     Done {} ->
       gets gsScore
     NeedInput k -> do
       GameState {gsPaddleX, gsBallX} <- get
-      case mTerm of
-        Just t -> get >>= liftIO . showGame t
-        Nothing -> pure ()
+      case om of
+        OutputForTest {} -> pure ()
+        _ -> get >>= liftIO . showGame om
       let i = case (gsPaddleX, gsBallX) of
             (Just pX, Just bX) -> case compare pX bX of
               LT -> 1
               EQ -> 0
               GT -> -1
             _ -> 0
-      playGame mTerm (k i)
+      playGame om (k i)
     SentOutput {} -> do
       ([x, y, val], k) <- liftIO $ communicate [] 3 (pure r)
       if (x, y) == (-1, 0)
@@ -78,16 +101,17 @@ playGame mTerm prog = do
             4 ->
               modify (\gs -> gs {gsBallX = Just x})
             _ -> pure ()
-          case mTerm of
-            Nothing -> pure ()
-            Just _ -> do
+          case om of
+            OutputForTest {} -> pure ()
+            _ -> do
+              -- array update is not necessary for running tests,
+              -- as only compare the final result.
               arr <- gets gsScreen
               liftIO $ AIO.writeArray arr (x, y) (fromIntegral val)
-      playGame mTerm k
+      playGame om k
 
--- TODO: fancy terminal output.
 instance Solution Day13 where
-  solutionRun _ SolutionContext {getInputS, answerShow, terminal} = do
+  solutionRun _ SolutionContext {getInputS, answerShow, answerS, terminal} = do
     xs <- parseCodeOrDie <$> getInputS
     screenDim <- do
       let prog = startProgramFromFoldable xs
@@ -106,7 +130,8 @@ instance Solution Day13 where
       let Just (MinMax2D ((minX, maxX), (minY, maxY))) =
             foldMap (Just . minMax2D) $
               M.keys screen
-      -- it seems to be a safe assumption that we can carry screen dimension over to part 2.
+      -- it seems to be a safe assumption that
+      -- we can carry screen dimension over to part 2.
       ((minX, maxX), (minY, maxY))
         <$ answerShow (M.size $ M.filter (== 2) screen)
     do
@@ -121,5 +146,5 @@ instance Solution Day13 where
               , gsPaddleX = Nothing
               , gsBallX = Nothing
               }
-      Just v <- evalStateT (playGame terminal prog) initSt
+      Just v <- evalStateT (playGame (getOutputMethod answerS terminal) prog) initSt
       answerShow v

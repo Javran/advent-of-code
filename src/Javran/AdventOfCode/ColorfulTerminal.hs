@@ -12,6 +12,7 @@ module Javran.AdventOfCode.ColorfulTerminal
   , termText
   , threadDelay
   , module System.Console.Terminfo.Color
+  , TermOutput
   )
 where
 
@@ -21,7 +22,7 @@ import System.Console.Terminfo.Color
 
 data OutputMethod
   = OutputForTest (String -> IO ())
-  | OutputBasicTerm
+  | OutputBasicTerm (TermOutput -> IO ())
   | OutputColorTerm ColorfulTerminal
 
 data ColorfulTerminal = ColorfulTerminal
@@ -50,6 +51,6 @@ getOutputMethod testOutputer = \case
   Nothing -> OutputForTest testOutputer
   Just t ->
     maybe
-      OutputBasicTerm
+      (OutputBasicTerm (runTermOutput t))
       OutputColorTerm
       (getColorfulTerminal t)
