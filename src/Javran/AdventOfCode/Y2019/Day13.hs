@@ -85,8 +85,8 @@ playGame mTerm prog = do
               liftIO $ AIO.writeArray arr (x, y) (fromIntegral val)
       playGame mTerm k
 
+-- TODO: fancy terminal output.
 instance Solution Day13 where
-  solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow, terminal} = do
     xs <- parseCodeOrDie <$> getInputS
     screenDim <- do
