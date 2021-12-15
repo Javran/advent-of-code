@@ -183,6 +183,20 @@ explore = do
           pure True
         _ -> error $ "invalid reply: " <> show reply
 
+bfsForOxygen floorInfo acc discovered = \case
+  Seq.Empty -> acc
+  ((coord, depth) Seq.:<| q) ->
+    let nextCoords = do
+          c' <- udlrOfCoord coord
+          Just CEmpty <- pure (floorInfo M.!? c')
+          guard $ S.notMember c' discovered
+          pure (c', depth + 1)
+     in bfsForOxygen
+          floorInfo
+          (M.insert coord depth acc)
+          (S.union discovered $ S.fromList (fmap fst nextCoords))
+          (q <> Seq.fromList nextCoords)
+
 instance Solution Day15 where
   solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
@@ -195,7 +209,7 @@ instance Solution Day15 where
             , ssProg = void <$> startProgramFromFoldable xs
             , ssOxygenSys = Nothing
             }
-    ((), SystemState {ssFloorInfo, ssOxygenSys}) <- runStateT explore initSys
+    ((), SystemState {ssFloorInfo, ssOxygenSys= Just locOxy}) <- runStateT explore initSys
     let Just ((Min minR, Max maxR), (Min minC, Max maxC)) =
           foldMap (\(r, c) -> Just ((Min r, Max r), (Min c, Max c))) $ M.keys ssFloorInfo
         display = False
@@ -204,7 +218,7 @@ instance Solution Day15 where
         let render c =
               if
                   | (r, c) == (0, 0) -> "><"
-                  | Just (r, c) == ssOxygenSys -> "OX"
+                  |  (r, c) == locOxy -> "OX"
                   | otherwise -> case ssFloorInfo M.!? (r, c) of
                     Nothing -> "??"
                     Just CWall -> "##"
@@ -214,7 +228,8 @@ instance Solution Day15 where
     let Just (_, revPath) =
           findPathToAnyTarget
             ssFloorInfo
-            (S.singleton (fromJust ssOxygenSys))
+            (S.singleton locOxy)
             (Seq.singleton ((0, 0), []))
             (S.singleton (0, 0))
     answerShow (length revPath)
+    answerShow (maximum $ M.elems (bfsForOxygen ssFloorInfo M.empty (S.singleton locOxy) (Seq.singleton (locOxy,0))))
