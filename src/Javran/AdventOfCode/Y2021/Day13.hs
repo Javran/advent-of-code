@@ -11,7 +11,6 @@ where
 
 import Control.Monad
 import Data.List.Split hiding (sepBy)
-import Data.Semigroup
 import qualified Data.Set as S
 import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
@@ -24,9 +23,10 @@ type Dot = (Int, Int)
 data FoldAlong = AlongX Int | AlongY Int deriving (Show)
 
 foldInstrP :: ReadP FoldAlong
-foldInstrP = string "fold along " *>
-  ((string "y=" *> (AlongY <$> decimal1P))
-    <++ (string "x=" *> (AlongX <$> decimal1P)))
+foldInstrP =
+  string "fold along "
+    *> ((string "y=" *> (AlongY <$> decimal1P))
+          <++ (string "x=" *> (AlongX <$> decimal1P)))
 
 foldAlongX :: Int -> S.Set Dot -> S.Set Dot
 foldAlongX hw xs = S.fromList do
@@ -59,8 +59,8 @@ instance Solution Day13 where
           consumeOrDie foldInstrP <$> foldInstrsRaw
     answerShow $ S.size $ appFoldInstr (head foldInstrs) dots
     let result = foldl (flip appFoldInstr) dots foldInstrs
-        Just ((Min minX, Max maxX), (Min minY, Max maxY)) =
-          foldMap (\(x, y) -> Just ((Min x, Max x), (Min y, Max y))) $
+        Just (MinMax2D ((minX, maxX), (minY, maxY))) =
+          foldMap (Just . minMax2D) $
             S.toList result
     forM_ [minY .. maxY] $ \y -> do
       let (ff, tt) = case terminal of

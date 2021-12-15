@@ -11,7 +11,6 @@ where
 import Data.Char
 import Data.List.Split hiding (sepBy)
 import qualified Data.Map.Strict as M
-import Data.Semigroup
 import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (count, many)
@@ -57,9 +56,9 @@ compactCount m = M.fromListWith (+) do
   [(a, freq), (b, freq)]
 
 minMaxDiff :: [Int] -> Int
-minMaxDiff xs = a - b
+minMaxDiff xs = b - a
   where
-    Just (Max a, Min b) = foldMap (\x -> Just (Max x, Min x)) xs
+    Just (MinMax (a,b)) = foldMap (Just . minMax) xs
 
 instance Solution Day14 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do

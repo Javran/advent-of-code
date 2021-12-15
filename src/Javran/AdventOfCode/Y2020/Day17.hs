@@ -14,7 +14,6 @@ import Control.Monad
 import Data.List
 import qualified Data.Map.Strict as M
 import Data.Maybe
-import Data.Semigroup
 import qualified Data.Set as S
 import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
@@ -60,16 +59,16 @@ pprUniv uPre = do
         [x, y, z] -> (x, y, z)
         _ -> error "only 3d space is supported"
       Just
-        ( (Min minX, Max maxX)
-          , (Min minY, Max maxY)
-          , (Min minZ, Max maxZ)
+        ( MinMax (minX, maxX)
+          , MinMax (minY, maxY)
+          , MinMax (minZ, maxZ)
           ) =
           foldMap
             (\(x, y, z) ->
                Just
-                 ( (Min x, Max x)
-                 , (Min y, Max y)
-                 , (Min z, Max z)
+                 ( minMax x
+                 , minMax y
+                 , minMax z
                  ))
             u
   putStrLn $

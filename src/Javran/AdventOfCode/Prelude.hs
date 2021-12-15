@@ -1,3 +1,4 @@
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Javran.AdventOfCode.Prelude
@@ -12,6 +13,10 @@ module Javran.AdventOfCode.Prelude
   , unreachable
   , todo
   , universe
+  , MinMax (..)
+  , minMax
+  , MinMax2D (..)
+  , minMax2D
   , -- infrastructures
     module Javran.AdventOfCode.Infra
   , module Petbox
@@ -25,6 +30,7 @@ import Data.Ix (inRange)
 import Data.List
 import Data.List.Split
 import Data.Monoid
+import Data.Semigroup
 import Javran.AdventOfCode.Infra
   ( Solution (..)
   , SolutionContext (..)
@@ -65,3 +71,17 @@ unreachable = error "unreachable"
 
 todo :: a
 todo = error "todo"
+
+newtype MinMax a = MinMax {getMinMax :: (a, a)}
+  deriving (Semigroup) via (Min a, Max a)
+  deriving stock Show
+
+minMax :: a -> MinMax a
+minMax a = MinMax (a, a)
+
+newtype MinMax2D u v = MinMax2D {getMinMax2D :: ((u, u), (v, v))}
+  deriving (Semigroup) via ((Min u, Max u), (Min v, Max v))
+  deriving stock Show
+
+minMax2D :: (u, v) -> MinMax2D u v
+minMax2D (u, v) = MinMax2D ((u, u), (v, v))

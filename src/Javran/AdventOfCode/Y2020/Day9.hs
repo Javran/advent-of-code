@@ -10,7 +10,6 @@ where
 
 import Control.Monad
 import Data.List
-import Data.Semigroup
 import qualified Data.Set as S
 import qualified Data.Vector as V
 import GHC.Generics (Generic)
@@ -50,6 +49,5 @@ instance Solution Day9 where
                   GT -> binarySearch loInd (midInd -1)
           Just rInd <- [mayR]
           let sliced = fmap (\i -> computeSum i i) [lInd .. rInd]
-              Just (Max a, Min b) =
-                foldMap (\i -> Just (Max i, Min i)) sliced
+              Just (MinMax (b, a)) = foldMap (Just . minMax) sliced
           pure $ a + b

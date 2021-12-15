@@ -17,7 +17,6 @@ import Data.Bifunctor
 import Data.List.Split hiding (sepBy)
 import qualified Data.Map.Strict as M
 import Data.Maybe
-import Data.Semigroup
 import qualified Data.Vector.Unboxed as VU
 import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
@@ -65,8 +64,8 @@ paintState :: OutputMethod -> St -> IO ()
 paintState outMethod ((roboLoc, roboTurn), m) = do
   let touched :: [Point V2 Int]
       touched = roboLoc : M.keys m
-      Just ((Min minX, Max maxX), (Min minY, Max maxY)) =
-        foldMap (\(P (V2 x y)) -> Just ((Min x, Max x), (Min y, Max y))) touched
+      Just (MinMax2D ((minX, maxX), (minY, maxY))) =
+        foldMap (\(P (V2 x y)) -> Just (minMax2D (x, y))) touched
       getColor :: Point V2 Int -> Color
       getColor loc = fromMaybe Black (m M.!? loc)
       colorfulTerm = do
@@ -122,7 +121,8 @@ performPainting painter = \case
   Done {} -> pure ()
   r@NeedInput {} -> do
     color <- getCurColor
-    ([rawPaintColor, rawTurn], k2) <- liftIO $
+    ([rawPaintColor, rawTurn], k2) <-
+      liftIO $
         communicate [if color == Black then 0 else 1] 2 (pure r)
     (loc, turn) <- gets fst
     let paintColor = case rawPaintColor of

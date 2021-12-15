@@ -13,7 +13,6 @@ import Control.Monad
 import Control.Monad.State.Strict
 import qualified Data.Array.IO as AIO
 import qualified Data.Map.Strict as M
-import Data.Semigroup
 import Data.Word
 import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
@@ -104,8 +103,8 @@ instance Solution Day13 where
                  loop k (M.insert (x, y) tileId acc))
           prog
           M.empty
-      let Just ((Min minX, Max maxX), (Min minY, Max maxY)) =
-            foldMap (\(x, y) -> Just ((Min x, Max x), (Min y, Max y))) $
+      let Just (MinMax2D ((minX, maxX), (minY, maxY))) =
+            foldMap (Just . minMax2D) $
               M.keys screen
       -- it seems to be a safe assumption that we can carry screen dimension over to part 2.
       ((minX, maxX), (minY, maxY))

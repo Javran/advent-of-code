@@ -14,7 +14,6 @@ import Control.Monad
 import Control.Monad.State.Strict
 import Data.Bifunctor
 import qualified Data.Map.Strict as M
-import Data.Semigroup
 import qualified Data.Sequence as Seq
 import qualified Data.Set as S
 import GHC.Generics (Generic)
@@ -225,8 +224,8 @@ instance Solution Day15 where
             , ssOxygenSys = Nothing
             }
     SystemState {ssFloorInfo, ssOxygenSys = Just locOxy} <- execStateT explore initSys
-    let Just ((Min minR, Max maxR), (Min minC, Max maxC)) =
-          foldMap (\(r, c) -> Just ((Min r, Max r), (Min c, Max c))) $
+    let Just (MinMax2D ((minR, maxR), (minC, maxC))) =
+          foldMap (Just . minMax2D) $
             M.keys ssFloorInfo
         display = False
     when display $
