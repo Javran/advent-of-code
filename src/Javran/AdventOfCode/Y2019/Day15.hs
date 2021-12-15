@@ -212,6 +212,7 @@ bfsForOxygen floorInfo acc discovered = \case
           (S.union discovered $ S.fromList (fmap fst nextCoords))
           (q <> Seq.fromList nextCoords)
 
+-- TODO: fancy terminal output
 instance Solution Day15 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     xs <- parseCodeOrDie <$> getInputS

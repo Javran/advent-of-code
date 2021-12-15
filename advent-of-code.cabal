@@ -27,6 +27,7 @@ library
       Javran.AdventOfCode.Cli.SolutionCommand.SolutionMain
       Javran.AdventOfCode.Cli.Sync
       Javran.AdventOfCode.Cli.TestdataDigest
+      Javran.AdventOfCode.ColorfulTerminal
       Javran.AdventOfCode.Infra
       Javran.AdventOfCode.Main
       Javran.AdventOfCode.Network

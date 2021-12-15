@@ -14,16 +14,18 @@ where
 import Control.Monad
 import Control.Monad.State.Strict
 import Data.Bifunctor
+import Data.Bool
 import Data.List.Split hiding (sepBy)
 import qualified Data.Map.Strict as M
 import Data.Maybe
 import qualified Data.Vector.Unboxed as VU
 import GHC.Generics (Generic)
+import Javran.AdventOfCode.ColorfulTerminal hiding (Color (..))
 import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.Y2019.IntCode
 import Linear.Affine
 import Linear.V2
-import qualified System.Console.Terminfo as Term
+import qualified System.Console.Terminfo.Color as TermColor
 
 data Day11 deriving (Generic)
 
@@ -55,11 +57,6 @@ type Robot =
 
 type St = (Robot, M.Map (Point V2 Int) Color)
 
-type OutputMethod =
-  Either
-    (String -> IO ())
-    Term.Terminal
-
 paintState :: OutputMethod -> St -> IO ()
 paintState outMethod ((roboLoc, roboTurn), m) = do
   let touched :: [Point V2 Int]
@@ -68,19 +65,13 @@ paintState outMethod ((roboLoc, roboTurn), m) = do
         foldMap (\(P (V2 x y)) -> Just (minMax2D (x, y))) touched
       getColor :: Point V2 Int -> Color
       getColor loc = fromMaybe Black (m M.!? loc)
-      colorfulTerm = do
-        Right t <- pure outMethod
-        Term.getCapability
-          t
-          ((,) <$> Term.withForegroundColor @Term.TermOutput
-             <*> Term.withBackgroundColor @Term.TermOutput)
-      charAtLoc :: Point V2 Int -> Char
-      charAtLoc loc =
+      charAtLoc :: Bool -> Point V2 Int -> Char
+      charAtLoc fancy loc =
         if roboLoc == loc
           then dirChars !! roboTurn
           else case getColor loc of
-            Black -> maybe '.' (const ' ') colorfulTerm
-            White -> maybe '#' (const '█') colorfulTerm
+            Black -> bool '.' ' ' fancy
+            White -> bool '#' '█' fancy
       infoLine =
         "Modified region: "
           <> "X(col): "
@@ -91,30 +82,33 @@ paintState outMethod ((roboLoc, roboTurn), m) = do
         outputerLn infoLine
         forM_ [minY .. maxY] $ \y -> do
           let rowLocs = fmap (\x -> P (V2 x y)) [minX .. maxX]
-          outputerLn (charAtLoc <$> rowLocs)
+          outputerLn (charAtLoc False <$> rowLocs)
 
   case outMethod of
-    Right term -> do
-      case colorfulTerm of
-        Nothing -> outputInBasicMode putStrLn
-        Just (withFg, withBg) -> do
-          putStrLn infoLine
-          let textAtLoc loc =
-                if roboLoc == loc
-                  then
-                    if getColor loc == White
-                      then withBg Term.Cyan $ withFg Term.Black t
-                      else withFg Term.Magenta t
-                  else withFg Term.Cyan t
-                where
-                  t = Term.termText [charAtLoc loc]
-          forM_ [minY -1 .. maxY + 1] $ \y -> do
-            let rowLocs = fmap (\x -> P (V2 x y)) [minX -1 .. maxX + 1]
-            Term.runTermOutput term (foldMap textAtLoc rowLocs)
-            putStrLn ""
-    Left outputer -> do
+    OutputForTest outputer ->
       outputInBasicMode outputer
-  pure ()
+    OutputBasicTerm ->
+      outputInBasicMode putStrLn
+    OutputColorTerm
+      ColorfulTerminal
+        { setForeground = withFg
+        , setBackground = withBg
+        , runTermOut
+        } -> do
+        putStrLn infoLine
+        let textAtLoc loc =
+              if roboLoc == loc
+                then
+                  if getColor loc == White
+                    then withBg TermColor.Cyan $ withFg TermColor.Black t
+                    else withFg TermColor.Magenta t
+                else withFg TermColor.Cyan t
+              where
+                t = termText [charAtLoc True loc]
+        forM_ [minY -1 .. maxY + 1] $ \y -> do
+          let rowLocs = fmap (\x -> P (V2 x y)) [minX -1 .. maxX + 1]
+          runTermOut (foldMap textAtLoc rowLocs)
+          putStrLn ""
 
 performPainting :: (St -> IO ()) -> Result (VU.Vector Int) -> StateT St IO ()
 performPainting painter = \case
@@ -164,7 +158,5 @@ instance Solution Day11 where
     do
       st <- runWithInitialMap $ M.singleton (P $ V2 0 0) White
       paintState
-        (case terminal of
-           Nothing -> Left answerS
-           Just t -> Right t)
+        (getOutputMethod answerS terminal)
         st
