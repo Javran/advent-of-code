@@ -51,6 +51,27 @@ import Text.ParserCombinators.ReadP hiding (count, many)
 
 data Day15 deriving (Generic)
 
+type Coord = (Int, Int) -- row and col
+
+data Cell = CEmpty | CWall
+
+{-
+  TODO: assumptions:
+
+  - floor does not change as droid moves.
+  - space is close, we won't eventually stuck into exploring
+    unbounded spaces.
+  - the space is reasonably small that pathfinding simply with BFS
+    is good enough for this puzzle.
+
+ -}
+
+data SystemState = SystemState
+  { ssFloor :: M.Map Coord Cell -- known part of the floor
+  , ssDroid :: Coord -- droid location
+  , ssFront :: S.Set Coord -- unknown coords adjacent to known floor cells.
+  }
+
 instance Solution Day15 where
   solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
