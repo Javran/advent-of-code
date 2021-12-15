@@ -4,6 +4,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE TupleSections #-}
 
 module Javran.AdventOfCode.Y2019.Day15
   (
@@ -13,10 +14,12 @@ where
 import Control.Monad
 import Control.Monad.State.Strict
 import Data.Bifunctor
+import Data.List
 import qualified Data.Map.Strict as M
 import qualified Data.Sequence as Seq
 import qualified Data.Set as S
 import GHC.Generics (Generic)
+import Javran.AdventOfCode.ColorfulTerminal
 import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.Y2019.IntCode
 
@@ -66,6 +69,75 @@ data SystemState = SystemState
     ssOxygenSys :: Maybe Coord
   }
 
+type PathPlanInfo = (CoordSet, Coord)
+
+data CoordRenderInfo
+  = CrIsKnown Cell
+  | CrIsUnknown
+  | CrIsOrigin
+  | CrIsDroid
+  | CrIsOxygenSys
+
+showSystemState :: OutputMethod -> Maybe PathPlanInfo -> SystemState -> IO ()
+showSystemState
+  om
+  mPlan
+  SystemState
+    { ssFloorInfo
+    , ssUnknowns
+    , ssDroid
+    , ssOxygenSys
+    } = case om of
+    Left _ -> pure ()
+    Right t -> do
+      threadDelay (1000 * 20)
+      let Just (MinMax2D (rangeR@(minR, maxR), rangeC@(minC, maxC))) =
+            foldMap (Just . minMax2D) $
+              M.keys ssFloorInfo <> S.toList ssUnknowns
+          (runTermOut, renderCoord) = case t of
+            BasicTerm rto ->
+              (rto, todo)
+            ColorTerm
+              ColorfulTerminal
+                { runTermOut = rto
+                , setForeground = setFg
+                , setBackground = setBg
+                } ->
+                ( rto
+                , \coord -> case infoAtCoord coord of
+                    Nothing -> termText "  "
+                    Just i -> case i of
+                      CrIsKnown CEmpty ->
+                        case mPlan of
+                          Just (ps, _)
+                            | S.member coord ps ->
+                              setBg Magenta $ termText "  "
+                          _ -> setBg Cyan $ termText "  "
+                      CrIsKnown CWall -> setFg White $ termText "██"
+                      CrIsUnknown ->
+                        case mPlan of
+                          Just (_, lastCoord)
+                            | coord == lastCoord ->
+                              setBg Magenta $ setFg White $ termText "??"
+                          _ ->
+                            setFg Red $ termText "??"
+                      CrIsOrigin -> setBg Cyan $ setFg Black $ termText "><"
+                      CrIsDroid -> setBg Magenta $ setFg White $ termText "Dr"
+                      CrIsOxygenSys -> setBg Cyan $ setFg Black $ termText "O2"
+                )
+          infoAtCoord coord
+            | coord == ssDroid = Just CrIsDroid
+            | Just coord == ssOxygenSys = Just CrIsOxygenSys
+            | coord == (0, 0) = Just CrIsOrigin
+            | Just c <- ssFloorInfo M.!? coord = Just $ CrIsKnown c
+            | S.member coord ssUnknowns = Just CrIsUnknown
+            | otherwise = Nothing
+      putStrLn $
+        "Discovered region: rows: " <> show rangeR <> ", cols: " <> show rangeC
+      forM_ [minR -1 .. maxR + 1] $ \row -> do
+        let rowOut = mconcat (fmap (renderCoord . (row,)) [minC -2 .. maxC + 2])
+        runTermOut (rowOut <> termText "\n")
+
 {-
   Performs a BFS to find path to any of the given unknown coords.
 
@@ -104,13 +176,14 @@ findPathToAnyTarget floorInfo unknowns q discovered = case q of
               (q' <> Seq.fromList nextCoords)
               (S.union discovered (S.fromList $ fmap fst nextCoords))
 
-explore :: StateT SystemState IO ()
-explore = do
+explore :: OutputMethod -> StateT SystemState IO ()
+explore om = do
   {-
     Find path to the closest unknown, from current droid location.
     compute path xs, terminate if the set is empty.
    -}
-  SystemState {ssFloorInfo, ssDroid, ssUnknowns} <- get
+  ss@SystemState {ssFloorInfo, ssDroid, ssUnknowns} <- get
+  liftIO $ showSystemState om Nothing ss
   let mExploreTarget =
         findPathToAnyTarget
           ssFloorInfo
@@ -120,18 +193,23 @@ explore = do
   case mExploreTarget of
     Nothing -> pure ()
     Just (_, []) -> unreachable
-    Just (_targetCoord, lastStep : safeStepsRev) -> do
+    Just (_targetCoord, allStepsRev@(lastStep : safeStepsRev)) -> do
+      ssCur@SystemState {ssDroid = dCoord} <- get
+      let pathPlan = tail $ scanl (flip applyDir) dCoord (reverse allStepsRev)
       {-
         now we have a plan going from ssDroid to targetCoord,
         in which case all steps except for the last one
         are safe to perform
        -}
-      forM_ (reverse safeStepsRev) $ \d -> do
+      forM_ (zip (reverse safeStepsRev) (tails pathPlan)) $ \(d, plan) -> do
+        ss'' <- get
+        liftIO $ showSystemState om (Just (S.fromList (init plan), last plan)) ss''
         True <- execCommand d
         pure ()
       -- Perform last step.
       _ <- execCommand lastStep
-      explore
+      liftIO $ showSystemState om (Just (S.empty, last pathPlan)) ssCur
+      explore om
   where
     -- performs appropriate updates to ssFloorInfo and ssUnknowns
     updateInfo coord = \case
@@ -212,9 +290,8 @@ bfsForOxygen floorInfo acc discovered = \case
           (S.union discovered $ S.fromList (fmap fst nextCoords))
           (q <> Seq.fromList nextCoords)
 
--- TODO: fancy terminal output
 instance Solution Day15 where
-  solutionRun _ SolutionContext {getInputS, answerShow} = do
+  solutionRun _ SolutionContext {getInputS, answerShow, answerS, terminal} = do
     xs <- parseCodeOrDie <$> getInputS
     let initSys =
           SystemState
@@ -224,7 +301,9 @@ instance Solution Day15 where
             , ssProg = void <$> startProgramFromFoldable xs
             , ssOxygenSys = Nothing
             }
-    SystemState {ssFloorInfo, ssOxygenSys = Just locOxy} <- execStateT explore initSys
+        outputMethod = getOutputMethod answerS terminal
+    SystemState {ssFloorInfo, ssOxygenSys = Just locOxy} <-
+      execStateT (explore outputMethod) initSys
     let Just (MinMax2D ((minR, maxR), (minC, maxC))) =
           foldMap (Just . minMax2D) $
             M.keys ssFloorInfo
