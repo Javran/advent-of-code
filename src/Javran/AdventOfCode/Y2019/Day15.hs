@@ -27,6 +27,7 @@ where
 
 import Control.Applicative
 import Control.Monad
+import Control.Monad.State.Strict
 import Data.Bifunctor
 import Data.Bool
 import Data.Char
@@ -42,18 +43,31 @@ import Data.Maybe
 import Data.Monoid
 import Data.Ord
 import Data.Semigroup
+import qualified Data.Sequence as Seq
 import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Vector as V
 import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
-import Text.ParserCombinators.ReadP hiding (count, many)
+import Javran.AdventOfCode.Y2019.IntCode
 
 data Day15 deriving (Generic)
 
 type Coord = (Int, Int) -- row and col
 
-data Cell = CEmpty | CWall
+data Cell = CEmpty | CWall deriving (Show, Eq)
+
+data Dir = N | S | W | E deriving (Show, Bounded, Enum)
+
+allDirs :: [Dir]
+allDirs = universe
+
+applyDir :: Dir -> Coord -> Coord
+applyDir = \case
+  N -> first pred
+  S -> first succ
+  W -> second pred
+  E -> second succ
 
 {-
   TODO: assumptions:
@@ -66,14 +80,141 @@ data Cell = CEmpty | CWall
 
  -}
 
+findPathToAnyTarget
+  :: M.Map Coord Cell -> S.Set Coord -> Seq.Seq (Coord, [Dir]) -> S.Set Coord -> Maybe (Coord, [Dir])
+findPathToAnyTarget floorInfo unknowns q discovered = case q of
+  Seq.Empty -> Nothing
+  (coord, revPath) Seq.:<| q' ->
+    if S.member coord unknowns
+      then Just (coord, revPath)
+      else
+        let nextCoords = do
+              d <- allDirs
+              let coord' = applyDir d coord
+              guard $
+                S.member coord' unknowns
+                  || M.lookup coord' floorInfo == Just CEmpty
+              guard $ S.notMember coord' discovered
+              pure (coord', d : revPath)
+         in findPathToAnyTarget
+              floorInfo
+              unknowns
+              (q' <> Seq.fromList nextCoords)
+              (S.union discovered (S.fromList $ fmap fst nextCoords))
+
 data SystemState = SystemState
-  { ssFloor :: M.Map Coord Cell -- known part of the floor
+  { ssFloorInfo :: M.Map Coord Cell -- known part of the floor
   , ssDroid :: Coord -- droid location
-  , ssFront :: S.Set Coord -- unknown coords adjacent to known floor cells.
+  , ssUnknowns :: S.Set Coord -- unknown coords adjacent to known floor cells.
+  , ssProg :: IO (Result ()) -- suspected program
+  , ssOxygenSys :: Maybe Coord
   }
+
+explore :: StateT SystemState IO ()
+explore = do
+  {-
+    Step 1: path find to the closest unknown, compute path xs
+      (terminate if the set is empty)
+    Step 2: execute (init xs), expect success.
+    Step 3: execute (last xs) and find out whether it's a wall
+    Step 4: update unknown appropriately.
+   -}
+  SystemState {ssFloorInfo, ssDroid, ssUnknowns} <- get
+  let mExploreTarget =
+        findPathToAnyTarget
+          ssFloorInfo
+          ssUnknowns
+          (Seq.singleton (ssDroid, []))
+          (S.singleton ssDroid)
+  case mExploreTarget of
+    Nothing -> pure ()
+    Just (_, []) -> unreachable
+    Just (_targetCoord, (lastStep : safeStepsRev)) -> do
+      -- execute safe steps
+      forM_ (reverse safeStepsRev) $ \d -> do
+        True <- execCommand d
+        pure ()
+      _ <- execCommand lastStep
+      explore
+  where
+    updateInfo coord = \case
+      CWall ->
+        modify
+          (\ss ->
+             ss
+               { ssUnknowns = S.delete coord (ssUnknowns ss)
+               , ssFloorInfo = M.insert coord CWall (ssFloorInfo ss)
+               })
+      CEmpty -> do
+        SystemState {ssUnknowns, ssFloorInfo} <- get
+        let ssFloorInfo' = M.insert coord CEmpty ssFloorInfo
+            expandCoords = S.fromList do
+              c' <- udlrOfCoord coord
+              guard $ M.notMember c' ssFloorInfo
+              pure c'
+            ssUnknowns' = S.union expandCoords $ S.delete coord ssUnknowns
+        modify (\ss -> ss {ssUnknowns = ssUnknowns', ssFloorInfo = ssFloorInfo'})
+
+    execCommand dir = do
+      let cmd = case dir of
+            N -> 1
+            S -> 2
+            W -> 3
+            E -> 4
+      SystemState {ssProg, ssDroid} <- get
+      let droidCoord' = applyDir dir ssDroid
+      ([reply], prog') <- liftIO $ communicate [cmd] 1 ssProg
+      modify (\ss -> ss {ssProg = prog'})
+      case reply of
+        0 -> do
+          -- hitting a wall.
+          updateInfo droidCoord' CWall
+          pure False
+        1 -> do
+          -- empty
+          modify (\ss -> ss {ssDroid = droidCoord'})
+          updateInfo droidCoord' CEmpty
+          pure True
+        2 -> do
+          modify (\ss -> ss {ssDroid = droidCoord'})
+          -- also oxygen system located
+          modify (\ss -> ss {ssOxygenSys = Just droidCoord'})
+          updateInfo droidCoord' CEmpty
+          pure True
+        _ -> error $ "invalid reply: " <> show reply
 
 instance Solution Day15 where
   solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    xs <- fmap id . lines <$> getInputS
-    mapM_ print xs
+    xs <- parseCodeOrDie <$> getInputS
+    let initSys =
+          SystemState
+            { ssFloorInfo = M.singleton (0, 0) CEmpty
+            , ssDroid = (0, 0)
+            , ssUnknowns = S.fromList (udlrOfCoord (0, 0))
+            , ssProg = void <$> startProgramFromFoldable xs
+            , ssOxygenSys = Nothing
+            }
+    ((), SystemState {ssFloorInfo, ssOxygenSys}) <- runStateT explore initSys
+    let Just ((Min minR, Max maxR), (Min minC, Max maxC)) =
+          foldMap (\(r, c) -> Just ((Min r, Max r), (Min c, Max c))) $ M.keys ssFloorInfo
+        display = False
+    when display $
+      forM_ [minR .. maxR] $ \r -> do
+        let render c =
+              if
+                  | (r, c) == (0, 0) -> "><"
+                  | Just (r, c) == ssOxygenSys -> "OX"
+                  | otherwise -> case ssFloorInfo M.!? (r, c) of
+                    Nothing -> "??"
+                    Just CWall -> "##"
+                    Just CEmpty -> "  "
+            curRow = fmap render [minC .. maxC]
+        putStrLn (concat curRow)
+    let Just (_, revPath) =
+          findPathToAnyTarget
+            ssFloorInfo
+            (S.singleton (fromJust ssOxygenSys))
+            (Seq.singleton ((0, 0), []))
+            (S.singleton (0, 0))
+    answerShow (length revPath)
