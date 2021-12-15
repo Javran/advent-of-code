@@ -11,8 +11,6 @@ where
 import Control.Monad
 import qualified Data.Array.Base as Arr
 import qualified Data.Array.ST as Arr
-import Data.Bifunctor
-import Data.Char
 import Data.Function
 import Data.Monoid
 import qualified Data.Sequence as Seq
@@ -21,18 +19,13 @@ import Javran.AdventOfCode.Prelude
 
 data Day15 deriving (Generic)
 
-charToInt :: Char -> Int
-charToInt c = ord c - ord '0'
-
 -- Ref: https://en.wikipedia.org/wiki/Shortest_Path_Faster_Algorithm
 shortestPath :: Arr.UArray (Int, Int) Int -> Arr.UArray (Int, Int) Int
 shortestPath vs = Arr.runSTUArray do
   let arrBound = Arr.bounds vs
       neighbors coord =
         filter (inRange arrBound) $
-          fmap
-            ($ coord)
-            [first pred, second pred, first succ, second succ]
+          udlrOfCoord coord
   dist <- Arr.newArray arrBound maxBound
   Arr.writeArray dist (0, 0) 0
   fix
@@ -58,7 +51,7 @@ shortestPath vs = Arr.runSTUArray do
 
 instance Solution Day15 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    xs <- (fmap . fmap) charToInt . lines <$> getInputS
+    xs <- (fmap . fmap) chToInt . lines <$> getInputS
     let vs = Arr.array ((0, 0), (rows -1, cols -1)) do
           (r, rs) <- zip [0 ..] xs
           (c, x) <- zip [0 ..] rs

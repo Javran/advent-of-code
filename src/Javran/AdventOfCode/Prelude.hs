@@ -6,6 +6,8 @@ module Javran.AdventOfCode.Prelude
   , splitOn
   , inRange
   , decodeBinary
+  , chToInt
+  , udlrOfCoord
   , errInvalid
   , unreachable
   , todo
@@ -16,7 +18,9 @@ module Javran.AdventOfCode.Prelude
   )
 where
 
+import Data.Bifunctor
 import Data.Bool
+import Data.Char
 import Data.Ix (inRange)
 import Data.List
 import Data.List.Split
@@ -39,6 +43,19 @@ countLength p = getSum . foldMap (\x -> if p x then 1 else 0)
 
 decodeBinary :: (Foldable t, Num a) => t Bool -> a
 decodeBinary = foldl (\acc i -> acc * 2 + bool 0 1 i) 0
+
+chToInt :: Char -> Int
+chToInt ch = ord ch - ord '0'
+
+udlrOfCoord :: (Int, Int) -> [(Int, Int)]
+udlrOfCoord c =
+  fmap
+    ($ c)
+    [ first pred
+    , first succ
+    , second pred
+    , second succ
+    ]
 
 errInvalid :: a
 errInvalid = error "invalid input"

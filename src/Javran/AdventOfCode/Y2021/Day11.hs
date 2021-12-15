@@ -10,7 +10,6 @@ where
 
 import Control.Monad
 import Data.Bifunctor
-import Data.Char
 import Data.List
 import qualified Data.Map.Merge.Strict as M
 import qualified Data.Map.Strict as M
@@ -20,9 +19,6 @@ import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 
 data Day11 deriving (Generic)
-
-chToInt :: Char -> Int
-chToInt ch = ord ch - ord '0'
 
 type Coord = (Int, Int)
 
