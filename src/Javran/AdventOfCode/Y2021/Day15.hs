@@ -1,58 +1,73 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE PatternGuards #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# OPTIONS_GHC -Wno-deprecations #-}
-{-# OPTIONS_GHC -Wno-typed-holes #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -fdefer-typed-holes #-}
 
 module Javran.AdventOfCode.Y2021.Day15
   (
   )
 where
 
-{- HLINT ignore -}
-
-import Control.Applicative
 import Control.Monad
+import qualified Data.Array.Base as Arr
+import qualified Data.Array.ST as Arr
 import Data.Bifunctor
-import Data.Bool
 import Data.Char
-import Data.Either
 import Data.Function
-import Data.Function.Memoize (memoFix)
-import qualified Data.IntMap.Strict as IM
-import qualified Data.IntSet as IS
-import Data.List
-import Data.List.Split hiding (sepBy)
-import qualified Data.Map.Strict as M
-import Data.Maybe
 import Data.Monoid
-import Data.Ord
-import Data.Semigroup
-import qualified Data.Set as S
-import qualified Data.Text as T
+import qualified Data.Sequence as Seq
 import qualified Data.Vector as V
 import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
-import Text.ParserCombinators.ReadP hiding (count, many)
 
 data Day15 deriving (Generic)
 
+charToInt :: Char -> Int
+charToInt c = ord c - ord '0'
+
+shortestPath :: V.Vector (V.Vector Int) -> Arr.UArray (Int, Int) Int
+shortestPath vs = Arr.runSTUArray do
+  let rows = V.length vs
+      cols = V.length (V.head vs)
+      arrBound = ((0, 0), (rows -1, cols -1))
+      neighbors coord =
+        filter (inRange arrBound) $
+          fmap
+            ($ coord)
+            [first pred, second pred, first succ, second succ]
+  dist <- Arr.newArray arrBound maxBound
+  Arr.writeArray dist (0, 0) 0
+  fix
+    (\loop ->
+       \case
+         Seq.Empty -> pure dist
+         (u Seq.:<| q0) -> do
+           distU <- Arr.readArray dist u
+           performEnqs <- forM (neighbors u) $ \v@(vR, vC) -> do
+             distV <- Arr.readArray dist v
+             let distV' = distU + vs V.! vR V.! vC
+             if distV' < distV
+               then Endo (Seq.|> v) <$ Arr.writeArray dist v distV'
+               else pure mempty
+           loop $ appEndo (mconcat performEnqs) q0)
+    (Seq.singleton (0, 0))
+
 instance Solution Day15 where
-  solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    xs <- fmap id . lines <$> getInputS
-    mapM_ print xs
+    xs <- (fmap . fmap) charToInt . lines <$> getInputS
+    let vs :: V.Vector (V.Vector Int)
+        vs = V.fromList (V.fromList <$> xs)
+        rows = V.length vs
+        cols = V.length (V.head vs)
+        vsFivefold =
+          V.generate (rows * 5) (\row5 -> V.generate (cols * 5) (\col5 -> gen row5 col5))
+          where
+            norm v = let v' = v `rem` 9 in if v' == 0 then 9 else v'
+            gen row5 col5 = norm ((vs V.! r' V.! c') + rowOff + colOff)
+              where
+                (rowOff, r') = row5 `quotRem` rows
+                (colOff, c') = col5 `quotRem` cols
+    let ans1 = shortestPath vs
+        ans2 = shortestPath vsFivefold
+    answerShow $ ans1 Arr.! (rows -1, cols -1)
+    answerShow $ ans2 Arr.! (rows * 5 -1, cols * 5 -1)
