@@ -16,7 +16,6 @@ import Data.Char
 import Data.Function
 import Data.Monoid
 import qualified Data.Sequence as Seq
-import qualified Data.Vector as V
 import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 
@@ -25,11 +24,9 @@ data Day15 deriving (Generic)
 charToInt :: Char -> Int
 charToInt c = ord c - ord '0'
 
-shortestPath :: V.Vector (V.Vector Int) -> Arr.UArray (Int, Int) Int
+shortestPath :: Arr.UArray (Int, Int) Int -> Arr.UArray (Int, Int) Int
 shortestPath vs = Arr.runSTUArray do
-  let rows = V.length vs
-      cols = V.length (V.head vs)
-      arrBound = ((0, 0), (rows -1, cols -1))
+  let arrBound = Arr.bounds vs
       neighbors coord =
         filter (inRange arrBound) $
           fmap
@@ -45,7 +42,7 @@ shortestPath vs = Arr.runSTUArray do
            distU <- Arr.readArray dist u
            performEnqs <- forM (neighbors u) $ \v@(vR, vC) -> do
              distV <- Arr.readArray dist v
-             let distV' = distU + vs V.! vR V.! vC
+             let distV' = distU + vs Arr.! (vR, vC)
              if distV' < distV
                then Endo (Seq.|> v) <$ Arr.writeArray dist v distV'
                else pure mempty
@@ -55,15 +52,19 @@ shortestPath vs = Arr.runSTUArray do
 instance Solution Day15 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     xs <- (fmap . fmap) charToInt . lines <$> getInputS
-    let vs :: V.Vector (V.Vector Int)
-        vs = V.fromList (V.fromList <$> xs)
-        rows = V.length vs
-        cols = V.length (V.head vs)
-        vsFivefold =
-          V.generate (rows * 5) (\row5 -> V.generate (cols * 5) (\col5 -> gen row5 col5))
+    let vs = Arr.array ((0, 0), (rows -1, cols -1)) do
+          (r, rs) <- zip [0 ..] xs
+          (c, x) <- zip [0 ..] rs
+          pure ((r, c), x)
+        rows = length xs
+        cols = length (head xs)
+        vsFivefold = Arr.array ((0,0), (rows * 5 -1, cols * 5 -1)) do
+             row5 <- [0 .. rows * 5 -1]
+             col5 <- [0 .. cols * 5 -1]
+             pure ((row5,col5), gen row5 col5)
           where
             norm v = let v' = v `rem` 9 in if v' == 0 then 9 else v'
-            gen row5 col5 = norm ((vs V.! r' V.! c') + rowOff + colOff)
+            gen row5 col5 = norm ((vs Arr.! (r', c')) + rowOff + colOff)
               where
                 (rowOff, r') = row5 `quotRem` rows
                 (colOff, c') = col5 `quotRem` cols
