@@ -24,13 +24,10 @@ data Day13 deriving (Generic)
 
 showGame :: OutputMethod -> GameState -> IO ()
 showGame om GameState {gsScreen, gsScore} = case om of
-  OutputForTest {} -> pure ()
-  _ -> showGameOnTerm
-  where
-    showGameOnTerm = do
-      let (runTermOut, render) = case om of
-            OutputForTest {} -> unreachable
-            OutputBasicTerm rto ->
+  Left _ -> pure ()
+  Right termDetail -> do
+      let (runTermOut, render) = case termDetail of
+            BasicTerm rto ->
               ( rto
               , \v ->
                   termText $ case v of
@@ -41,7 +38,7 @@ showGame om GameState {gsScreen, gsScore} = case om of
                     4 -> "()"
                     _ -> error $ "invalid value" <> show v
               )
-            OutputColorTerm
+            ColorTerm
               ColorfulTerminal
                 { setForeground = withFg
                 , runTermOut = rto
@@ -81,7 +78,7 @@ playGame om prog = do
     NeedInput k -> do
       GameState {gsPaddleX, gsBallX} <- get
       case om of
-        OutputForTest {} -> pure ()
+        Left _ -> pure ()
         _ -> get >>= liftIO . showGame om
       let i = case (gsPaddleX, gsBallX) of
             (Just pX, Just bX) -> case compare pX bX of
@@ -102,7 +99,7 @@ playGame om prog = do
               modify (\gs -> gs {gsBallX = Just x})
             _ -> pure ()
           case om of
-            OutputForTest {} -> pure ()
+            Left _ -> pure ()
             _ -> do
               -- array update is not necessary for running tests,
               -- as only compare the final result.

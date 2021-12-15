@@ -85,16 +85,16 @@ paintState outMethod ((roboLoc, roboTurn), m) = do
           outputerLn (charAtLoc False <$> rowLocs)
 
   case outMethod of
-    OutputForTest outputer ->
+    Left outputer ->
       outputInBasicMode outputer
-    OutputBasicTerm {} ->
+    Right BasicTerm {} ->
       outputInBasicMode putStrLn
-    OutputColorTerm
+    Right( ColorTerm
       ColorfulTerminal
         { setForeground = withFg
         , setBackground = withBg
         , runTermOut
-        } -> do
+        } ) -> do
         putStrLn infoLine
         let textAtLoc loc =
               if roboLoc == loc

@@ -5,8 +5,9 @@
 {-# LANGUAGE TypeApplications #-}
 
 module Javran.AdventOfCode.ColorfulTerminal
-  ( OutputMethod (..)
+  ( OutputMethod
   , getOutputMethod
+  , TermOutputMode(..)
   , ColorfulTerminal (..)
   , getColorfulTerminal
   , termText
@@ -20,10 +21,11 @@ import Control.Concurrent
 import System.Console.Terminfo
 import System.Console.Terminfo.Color
 
-data OutputMethod
-  = OutputForTest (String -> IO ())
-  | OutputBasicTerm (TermOutput -> IO ())
-  | OutputColorTerm ColorfulTerminal
+type OutputMethod = Either (String -> IO ()) TermOutputMode
+
+data TermOutputMode
+  = BasicTerm (TermOutput -> IO ())
+  | ColorTerm ColorfulTerminal
 
 data ColorfulTerminal = ColorfulTerminal
   { setBackground :: Color -> TermOutput -> TermOutput
@@ -48,9 +50,10 @@ getColorfulTerminal t = do
 getOutputMethod
   :: (String -> IO ()) -> Maybe Terminal -> OutputMethod
 getOutputMethod testOutputer = \case
-  Nothing -> OutputForTest testOutputer
+  Nothing -> Left testOutputer
   Just t ->
-    maybe
-      (OutputBasicTerm (runTermOutput t))
-      OutputColorTerm
-      (getColorfulTerminal t)
+    Right $
+      maybe
+        (BasicTerm (runTermOutput t))
+        ColorTerm
+        (getColorfulTerminal t)
