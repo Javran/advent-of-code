@@ -24,6 +24,7 @@ data Day15 deriving (Generic)
 charToInt :: Char -> Int
 charToInt c = ord c - ord '0'
 
+-- Ref: https://en.wikipedia.org/wiki/Shortest_Path_Faster_Algorithm
 shortestPath :: Arr.UArray (Int, Int) Int -> Arr.UArray (Int, Int) Int
 shortestPath vs = Arr.runSTUArray do
   let arrBound = Arr.bounds vs
@@ -40,13 +41,19 @@ shortestPath vs = Arr.runSTUArray do
          Seq.Empty -> pure dist
          (u Seq.:<| q0) -> do
            distU <- Arr.readArray dist u
+           {-
+             For implementing SPFA proper, we are supposed to not enqueue
+             elements that are already in the queue.
+             However this induces an overhead of maintaining an extra set of queue elements
+             that results in worse performance.
+            -}
            performEnqs <- forM (neighbors u) $ \v -> do
              distV <- Arr.readArray dist v
              let distV' = distU + vs Arr.! v
              if distV' < distV
-               then Endo (Seq.|> v) <$ Arr.writeArray dist v distV'
-               else pure mempty
-           loop $ appEndo (mconcat performEnqs) q0)
+               then (Seq.|> v) <$ Arr.writeArray dist v distV'
+               else pure id
+           loop $ appEndo (foldMap Endo performEnqs) q0)
     (Seq.singleton (0, 0))
 
 instance Solution Day15 where
@@ -65,7 +72,9 @@ instance Solution Day15 where
           col5 <- [cLo .. cHi]
           pure ((row5, col5), gen row5 col5)
           where
-            norm v = let v' = v `rem` 9 in if v' == 0 then 9 else v'
+            norm v =
+              -- modulo 9 gives codomain [0..8], we just need 0 to be 9.
+              let v' = v `rem` 9 in if v' == 0 then 9 else v'
             gen row5 col5 = norm ((vs Arr.! (r', c')) + rowOff + colOff)
               where
                 (rowOff, r') = row5 `quotRem` rows
