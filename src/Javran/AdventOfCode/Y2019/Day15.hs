@@ -96,7 +96,17 @@ showSystemState
               M.keys ssFloorInfo <> S.toList ssUnknowns
           (runTermOut, renderCoord) = case t of
             BasicTerm rto ->
-              (rto, todo)
+              ( rto
+              , \coord -> case infoAtCoord coord of
+                  Nothing -> termText "  "
+                  Just i -> case i of
+                    CrIsKnown CEmpty -> termText ".."
+                    CrIsKnown CWall -> termText "##"
+                    CrIsUnknown -> termText "??"
+                    CrIsOrigin -> termText "><"
+                    CrIsDroid -> termText "Dr"
+                    CrIsOxygenSys -> termText "O2"
+              )
             ColorTerm
               ColorfulTerminal
                 { runTermOut = rto
