@@ -16,7 +16,6 @@
 {-# OPTIONS_GHC -Wno-deprecations #-}
 {-# OPTIONS_GHC -Wno-typed-holes #-}
 {-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -fdefer-typed-holes #-}
 
 module Javran.AdventOfCode.Y2019.Day17
   (
@@ -107,6 +106,7 @@ data Move
   = Forward Int
   | TurnLeft
   | TurnRight
+  deriving (Eq)
 
 instance Show Move where
   show = \case
@@ -114,6 +114,10 @@ instance Show Move where
     TurnLeft -> "L"
     TurnRight -> "R"
 
+{-
+  Completes one segment of the scaffolding line by an optional turn followed
+  by moving forward.
+ -}
 nextMoves :: MapInfo -> Robot -> WriterT [Move] Maybe (Robot)
 nextMoves MapInfo {miScaffolds} (dir, coord) = do
   let frontCoord = applyDir dir coord
@@ -140,6 +144,10 @@ nextMoves MapInfo {miScaffolds} (dir, coord) = do
 
 computeMoves :: MapInfo -> Robot -> [Move]
 computeMoves mi miRobot =
+  {-
+    This is technically incorrect if droid starts facing the opposite direction of
+    scaffolding. But so far that has never been the case.
+   -}
   concat $
     unfoldr
       (\robot -> do
@@ -148,57 +156,67 @@ computeMoves mi miRobot =
       miRobot
 
 {-
-  TODO:
-
-  for now I have no idea how to break things down,
-  but it seems safe to assume a "principle path" that we can compute by:
-
-  - keep moving forward on scaffolds until it's not possible
-  - turn left or right (should be exactly one available)
-
-  Once we have the full principle path constructed,
-  we can see what should we do about it.
-
+  A program after some replacement:
+  - A Left element is a sequence of moves not translated into any subroutine
+  - A Right element `Right x` is the result of replacing that sequence of movements with
+    subroutine x.
  -}
+type ReplacedProgram = [Either [Move] Char]
 
-{-
-my login:
+replaceWithMoveFn :: Char -> [Move] -> [Move] -> ReplacedProgram
+replaceWithMoveFn fnName fnBody xs = concatMap handleChunk $ split (onSublist fnBody) xs
+  where
+    handleChunk ys
+      | null ys = []
+      | ys == fnBody = [Right fnName]
+      | otherwise = [Left ys]
 
-   123456789X123456789X
-A= L,12,L,10,R,8,L,12,
-B= R,8,R,10,R,12,
-A= L,12,L,10,R,8,L,12,
-B= R,8,R,10,R,12,
-C= L,10,R,12,R,8,
-C= L,10,R,12,R,8,
-B= R,8,R,10,R,12,
-A= L,12,L,10,R,8,L,12,
-B= R,8,R,10,R,12,
-C= L,10,R,12,R,8
+encodeMoves :: [Move] -> String
+encodeMoves = intercalate "," . fmap show
 
-m= A,B,A,B,C,C,B,A,B,C
+breakIntoRoutines :: [Move] -> [([] Char, [(Char, [Move])])]
+breakIntoRoutines xs = breakIntoRoutinesAux "ABC" [] [Left xs]
 
-example input:
+withinLengthLimit :: String -> Bool
+withinLengthLimit = (<= 20) . length
 
-   123456789X123456789X
-A= R,6,L,10,R,10,R,10,
-B= L,10,L,12,R,10,
-A= R,6,L,10,R,10,R,10,
-A= L,10,L,12,R,10,
-A= R,6,L,10,R,10,R,10,
-C= R,6,L,12,L,10,
-A= R,6,L,10,R,10,R,10,
-C= R,6,L,12,L,10,
-B= L,10,L,12,R,10,
-C= R,6,L,12,L,10
-
-m= A,B,A,A,A,C,A,C,B,C
-
- -}
+breakIntoRoutinesAux
+  :: [] Char
+  -> [(Char, [Move])]
+  -> ReplacedProgram
+  -> [ ( [] Char -- main routine
+       , [(Char, [Move])]
+       )
+     ]
+breakIntoRoutinesAux newProgNames progList xs0 = do
+  let mx = findLeft xs0
+  case mx of
+    Nothing -> do
+      -- all translated to main routine.
+      let (_, mainProg) = partitionEithers xs0
+      -- verify length limit for main routine
+      guard $ withinLengthLimit $ intercalate "," (fmap (: []) mainProg)
+      pure (mainProg, reverse progList)
+    Just sub0 -> do
+      -- get a new name or the name list is exhausted (in which case we fail)
+      (progName : newProgNames') <- pure newProgNames
+      progBody <- reverse . takeWhile (withinLengthLimit . encodeMoves) $ inits sub0
+      let xs1 :: ReplacedProgram
+          xs1 =
+            concatMap
+              (either
+                 (replaceWithMoveFn progName progBody)
+                 ((: []) . Right))
+              xs0
+      breakIntoRoutinesAux newProgNames' ((progName, progBody) : progList) xs1
+  where
+    findLeft ys = case partitionEithers ys of
+      ([], _) -> Nothing
+      (x : _, _) -> Just x
 
 instance Solution Day17 where
   solutionSolved _ = False
-  solutionRun _ SolutionContext {getInputS, answerShow} = do
+  solutionRun _ SolutionContext {getInputS, answerShow, answerS} = do
     (extraOps, rawInput) <- consumeExtraLeadingLines <$> getInputS
     case extraOps of
       Nothing -> do
@@ -211,20 +229,27 @@ instance Solution Day17 where
               guard $ all (`S.member` miScaffolds) (udlrOfCoord coord)
               pure coord
         answerShow (sum $ fmap (uncurry (*)) intersections)
-        print (computeMoves mi miRobot)
         -- TODO: this only works for my input.
-        let inputs =
-              [ "A,B,A,B,C,C,B,A,B,C"
-              , "L,12,L,10,R,8,L,12"
-              , "R,8,R,10,R,12"
-              , "L,10,R,12,R,8"
-              , "n"
-              ]
+        let originalMainMoves = computeMoves mi miRobot
+            ( mainRoutine
+              , -- this assumes that all 3 routines are needed.
+                [ ('A', routineA)
+                  , ('B', routineB)
+                  , ('C', routineC)
+                  ]
+              )
+              : _ = breakIntoRoutines originalMainMoves
+            inputs =
+              (intercalate "," (fmap (: []) mainRoutine)) :
+              fmap
+                encodeMoves
+                [routineA, routineB, routineC]
+                <> ["n"]
             ys = 2 : tail xs
         (_, out2) <- runProgram ys (fmap ord (unlines inputs))
-        print out2
-        pure ()
+        answerShow (last out2)
       Just _ -> do
-        let mi@MapInfo {miScaffolds, miRobot} = parseRawMap rawInput
+        let mi@MapInfo {miRobot} = parseRawMap rawInput
             moves = computeMoves mi miRobot
-        print moves
+        answerS (encodeMoves moves)
+        print $ head $ breakIntoRoutines moves
