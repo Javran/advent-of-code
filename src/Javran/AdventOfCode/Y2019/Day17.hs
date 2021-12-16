@@ -127,12 +127,14 @@ computeMoves mi miRobot =
       miRobot
 
 {-
-  A program after some replacement:
+  A program after some replacements:
   - A Left element is a sequence of moves not translated into any subroutine
   - A Right element `Right x` is the result of replacing that sequence of movements with
     subroutine x.
  -}
 type ReplacedProgram = [Either [Move] Char]
+
+type ProgList = [(Char, [Move])]
 
 replaceWithMoveFn :: Char -> [Move] -> [Move] -> ReplacedProgram
 replaceWithMoveFn fnName fnBody xs = concatMap handleChunk $ split (onSublist fnBody) xs
@@ -147,7 +149,7 @@ encodeMoves = intercalate "," . fmap show
 
 type AllRoutines =
   ( [] Char -- the main routine
-  , [(Char, [Move])]
+  , ProgList
   )
 
 {-
@@ -162,30 +164,28 @@ withinLengthLimit = (<= 20) . length
 
 breakIntoRoutinesAux
   :: [] Char
-  -> [(Char, [Move])]
+  -> ProgList
   -> ReplacedProgram
   -> [AllRoutines]
-breakIntoRoutinesAux newProgNames progList xs0 = do
-  let mx = findLeft xs0
-  case mx of
-    Nothing -> do
-      -- all translated to main routine.
-      let (_, mainProg) = partitionEithers xs0
-      -- verify length limit for main routine
-      guard $ withinLengthLimit $ intercalate "," (fmap (: []) mainProg)
-      pure (mainProg, reverse progList)
-    Just sub0 -> do
-      -- get a new name or the name list is exhausted (in which case we fail)
-      (progName : newProgNames') <- pure newProgNames
-      progBody <- reverse . takeWhile (withinLengthLimit . encodeMoves) $ inits sub0
-      let xs1 :: ReplacedProgram
-          xs1 =
-            concatMap
-              (either
-                 (replaceWithMoveFn progName progBody)
-                 ((: []) . Right))
-              xs0
-      breakIntoRoutinesAux newProgNames' ((progName, progBody) : progList) xs1
+breakIntoRoutinesAux newProgNames progList xs0 = case findLeft xs0 of
+  Nothing -> do
+    -- all translated to main routine.
+    let (_, mainProg) = partitionEithers xs0
+    -- verify length limit for main routine
+    guard $ withinLengthLimit $ intercalate "," (fmap (: []) mainProg)
+    pure (mainProg, reverse progList)
+  Just sub0 -> do
+    -- get a new name or the name list is exhausted (in which case we fail)
+    (progName : newProgNames') <- pure newProgNames
+    progBody <- reverse . takeWhile (withinLengthLimit . encodeMoves) $ inits sub0
+    let xs1 :: ReplacedProgram
+        xs1 =
+          concatMap
+            (either
+               (replaceWithMoveFn progName progBody)
+               ((: []) . Right))
+            xs0
+    breakIntoRoutinesAux newProgNames' ((progName, progBody) : progList) xs1
   where
     findLeft ys = case partitionEithers ys of
       ([], _) -> Nothing
