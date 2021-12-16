@@ -1,53 +1,19 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE PatternGuards #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# OPTIONS_GHC -Wno-deprecations #-}
-{-# OPTIONS_GHC -Wno-typed-holes #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -fdefer-typed-holes #-}
 
 module Javran.AdventOfCode.Y2019.Day16
   (
   )
 where
 
-{- HLINT ignore -}
-
-import Control.Applicative
 import Control.Monad
-import Data.Bifunctor
-import Data.Bool
-import Data.Char
-import Data.Either
-import Data.Function
-import Data.Function.Memoize (memoFix)
-import qualified Data.IntMap.Strict as IM
-import qualified Data.IntSet as IS
-import Data.List
-import Data.List.Split hiding (sepBy)
-import qualified Data.Map.Strict as M
-import Data.Maybe
-import Data.Monoid
-import Data.Ord
-import Data.Semigroup
-import qualified Data.Set as S
-import qualified Data.Text as T
-import qualified Data.Vector as V
+import Control.Monad.ST
+import qualified Data.Vector.Unboxed as VU
+import qualified Data.Vector.Unboxed.Mutable as VUM
 import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
-import Text.ParserCombinators.ReadP hiding (count, many)
 
 data Day16 deriving (Generic)
 
@@ -65,8 +31,19 @@ lastDigit n = case compare n 0 of
 onePhase :: Int -> [Int] -> [Int]
 onePhase len xs = fmap (\i -> lastDigit $ sum $ zipWith (*) xs (genSeq i)) [1 .. len]
 
-sndHalfOnePhaseRev :: [Int] -> [Int]
-sndHalfOnePhaseRev = tail . scanl (\x y -> (x + y) `rem` 10) 0
+performSndHalfFftRev :: [Int] -> Int
+performSndHalfFftRev xs = runST do
+  let l = length xs
+  vs2 <- do
+    vs <- VU.unsafeThaw (VU.fromListN @Int l xs)
+    replicateM_ 100 do
+      forM_ [1 .. l -1] $ \i -> do
+        x <- VUM.unsafeRead vs (i -1)
+        y <- VUM.unsafeRead vs i
+        VUM.unsafeWrite vs i ((x + y) `rem` 10)
+    let vs1 = VUM.drop (l - 8) vs
+    VU.unsafeFreeze vs1
+  pure $ digitsToInt @Int $ reverse $ VU.toList vs2
 
 instance Solution Day16 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
@@ -81,6 +58,4 @@ instance Solution Day16 where
       let offset = digitsToInt (take 7 xs)
           cutRev = take cutLen (cycle (reverse xs))
           cutLen = len * 10000 - offset
-          ans = drop (cutLen - 8) $ iterate sndHalfOnePhaseRev cutRev !! 100
-      -- TODO: still slow.
-      answerShow $ digitsToInt @Int (reverse ans)
+      answerShow (performSndHalfFftRev cutRev)
