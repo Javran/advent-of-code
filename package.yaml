@@ -52,6 +52,7 @@ library:
     - array
     - pqueue
     - writer-cps-mtl
+    - recursion-schemes
   ghc-options:
     - -Wall
     - -O2

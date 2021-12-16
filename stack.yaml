@@ -5,5 +5,7 @@ packages:
 extra-deps:
 - memoize-0.8.1
 - arithmoi-0.12.0.1
+- recursion-schemes-5.2
 - git: https://github.com/Javran/petbox.git
   commit: 8e921c41862dbe37ae8d957e88cea7961362e303
+- data-fix-0.3.2

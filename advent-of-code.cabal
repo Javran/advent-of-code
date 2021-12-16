@@ -126,6 +126,7 @@ library
     , petbox
     , pqueue
     , random
+    , recursion-schemes
     , split
     , strict
     , system-filepath
