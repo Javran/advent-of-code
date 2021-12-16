@@ -57,11 +57,32 @@ data Day17 deriving (Generic)
 
 type Coord = (Int, Int)
 
-data Dir = U | D | L | R deriving (Show)
+-- alters rotate counter-clockwise
+data Dir
+  = U
+  | L
+  | D
+  | R
+  deriving (Show, Enum, Bounded)
+
+turnLeft :: Dir -> Dir
+turnLeft d = cycle universe !! (fromEnum d + 1)
+
+turnRight :: Dir -> Dir
+turnRight d = cycle universe !! (fromEnum d + 3)
+
+applyDir :: Dir -> Coord -> Coord
+applyDir = \case
+  U -> first pred
+  D -> first succ
+  L -> second pred
+  R -> second succ
+
+type Robot = (Dir, Coord)
 
 data MapInfo = MapInfo
   { miScaffolds :: S.Set Coord
-  , miRobot :: (Dir, Coord)
+  , miRobot :: Robot
   }
   deriving (Show)
 
@@ -82,6 +103,50 @@ parseRawMap rawMap = MapInfo {miScaffolds, miRobot}
             _ -> Nothing
       pure (S.singleton coord, Data.Monoid.Last mRobot)
 
+data Move
+  = Forward Int
+  | TurnLeft
+  | TurnRight
+
+instance Show Move where
+  show = \case
+    Forward v -> show v
+    TurnLeft -> "L"
+    TurnRight -> "R"
+
+nextMoves :: MapInfo -> Robot -> WriterT [Move] Maybe (Robot)
+nextMoves MapInfo {miScaffolds} (dir, coord) = do
+  let frontCoord = applyDir dir coord
+      leftCoord = applyDir (turnLeft dir) coord
+      rightCoord = applyDir (turnRight dir) coord
+  {-
+    If can't move forward, try left or right, `Nothing` if neither is available.
+   -}
+  dirMod <-
+    if
+        | S.member frontCoord miScaffolds ->
+          pure id
+        | S.member leftCoord miScaffolds -> do
+          tell [TurnLeft]
+          pure turnLeft
+        | S.member rightCoord miScaffolds -> do
+          tell [TurnRight]
+          pure turnRight
+        | otherwise -> lift Nothing
+  let dir' = dirMod dir
+      frontCoords = takeWhile (`S.member` miScaffolds) $ tail $ iterate (applyDir dir') coord
+  tell [Forward (length frontCoords)]
+  pure (dir', last frontCoords)
+
+computeMoves :: MapInfo -> Robot -> [Move]
+computeMoves mi miRobot =
+  concat $
+    unfoldr
+      (\robot -> do
+         (robot', w) <- runWriterT (nextMoves mi robot)
+         pure (w, robot'))
+      miRobot
+
 {-
   TODO:
 
@@ -96,6 +161,41 @@ parseRawMap rawMap = MapInfo {miScaffolds, miRobot}
 
  -}
 
+{-
+my login:
+
+   123456789X123456789X
+A= L,12,L,10,R,8,L,12,
+B= R,8,R,10,R,12,
+A= L,12,L,10,R,8,L,12,
+B= R,8,R,10,R,12,
+C= L,10,R,12,R,8,
+C= L,10,R,12,R,8,
+B= R,8,R,10,R,12,
+A= L,12,L,10,R,8,L,12,
+B= R,8,R,10,R,12,
+C= L,10,R,12,R,8
+
+m= A,B,A,B,C,C,B,A,B,C
+
+example input:
+
+   123456789X123456789X
+A= R,6,L,10,R,10,R,10,
+B= L,10,L,12,R,10,
+A= R,6,L,10,R,10,R,10,
+A= L,10,L,12,R,10,
+A= R,6,L,10,R,10,R,10,
+C= R,6,L,12,L,10,
+A= R,6,L,10,R,10,R,10,
+C= R,6,L,12,L,10,
+B= L,10,L,12,R,10,
+C= R,6,L,12,L,10
+
+m= A,B,A,A,A,C,A,C,B,C
+
+ -}
+
 instance Solution Day17 where
   solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
@@ -105,13 +205,17 @@ instance Solution Day17 where
         let xs = parseCodeOrDie rawInput
         (_, out) <- runProgram xs []
         let rawMap = fmap chr out
-            MapInfo {miScaffolds} = parseRawMap rawMap
+            mi@MapInfo {miScaffolds, miRobot} = parseRawMap rawMap
             intersections = do
               coord <- S.toList miScaffolds
               guard $ all (`S.member` miScaffolds) (udlrOfCoord coord)
               pure coord
         answerShow (sum $ fmap (uncurry (*)) intersections)
+        print (computeMoves mi miRobot)
         putStrLn rawMap
-      Just _ ->
-        -- presence of extra field means that the test content is the map.
-        print (parseRawMap rawInput)
+      Just _ -> do
+        let mi@MapInfo {miScaffolds, miRobot} = parseRawMap rawInput
+            moves = computeMoves mi miRobot
+        print miScaffolds
+        print miRobot
+        print moves
