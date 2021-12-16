@@ -49,7 +49,8 @@ import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (count, many)
 import Javran.AdventOfCode.Y2019.IntCode
-
+import Numeric
+import Data.Bits
 data Day17 deriving (Generic)
 
 instance Solution Day17 where
