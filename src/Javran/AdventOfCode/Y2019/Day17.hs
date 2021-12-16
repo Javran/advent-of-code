@@ -212,10 +212,19 @@ instance Solution Day17 where
               pure coord
         answerShow (sum $ fmap (uncurry (*)) intersections)
         print (computeMoves mi miRobot)
-        putStrLn rawMap
+        -- TODO: this only works for my input.
+        let inputs =
+              [ "A,B,A,B,C,C,B,A,B,C"
+              , "L,12,L,10,R,8,L,12"
+              , "R,8,R,10,R,12"
+              , "L,10,R,12,R,8"
+              , "n"
+              ]
+            ys = 2 : tail xs
+        (_, out2) <- runProgram ys (fmap ord (unlines inputs))
+        print out2
+        pure ()
       Just _ -> do
         let mi@MapInfo {miScaffolds, miRobot} = parseRawMap rawInput
             moves = computeMoves mi miRobot
-        print miScaffolds
-        print miRobot
         print moves
