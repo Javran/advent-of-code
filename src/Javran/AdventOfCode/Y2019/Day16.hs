@@ -29,8 +29,41 @@ lastDigit n = case compare n 0 of
   LT -> - (n `mod` (-10))
 
 onePhase :: Int -> [Int] -> [Int]
-onePhase len xs = fmap (\i -> lastDigit $ sum $ zipWith (*) xs (genSeq i)) [1 .. len]
+onePhase len xs =
+  (\i -> lastDigit $ sum $ zipWith (*) xs (genSeq i)) <$> [1 .. len]
 
+{-
+  Part 2 Note:
+
+  Observer how the last 4 digits envolve for input signal 12345678:
+
+  5678 -> 6158 -> 0438 -> 5518 -> 9498
+
+  note that each step is just summation from right without carry:
+
+  8 + [0] => 8
+  7 + [8] => (1)5
+  6 + [5] => (1)1
+  5 + [1] => 6
+
+  Indeed, base pattern 0,1,0,-1 expands faster than the length of the sequence,
+  so that we end up with a triangle of coefficient:
+
+  ... 1 1 1 1
+  ... 0 1 1 1
+  ... 0 0 1 1
+  ... 0 0 0 1
+
+  which *is* the summation from right without carry.
+
+  This solution relies on the fact that the puzzle only asks
+  for a message whose entirety is in the second half of the
+  10000-times-repeated message.
+
+  If we cut the message and reverse it (call it mRev) so that the message of interest is
+  the last 8 digits of mRev, we can just do this summation 100 times
+  on mRev, obtain last 8 digits after we are done. The reverse of it is the answer.
+ -}
 performSndHalfFftRev :: [Int] -> Int
 performSndHalfFftRev xs = runST do
   let l = length xs
