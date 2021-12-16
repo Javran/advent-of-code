@@ -74,7 +74,7 @@ parsePacket = do
         DL.empty
     _ -> do
       -- operator
-      lenTyp <- state (splitAt 1)
+      lenTyp <- consume 1
       case lenTyp of
         [0] -> do
           -- next 15 bit for bit len
