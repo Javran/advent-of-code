@@ -1,56 +1,27 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE PatternGuards #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# OPTIONS_GHC -Wno-deprecations #-}
-{-# OPTIONS_GHC -Wno-typed-holes #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
 
 module Javran.AdventOfCode.Y2019.Day17
   (
   )
 where
 
-{- HLINT ignore -}
-
-import Control.Applicative
+import Control.Lens hiding (universe)
 import Control.Monad
 import Control.Monad.Writer.CPS
 import Data.Bifunctor
-import Data.Bits
-import Data.Bool
 import Data.Char
 import Data.Either
-import Data.Function
-import Data.Function.Memoize (memoFix)
-import qualified Data.IntMap.Strict as IM
-import qualified Data.IntSet as IS
 import Data.List
 import Data.List.Split hiding (sepBy)
-import qualified Data.Map.Strict as M
-import Data.Maybe
 import Data.Monoid
-import Data.Ord
-import Data.Semigroup
 import qualified Data.Set as S
-import qualified Data.Text as T
-import qualified Data.Vector as V
 import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.Y2019.IntCode
-import Numeric
-import Text.ParserCombinators.ReadP hiding (count, many)
 
 data Day17 deriving (Generic)
 
@@ -118,7 +89,7 @@ instance Show Move where
   Completes one segment of the scaffolding line by an optional turn followed
   by moving forward.
  -}
-nextMoves :: MapInfo -> Robot -> WriterT [Move] Maybe (Robot)
+nextMoves :: MapInfo -> Robot -> WriterT [Move] Maybe Robot
 nextMoves MapInfo {miScaffolds} (dir, coord) = do
   let frontCoord = applyDir dir coord
       leftCoord = applyDir (turnLeft dir) coord
@@ -174,8 +145,17 @@ replaceWithMoveFn fnName fnBody xs = concatMap handleChunk $ split (onSublist fn
 encodeMoves :: [Move] -> String
 encodeMoves = intercalate "," . fmap show
 
-breakIntoRoutines :: [Move] -> [([] Char, [(Char, [Move])])]
-breakIntoRoutines xs = breakIntoRoutinesAux "ABC" [] [Left xs]
+type AllRoutines =
+  ( [] Char -- the main routine
+  , [(Char, [Move])]
+  )
+
+{-
+  TODO: we could write a QuickCheck to verify that the rontines we got does exactly what
+  the original one does.
+ -}
+breakIntoRoutines :: [] Char -> [Move] -> [] AllRoutines
+breakIntoRoutines progNames xs = breakIntoRoutinesAux progNames [] [Left xs]
 
 withinLengthLimit :: String -> Bool
 withinLengthLimit = (<= 20) . length
@@ -184,10 +164,7 @@ breakIntoRoutinesAux
   :: [] Char
   -> [(Char, [Move])]
   -> ReplacedProgram
-  -> [ ( [] Char -- main routine
-       , [(Char, [Move])]
-       )
-     ]
+  -> [AllRoutines]
 breakIntoRoutinesAux newProgNames progList xs0 = do
   let mx = findLeft xs0
   case mx of
@@ -214,8 +191,17 @@ breakIntoRoutinesAux newProgNames progList xs0 = do
       ([], _) -> Nothing
       (x : _, _) -> Just x
 
+encodeVaccumRobotInput :: AllRoutines -> String
+encodeVaccumRobotInput (mainRoutine, progList) =
+  if length progList > 3
+    then error "program list is too long"
+    else
+      let getAndEncode i = encodeMoves (maybe [] snd (progList ^? ix i))
+       in unlines $
+            intercalate "," (fmap (: []) mainRoutine) :
+            fmap getAndEncode [0, 1, 2] <> ["n"]
+
 instance Solution Day17 where
-  solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow, answerS} = do
     (extraOps, rawInput) <- consumeExtraLeadingLines <$> getInputS
     case extraOps of
@@ -229,27 +215,13 @@ instance Solution Day17 where
               guard $ all (`S.member` miScaffolds) (udlrOfCoord coord)
               pure coord
         answerShow (sum $ fmap (uncurry (*)) intersections)
-        -- TODO: this only works for my input.
         let originalMainMoves = computeMoves mi miRobot
-            ( mainRoutine
-              , -- this assumes that all 3 routines are needed.
-                [ ('A', routineA)
-                  , ('B', routineB)
-                  , ('C', routineC)
-                  ]
-              )
-              : _ = breakIntoRoutines originalMainMoves
-            inputs =
-              (intercalate "," (fmap (: []) mainRoutine)) :
-              fmap
-                encodeMoves
-                [routineA, routineB, routineC]
-                <> ["n"]
+            allRoutines : _ = breakIntoRoutines "ABC" originalMainMoves
             ys = 2 : tail xs
-        (_, out2) <- runProgram ys (fmap ord (unlines inputs))
+        (_, out2) <- runProgram ys (fmap ord (encodeVaccumRobotInput allRoutines))
         answerShow (last out2)
       Just _ -> do
         let mi@MapInfo {miRobot} = parseRawMap rawInput
             moves = computeMoves mi miRobot
         answerS (encodeMoves moves)
-        print $ head $ breakIntoRoutines moves
+        answerS (encodeVaccumRobotInput $ head $ breakIntoRoutines "ABC" moves)
