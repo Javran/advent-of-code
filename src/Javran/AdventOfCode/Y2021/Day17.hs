@@ -77,9 +77,61 @@ step (pos, vel@(V2 vx vy)) = (pos .+^ vel, V2 vx' (vy -1))
 simulateTill :: Int -> V2 Int -> [Point V2 Int]
 simulateTill xMax initVel =
   fmap fst $
-    take 3000 $
-      takeWhile (\(P (V2 x _), _) -> x <= xMax) $
-        iterate step (0, initVel)
+    takeWhile (\(P (V2 x y), _) -> x <= xMax && y > -2000) $
+      iterate step (0, initVel)
+
+{-
+
+  Let's see how y-location changes over time:
+
+  t  loc       vel
+  0  0         vy
+  1  vy        vy-1
+  2  2vy-1     vy-2
+  3  3vy-1-2   vy-3
+  4  3vy-1-2-3 vy-4
+
+  where vy is the initial y-velocity.
+
+  from this we can derive that:
+
+  y(t) = vy * t - (t-1) * t / 2
+       = (2 * vy - t + 1) * t / 2
+
+  peak y is reached (if we shot upwards) when t = vy or vy+1
+  (both are the same, since velocity at t=vy is 0, y will stay unchanged at t=vy+1)
+
+  max(y) (if shot upwards)
+  = (2 * vy - t + 1) * t / 2
+  = (2 * vy - vy + 1) * vy / 2 (t = vy)
+  = (vy + 1) * vy / 2
+
+  Now, go back to the equation:
+
+  y(t) = (2 * vy - t + 1) * t / 2
+
+  This makes it obvious that the solution to y(t) = 0 is:
+
+  - t = 0
+  - t = 2 * vy + 1
+
+  We are interested in the second case, at that time,
+  the y-velocity is:
+
+  vy - t = -vy-1
+
+  Looking at sample input and my login input, it seems that the assumption
+  is that target range always have y < 0. So our plan is to shot upwards
+  as far as we can, and let it go down to y < 0 target region.
+
+  When landing on y=0 the second time, the velocity is -vy-1.
+  This means that we want to hit the bottom of the y-target-region with this y-velocity:
+
+  -vy-1 = yMin, so we have vy = -yMin-1
+
+  which means the peak is: -yMin * (-yMin-1) / 2
+
+ -}
 
 instance Solution Day17 where
   solutionSolved _ = False
@@ -92,5 +144,6 @@ instance Solution Day17 where
           let trajectory = simulateTill xMax (V2 x y)
           guard $ any isInTarget trajectory
           pure (maximum (fmap (\(P (V2 _ y')) -> y') trajectory))
-    print (maximum searchSpace)
+    print (-yMin * (-yMin-1) `quot` 2)
     print (length searchSpace)
+
