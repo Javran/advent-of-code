@@ -100,7 +100,8 @@ library
       src
   ghc-options: -Wall -O2
   build-depends:
-      aeson
+      PSQueue
+    , aeson
     , arithmoi
     , array
     , base
@@ -126,7 +127,6 @@ library
     , once
     , parser-combinators
     , petbox
-    , pqueue
     , random
     , recursion-schemes
     , split

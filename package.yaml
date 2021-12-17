@@ -50,9 +50,9 @@ library:
     - lens
     - random
     - array
-    - pqueue
     - writer-cps-mtl
     - recursion-schemes
+    - PSQueue
   ghc-options:
     - -Wall
     - -O2
