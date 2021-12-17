@@ -99,7 +99,8 @@ simulateTill xMax yMin initVel =
 instance Solution Day17 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     ((xMin, xMax), (yMin, yMax)) <- consumeOrDie rangeP . head . lines <$> getInputS
-    let isInTarget (P (V2 x y)) = inRange ((xMin, yMin), (xMax, yMax)) (x, y)
+    let isInTarget (P (V2 x y)) =
+          xMin <= x && x <= xMax && yMin <= y && y <= yMax
         yMaxVel = - yMin -1 -- see notes above
     answerShow (- yMin * yMaxVel `quot` 2)
     answerShow $ length do
