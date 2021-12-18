@@ -110,6 +110,7 @@ data MapInfo = MapInfo
   , -- | distance between two coords (c,c'), where c < c'
     -- since the graph is bidirectional, we only need to store half.
     miDist :: M.Map (Coord, Coord) Int
+  , miAllKeys :: IS.IntSet
   }
 
 getDist :: M.Map (Coord, Coord) Int -> (Coord, Coord) -> Maybe Int
@@ -121,21 +122,23 @@ safeIndexArr arr i =
     <$ guard (inRange (IArr.bounds arr) i)
 
 mkMapInfo :: IArr.Array (Int, Int) Cell -> MapInfo
-mkMapInfo floorPlan = MapInfo {miGraph, miDist, miGet = safeIndexArr floorPlan}
+mkMapInfo floorPlan = MapInfo {miGraph, miDist, miGet = safeIndexArr floorPlan, miAllKeys}
   where
-    (miGraph, miDist) = bimap
-      (M.unionsWith (<>))
-      (M.unionsWith (+))
-      $ unzip do
-        (c, x) <- Arr.assocs floorPlan
-        guard $ x /= CWall
-        c' <- udlrOfCoord c
-        Just x' <- pure $ safeIndexArr floorPlan c'
-        guard $ x' /= CWall
-        pure
-          ( M.singleton c (S.singleton c')
-          , if c < c' then M.singleton (c, c') (1 :: Int) else M.empty
-          )
+    miGraph = M.unionsWith (<>) gPre
+    miDist = M.unionsWith (+) dPre
+    miAllKeys = IS.fromList do
+      CKey k <- IArr.elems floorPlan
+      pure k
+    (gPre, dPre) = unzip do
+      (c, x) <- Arr.assocs floorPlan
+      guard $ x /= CWall
+      c' <- udlrOfCoord c
+      Just x' <- pure $ safeIndexArr floorPlan c'
+      guard $ x' /= CWall
+      pure
+        ( M.singleton c (S.singleton c')
+        , if c < c' then M.singleton (c, c') (1 :: Int) else M.empty
+        )
 
 simplifyMapInfo :: MapInfo -> MapInfo
 simplifyMapInfo mi@MapInfo {miGraph, miGet} = simplifyMapInfoAux mi $ PQ.fromList do
@@ -143,6 +146,9 @@ simplifyMapInfo mi@MapInfo {miGraph, miGet} = simplifyMapInfoAux mi $ PQ.fromLis
   Just COpen <- pure (miGet coord)
   pure (coord PQ.:-> S.size (miGraph M.! coord))
 
+{-
+  For the priority queue, the invariant is that only COpen cells are allowed to be in the queue.
+ -}
 simplifyMapInfoAux :: MapInfo -> PQ.PSQ Coord Int -> MapInfo
 simplifyMapInfoAux mi@MapInfo {miGraph, miGet, miDist} q0 = case PQ.minView q0 of
   Nothing -> mi
@@ -158,27 +164,83 @@ simplifyMapInfoAux mi@MapInfo {miGraph, miGet, miDist} q0 = case PQ.minView q0 o
     2 ->
       let [c1, c2] = S.toList (miGraph M.! c)
           miGraph' =
+            {-
+              note that in this process we could create a node that links to itself,
+              if the original graph contains one.
+              but that will get eliminated in a subsequent simplification (by degree 1 case).
+             -}
             M.adjust (S.insert c1 . S.delete c) c2 $
               M.adjust (S.insert c2 . S.delete c) c1 $
                 M.delete c miGraph
           miDist' =
             let p = if c1 < c2 then (c1, c2) else (c2, c1)
                 newDist = fromJust (getDist miDist (c, c1)) + fromJust (getDist miDist (c, c2))
-             in M.insert p newDist miDist
-          q2 =
-            (if miGet c1 == Just COpen
-               then PQ.insert c1 (S.size $ miGraph' M.! c1)
-               else id)
-              . (if miGet c2 == Just COpen
-                   then PQ.insert c2 (S.size $ miGraph' M.! c2)
-                   else id)
-              $ q1
+             in -- probably not worth removing old ones
+                M.insert p newDist miDist
+          enqueue cx =
+            if miGet cx == Just COpen
+              then PQ.insert cx (S.size $ miGraph' M.! cx)
+              else id
+          q2 = enqueue c1 $ enqueue c2 $ q1
        in simplifyMapInfoAux mi {miGraph = miGraph', miDist = miDist'} q2
     _
       | deg >= 3 ->
         -- meaning all deg 1 and 2 are done.
         mi
     _ -> unreachable
+
+type MissingKeys = IS.IntSet
+
+type SearchQueue =
+  PQ.PSQ
+    (Coord, MissingKeys)
+    ( Int -- # of steps taken
+    , Int -- size of missing keys.
+    )
+
+bfs (mi@MapInfo {miGraph, miGet, miDist}) (q0 :: SearchQueue) discovered = case PQ.minView q0 of
+  Nothing -> error "queue exhausted"
+  Just ((coord, missingKeys) PQ.:-> (stepCount, missingKeyCount), q1) ->
+    if missingKeyCount == 0
+      then stepCount
+      else
+        let nexts = do
+              coord' <- S.toList (miGraph M.! coord)
+              let stepCount' = stepCount + fromJust (getDist miDist (coord, coord'))
+              missingKeys' <-
+                let ok = pure missingKeys
+                 in case fromJust (miGet coord') of
+                      COpen -> ok
+                      CEntrance -> ok
+                      CWall -> unreachable
+                      CKey k -> pure (IS.delete k missingKeys)
+                      CDoor k -> guard (IS.notMember k missingKeys) *> ok
+              guard $ S.notMember (coord', missingKeys') discovered
+              pure ((coord', missingKeys'), stepCount')
+            discovered' = foldl' (\acc (x, _) -> S.insert x acc) discovered nexts
+            q2 = foldl' updateQ q1 nexts
+              where
+                updateQ curQ (k@(_, missingKeys'), stepCount') =
+                  PQ.alter
+                    (let p' = (stepCount', IS.size missingKeys')
+                      in \case
+                           Nothing -> Just p'
+                           Just p -> Just (min p' p))
+                    k
+                    curQ
+         in bfs mi q2 discovered'
+
+startBfs mi@MapInfo {miGet, miGraph, miAllKeys} =
+  bfs
+    mi
+    (PQ.singleton startKey (0, IS.size miAllKeys))
+    (S.singleton startKey)
+  where
+    startKey = (coordEnt, miAllKeys)
+    coordEnt : _ = do
+      coord <- M.keys miGraph
+      Just CEntrance <- pure (miGet coord)
+      pure coord
 
 instance Solution Day18 where
   solutionSolved _ = False
@@ -212,3 +274,4 @@ instance Solution Day18 where
           pure (1 :: Int)
         else pure 0
     print $ sum c
+    print $ startBfs mi
