@@ -257,6 +257,9 @@ updateFloorPlanForPart2 fp =
   if we jump aggressively, chances are we end up with extra steps that
   are not possible to get rid of.
 
+  TODO: we can probably still use this for branching, if it is bfs-based,
+  so that we don't missed the shortest path to get to a key.
+
  -}
 findReachableKeys :: MapInfo -> IS.IntSet -> Coord -> S.Set Coord -> [()]
 findReachableKeys mi@MapInfo {miGraph, miGet} missingKeys coord visited = do
