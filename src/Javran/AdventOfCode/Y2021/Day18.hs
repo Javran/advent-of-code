@@ -2,7 +2,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE TypeApplications #-}
 
 module Javran.AdventOfCode.Y2021.Day18
   (
@@ -83,8 +82,9 @@ trySplit :: SfZipper -> Maybe SfZipper
 trySplit z = case z of
   (Sfz (SfReg n) ctxt)
     | n >= 10 ->
-      let nd = fromIntegral @_ @Double n
-       in pure $ Sfz (SfPair (SfReg (floor (nd / 2))) (SfReg (ceiling (nd / 2)))) ctxt
+      let hn = n `quot` 2
+          (l, r) = if even n then (hn, hn) else (hn, hn + 1)
+       in pure $ Sfz (SfPair (SfReg l) (SfReg r)) ctxt
   (Sfz (SfReg _) _) -> Nothing
   (Sfz SfPair {} _) ->
     (goLeft z >>= trySplit) <|> (goRight z >>= trySplit)
@@ -97,20 +97,22 @@ toZipper n = Sfz n []
 
 reduceUntilFix :: SfNum -> SfNum
 reduceUntilFix = fromJust . reduceUntilFix'
-
-reduceUntilFix' :: SfNum -> Maybe SfNum
-reduceUntilFix' n =
-  (do
-     z' <- tryExplode (toZipper n)
-     reduceUntilFix' (sfUnrollAll z'))
-    <|> (do
-           -- explode failed, try split.
-           z' <- trySplit (toZipper n)
-           reduceUntilFix' (sfUnrollAll z'))
-    <|> pure n
+  where
+    reduceUntilFix' :: SfNum -> Maybe SfNum
+    reduceUntilFix' n =
+      (do
+         z' <- tryExplode (toZipper n)
+         reduceUntilFix' (sfUnrollAll z'))
+        <|> (do
+               -- explode failed, try split.
+               z' <- trySplit (toZipper n)
+               reduceUntilFix' (sfUnrollAll z'))
+        <|> pure n
 
 sfAdd :: SfNum -> SfNum -> SfNum
-sfAdd l r = reduceUntilFix $ SfPair l r
+sfAdd l r =
+  -- assuming inputs are already reduced.
+  reduceUntilFix $ SfPair l r
 
 magnitude :: SfNum -> Int
 magnitude = \case
@@ -120,10 +122,8 @@ magnitude = \case
 instance Solution Day18 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     xs <- fmap (consumeOrDie sfNumP) . lines <$> getInputS
-    let result = foldl1 sfAdd xs
-    answerShow (magnitude result)
-    let part2 = do
-          (x, xs1) <- pick xs
-          (y, _) <- pick xs1
-          pure (magnitude (sfAdd x y))
-    answerShow (maximum part2)
+    answerShow $ magnitude $ foldl1 sfAdd xs
+    answerShow $ maximum do
+      (x, xs1) <- pick xs
+      (y, _) <- pick xs1
+      pure (magnitude (sfAdd x y))
