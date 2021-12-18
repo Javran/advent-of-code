@@ -283,7 +283,8 @@ _findProductiveNext mi@MapInfo {miGraph, miGet, miDist} missingKeys q0 discovere
   case PQ.minView q0 of
     Nothing -> []
     Just (coord PQ.:-> stepCount, q1) -> do
-      let proceed = do
+      let fallback = _findProductiveNext mi missingKeys q1 discovered
+          proceed = do
             let nexts = do
                   coord' <- S.toList (miGraph M.! coord)
                   guard $ S.notMember coord' discovered
@@ -310,9 +311,11 @@ _findProductiveNext mi@MapInfo {miGraph, miGet, miDist} missingKeys q0 discovere
         CWall -> unreachable
         CKey k ->
           if IS.member k missingKeys
-            then pure ((coord, IS.delete k missingKeys), stepCount)
+            then ((coord, IS.delete k missingKeys), stepCount) : fallback
             else proceed
-        CDoor k -> guard (IS.notMember k missingKeys) *> proceed
+        CDoor k ->
+          (guard (IS.notMember k missingKeys) *> proceed)
+            <> fallback
 
 bfs
   :: MapInfo
@@ -337,8 +340,8 @@ bfs mi@MapInfo {miGraph, miGet, miDist} q0 discovered =
                 ((coord', missingKeys'), stepCount') <-
                   _findProductiveNext mi missingKeys (PQ.singleton coord stepCount) (S.singleton coord)
                  -}
-                let stepCount' = stepCount + fromJust (getDist miDist (coord, coord'))
-                    coords' = coords & ix i .~ coord'
+                let coords' = coords & ix i .~ coord'
+                    stepCount' = stepCount + fromJust (getDist miDist (coord, coord'))
                 missingKeys' <-
                   let ok = pure missingKeys
                    in case fromJust (miGet coord') of
