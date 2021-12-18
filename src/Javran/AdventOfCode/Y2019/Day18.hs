@@ -191,51 +191,61 @@ simplifyMapInfoAux mi@MapInfo {miGraph, miGet, miDist} q0 = case PQ.minView q0 o
 
 type MissingKeys = IS.IntSet
 
+type SearchKey = (Coord, MissingKeys)
+
 type SearchQueue =
   PQ.PSQ
-    (Coord, MissingKeys)
+    SearchKey
     ( Int -- # of steps taken
     , Int -- size of missing keys.
     )
 
-bfs (mi@MapInfo {miGraph, miGet, miDist}) (q0 :: SearchQueue) discovered = case PQ.minView q0 of
-  Nothing -> error "queue exhausted"
-  Just ((coord, missingKeys) PQ.:-> (stepCount, missingKeyCount), q1) ->
-    if missingKeyCount == 0
-      then stepCount
-      else
-        let nexts = do
-              coord' <- S.toList (miGraph M.! coord)
-              let stepCount' = stepCount + fromJust (getDist miDist (coord, coord'))
-              missingKeys' <-
-                let ok = pure missingKeys
-                 in case fromJust (miGet coord') of
-                      COpen -> ok
-                      CEntrance -> ok
-                      CWall -> unreachable
-                      CKey k -> pure (IS.delete k missingKeys)
-                      CDoor k -> guard (IS.notMember k missingKeys) *> ok
-              guard $ S.notMember (coord', missingKeys') discovered
-              pure ((coord', missingKeys'), stepCount')
-            discovered' = foldl' (\acc (x, _) -> S.insert x acc) discovered nexts
-            q2 = foldl' updateQ q1 nexts
-              where
-                updateQ curQ (k@(_, missingKeys'), stepCount') =
-                  PQ.alter
-                    (let p' = (stepCount', IS.size missingKeys')
-                      in \case
-                           Nothing -> Just p'
-                           Just p -> Just (min p' p))
-                    k
-                    curQ
-         in bfs mi q2 discovered'
+bfs
+  :: MapInfo
+  -> SearchQueue
+  -> S.Set SearchKey
+  -> Int
+bfs (mi@MapInfo {miGraph, miGet, miDist}) (q0 :: SearchQueue) discovered =
+  case PQ.minView q0 of
+    Nothing -> error "queue exhausted"
+    Just ((coord, missingKeys) PQ.:-> (stepCount, missingKeyCount), q1) ->
+      if missingKeyCount == 0
+        then stepCount
+        else
+          let nexts = do
+                coord' <- S.toList (miGraph M.! coord)
+                let stepCount' = stepCount + fromJust (getDist miDist (coord, coord'))
+                missingKeys' <-
+                  let ok = pure missingKeys
+                   in case fromJust (miGet coord') of
+                        COpen -> ok
+                        CEntrance -> ok
+                        CWall -> unreachable
+                        CKey k -> pure (IS.delete k missingKeys)
+                        CDoor k -> guard (IS.notMember k missingKeys) *> ok
+                guard $ S.notMember (coord', missingKeys') discovered
+                pure ((coord', missingKeys'), stepCount')
+              discovered' = foldr (\(x, _) -> S.insert x) discovered nexts
+              q2 = foldl' updateQ q1 nexts
+                where
+                  updateQ curQ (k@(_, missingKeys'), stepCount') =
+                    PQ.alter
+                      (let p' = (stepCount', IS.size missingKeys')
+                        in \case
+                             Nothing -> Just p'
+                             Just p -> Just (min p' p))
+                      k
+                      curQ
+           in q2 `seq` discovered' `seq` bfs mi q2 discovered'
 
+startBfs :: MapInfo -> Int
 startBfs mi@MapInfo {miGet, miGraph, miAllKeys} =
   bfs
     mi
     (PQ.singleton startKey (0, IS.size miAllKeys))
     (S.singleton startKey)
   where
+    startKey :: SearchKey
     startKey = (coordEnt, miAllKeys)
     coordEnt : _ = do
       coord <- M.keys miGraph
