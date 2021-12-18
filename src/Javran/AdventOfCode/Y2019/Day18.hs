@@ -28,6 +28,8 @@ data Day18 deriving (Generic)
 {-
   Notes:
 
+  Step #1: simplification.
+
   Looks like all those maps have some properties that we can take advantage of:
 
   - there very little presence of 2x2 open cells in the entire map, meaning that there is probably
@@ -41,7 +43,32 @@ data Day18 deriving (Generic)
   So instead of performing some search on the input map, we can condense it
   into a graph whose nodes are map cells and edges encode distances between nodes.
 
-  Let's just first do this simplification step and see how many things are left.
+  After this simplification we can "jump" between important cells and avoid ever
+  touching part of the map that does not do anything.
+
+  Step #2:
+
+  Seaching with priority queue should do to complete the puzzle.
+
+  Note that (<current coord>, <step count>, <missing keys>) fully describes a search state,
+  we can be smart about what to be keys and what to be priorities in the queue.
+
+  My choice:
+
+  - priority: (<step count>, <# of missing keys>), having the second part allows
+    us to visit states that have more keys collected first.
+
+  - key: (<current cord>, <missing keys>), step length can be extracted from priority.
+
+  Step #3:
+
+  If you are patient, step #2 is good enough for both parts of the puzzle, but
+  the algorithm can be further sped up.
+
+  The idea is to make sure a productive branching strategy. A robot that simply
+  jumps between cells is not helpful, but when it goes down a path that would result
+  in collecting a key, that's progress. Simply having this check after branching
+  is able to pruning a fairly large amount of unnecessary branching.
 
  -}
 
@@ -162,7 +189,7 @@ simplifyMapInfoAux mi@MapInfo {miGraph, miGet, miDist} q0 = case PQ.minView q0 o
 
 type MissingKeys = IS.IntSet
 
-type SearchKey = (Coord, MissingKeys)
+type SearchKey = ([Coord], MissingKeys)
 
 type SearchQueue =
   PQ.PSQ
@@ -170,59 +197,6 @@ type SearchQueue =
     ( Int -- # of steps taken
     , Int -- size of missing keys.
     )
-
-bfs
-  :: MapInfo
-  -> SearchQueue
-  -> S.Set SearchKey
-  -> Int
-bfs mi@MapInfo {miGraph, miGet, miDist} q0 discovered =
-  case PQ.minView q0 of
-    Nothing -> error "queue exhausted"
-    Just ((coord, missingKeys) PQ.:-> (stepCount, missingKeyCount), q1) ->
-      if missingKeyCount == 0
-        then stepCount
-        else
-          let nexts = do
-                coord' <- S.toList (miGraph M.! coord)
-                guard $ not $ null $ findReachableKeys mi missingKeys coord' (S.fromList [coord, coord'])
-                let stepCount' = stepCount + fromJust (getDist miDist (coord, coord'))
-                missingKeys' <-
-                  let ok = pure missingKeys
-                   in case fromJust (miGet coord') of
-                        COpen -> ok
-                        CEntrance -> ok
-                        CWall -> unreachable
-                        CKey k -> pure (IS.delete k missingKeys)
-                        CDoor k -> guard (IS.notMember k missingKeys) *> ok
-                guard $ S.notMember (coord', missingKeys') discovered
-                pure ((coord', missingKeys'), stepCount')
-              discovered' = foldr (\(x, _) -> S.insert x) discovered nexts
-              q2 = foldl' updateQ q1 nexts
-                where
-                  updateQ curQ (k@(_, missingKeys'), stepCount') =
-                    PQ.alter
-                      (let p' = (stepCount', IS.size missingKeys')
-                        in \case
-                             Nothing -> Just p'
-                             Just p -> Just (min p' p))
-                      k
-                      curQ
-           in q2 `seq` discovered' `seq` bfs mi q2 discovered'
-
-startBfs :: MapInfo -> Int
-startBfs mi@MapInfo {miGet, miGraph, miAllKeys} =
-  bfs
-    mi
-    (PQ.singleton startKey (0, IS.size miAllKeys))
-    (S.singleton startKey)
-  where
-    startKey :: SearchKey
-    startKey = (coordEnt, miAllKeys)
-    coordEnt : _ = do
-      coord <- M.keys miGraph
-      Just CEntrance <- pure (miGet coord)
-      pure coord
 
 debugMapInfo :: Int -> Int -> MapInfo -> IO ()
 debugMapInfo rows cols mi = do
@@ -276,15 +250,6 @@ updateFloorPlanForPart2 fp =
       (coord, CEntrance) <- IArr.assocs fp
       pure coord
 
-type SearchKey2 = ([Coord], MissingKeys)
-
-type SearchQueue2 =
-  PQ.PSQ
-    SearchKey2
-    ( Int -- # of steps taken
-    , Int -- size of missing keys.
-    )
-
 {-
   TODO: we can probably use this for branching rather than
   using this for pruning after branching.
@@ -305,15 +270,12 @@ findReachableKeys mi@MapInfo {miGraph, miGet} missingKeys coord visited = do
         else proceed
     CDoor k -> guard (IS.notMember k missingKeys) *> proceed
 
-{-
-  TODO: unify with part1
- -}
-bfs2
+bfs
   :: MapInfo
-  -> SearchQueue2
-  -> S.Set SearchKey2
+  -> SearchQueue
+  -> S.Set SearchKey
   -> Int
-bfs2 mi@MapInfo {miGraph, miGet, miDist} q0 discovered =
+bfs mi@MapInfo {miGraph, miGet, miDist} q0 discovered =
   case PQ.minView q0 of
     Nothing -> error "queue exhausted"
     Just ((coords, missingKeys) PQ.:-> (stepCount, missingKeyCount), q1) ->
@@ -348,16 +310,16 @@ bfs2 mi@MapInfo {miGraph, miGet, miDist} q0 discovered =
                              Just p -> Just (min p' p))
                       k
                       curQ
-           in q2 `seq` discovered' `seq` bfs2 mi q2 discovered'
+           in q2 `seq` discovered' `seq` bfs mi q2 discovered'
 
-startBfs2 :: MapInfo -> Int
-startBfs2 mi@MapInfo {miGet, miGraph, miAllKeys} =
-  bfs2
+startBfs :: MapInfo -> Int
+startBfs mi@MapInfo {miGet, miGraph, miAllKeys} =
+  bfs
     mi
     (PQ.singleton startKey (0, IS.size miAllKeys))
     (S.singleton startKey)
   where
-    startKey :: SearchKey2
+    startKey :: SearchKey
     startKey = (coordEnts, miAllKeys)
     coordEnts = do
       coord <- M.keys miGraph
@@ -388,4 +350,4 @@ instance Solution Day18 where
       let floorPlan2 = updateFloorPlanForPart2 floorPlan
           mi = simplifyMapInfo $ mkMapInfo floorPlan2
       when debug $ debugMapInfo rows cols mi
-      answerShow $ startBfs2 mi
+      answerShow $ startBfs mi
