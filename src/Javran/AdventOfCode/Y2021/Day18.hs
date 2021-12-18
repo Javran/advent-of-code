@@ -1,58 +1,129 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE PatternGuards #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# OPTIONS_GHC -Wno-deprecations #-}
-{-# OPTIONS_GHC -Wno-typed-holes #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -fdefer-typed-holes #-}
 
 module Javran.AdventOfCode.Y2021.Day18
   (
   )
 where
 
-{- HLINT ignore -}
-
 import Control.Applicative
-import Control.Monad
-import Data.Bifunctor
-import Data.Bool
-import Data.Char
-import Data.Either
-import Data.Function
-import Data.Function.Memoize (memoFix)
-import qualified Data.IntMap.Strict as IM
-import qualified Data.IntSet as IS
-import Data.List
-import Data.List.Split hiding (sepBy)
-import qualified Data.Map.Strict as M
 import Data.Maybe
-import Data.Monoid
-import Data.Ord
-import Data.Semigroup
-import qualified Data.Set as S
-import qualified Data.Text as T
-import qualified Data.Vector as V
 import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (count, many)
 
 data Day18 deriving (Generic)
 
+data SfNum
+  = SfReg Int
+  | SfPair SfNum SfNum
+
+data SfZipper = Sfz
+  { sfzFocus :: SfNum
+  , sfzContext :: [Either SfNum SfNum] -- choose left part or choose right part
+  }
+  deriving (Show)
+
+instance Show SfNum where
+  show = \case
+    SfReg n -> show n
+    SfPair a b -> '[' : show a <> "," <> show b <> "]"
+
+sfNumP :: ReadP SfNum
+sfNumP =
+  (SfReg <$> decimal1P)
+    <++ (char '[' *> (SfPair <$> (sfNumP <* char ',') <*> sfNumP) <* char ']')
+
+goLeft :: SfZipper -> Maybe SfZipper
+goLeft (Sfz (SfPair l r) ctxt) = Just (Sfz l (Left r : ctxt))
+goLeft (Sfz SfReg {} _) = Nothing
+
+goRight :: SfZipper -> Maybe SfZipper
+goRight (Sfz (SfPair l r) ctxt) = Just (Sfz r (Right l : ctxt))
+goRight (Sfz SfReg {} _) = Nothing
+
+sfUnroll :: SfZipper -> Maybe SfZipper
+sfUnroll (Sfz _ []) = Nothing
+sfUnroll (Sfz x (hd : ctxt)) = case hd of
+  Left r -> Just (Sfz (SfPair x r) ctxt)
+  Right l -> Just (Sfz (SfPair l x) ctxt)
+
+addLeft :: Int -> [Either SfNum SfNum] -> [Either SfNum SfNum]
+addLeft n ctxt = case ctxt of
+  [] -> []
+  hd@(Left _) : ctxt' -> hd : addLeft n ctxt'
+  (Right l) : ctxt' -> Right (addToRightMost n l) : ctxt'
+
+addRight :: Int -> [Either SfNum SfNum] -> [Either SfNum SfNum]
+addRight n ctxt = case ctxt of
+  [] -> []
+  hd@(Right _) : ctxt' -> hd : addRight n ctxt'
+  (Left r) : ctxt' -> Left (addToLeftMost n r) : ctxt'
+
+addToLeftMost, addToRightMost :: Int -> SfNum -> SfNum
+addToLeftMost n = \case
+  SfReg v -> SfReg (v + n)
+  SfPair l r -> SfPair (addToLeftMost n l) r
+addToRightMost n = \case
+  SfReg v -> SfReg (v + n)
+  SfPair l r -> SfPair l (addToRightMost n r)
+
+tryExplode :: SfZipper -> Maybe SfZipper
+tryExplode z = case z of
+  (Sfz (SfPair (SfReg l) (SfReg r)) ctxt@[_, _, _, _]) ->
+    Just $ Sfz (SfReg 0) (addRight r $ addLeft l ctxt)
+  (Sfz SfPair {} _) ->
+    (goLeft z >>= tryExplode) <|> (goRight z >>= tryExplode)
+  (Sfz SfReg {} _) -> Nothing
+
+trySplit :: SfZipper -> Maybe SfZipper
+trySplit z = case z of
+  (Sfz (SfReg n) ctxt)
+    | n >= 10 ->
+      let nd = fromIntegral @_ @Double n
+       in pure $ Sfz (SfPair (SfReg (floor (nd / 2))) (SfReg (ceiling (nd / 2)))) ctxt
+  (Sfz (SfReg _) _) -> Nothing
+  (Sfz SfPair {} _) ->
+    (goLeft z >>= trySplit) <|> (goRight z >>= trySplit)
+
+sfUnrollAll :: SfZipper -> SfNum
+sfUnrollAll z@(Sfz foc _) = maybe foc sfUnrollAll (sfUnroll z)
+
+toZipper :: SfNum -> SfZipper
+toZipper n = Sfz n []
+
+reduceUntilFix :: SfNum -> SfNum
+reduceUntilFix = fromJust . reduceUntilFix'
+
+reduceUntilFix' :: SfNum -> Maybe SfNum
+reduceUntilFix' n =
+  (do
+     z' <- tryExplode (toZipper n)
+     reduceUntilFix' (sfUnrollAll z'))
+    <|> (do
+           -- explode failed, try split.
+           z' <- trySplit (toZipper n)
+           reduceUntilFix' (sfUnrollAll z'))
+    <|> pure n
+
+sfAdd :: SfNum -> SfNum -> SfNum
+sfAdd l r = reduceUntilFix $ SfPair l r
+
+magnitude :: SfNum -> Int
+magnitude = \case
+  SfReg n -> n
+  SfPair l r -> magnitude l * 3 + magnitude r * 2
+
 instance Solution Day18 where
-  solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    xs <- fmap id . lines <$> getInputS
-    mapM_ print xs
+    xs <- fmap (consumeOrDie sfNumP) . lines <$> getInputS
+    let result = foldl1 sfAdd xs
+    answerShow (magnitude result)
+    let part2 = do
+          (x, xs1) <- pick xs
+          (y, _) <- pick xs1
+          pure (magnitude (sfAdd x y))
+    answerShow (maximum part2)
