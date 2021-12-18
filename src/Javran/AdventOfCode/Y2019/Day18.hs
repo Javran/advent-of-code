@@ -15,7 +15,6 @@ import qualified Data.Array as Arr
 import qualified Data.Array.IArray as IArr
 import Data.Char
 import qualified Data.IntSet as IS
-import Data.List
 import qualified Data.Map.Strict as M
 import Data.Maybe
 import qualified Data.PSQueue as PQ
@@ -291,7 +290,9 @@ bfs mi@MapInfo {miGraph, miGet, miDist} q0 discovered =
                 (i, coord) <- zip [0 :: Int ..] coords
                 coord' <- S.toList (miGraph M.! coord)
                 -- only allow this move when it leads to collecting some new keys.
-                _:_ <- pure $ findReachableKeys mi missingKeys coord' (S.fromList [coord, coord'])
+                _ : _ <-
+                  pure $
+                    findReachableKeys mi missingKeys coord' (S.fromList [coord, coord'])
                 let stepCount' = stepCount + fromJust (getDist miDist (coord, coord'))
                     coords' = coords & ix i .~ coord'
                 missingKeys' <-
@@ -304,17 +305,18 @@ bfs mi@MapInfo {miGraph, miGet, miDist} q0 discovered =
                         CDoor k -> guard (IS.notMember k missingKeys) *> ok
                 guard $ S.notMember (coords', missingKeys') discovered
                 pure ((coords', missingKeys'), stepCount')
-              discovered' = foldr (\(x, _) -> S.insert x) discovered nexts
-              q2 = foldl' updateQ q1 nexts
+              (discovered', q2) = foldr performUpdate (discovered, q1) nexts
                 where
-                  updateQ curQ (k@(_, missingKeys'), stepCount') =
-                    PQ.alter
-                      (let p' = (stepCount', IS.size missingKeys')
-                        in \case
-                             Nothing -> Just p'
-                             Just p -> Just (min p' p))
-                      k
-                      curQ
+                  performUpdate (k@(_, missingKeys'), stepCount') (curDiscovered, curQ) =
+                    ( S.insert k curDiscovered
+                    , PQ.alter
+                        (let p' = (stepCount', IS.size missingKeys')
+                          in \case
+                               Nothing -> Just p'
+                               Just p -> Just (min p' p))
+                        k
+                        curQ
+                    )
            in q2 `seq` discovered' `seq` bfs mi q2 discovered'
 
 startBfs :: MapInfo -> Int
