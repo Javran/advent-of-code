@@ -1,0 +1,12 @@
+# EXAMPLE_EXTRA_BEGIN
+part2
+# EXAMPLE_EXTRA_END
+#############
+#g#f.D#..h#l#
+#F###e#E###.#
+#dCba...BcIJ#
+#####.@.#####
+#nK.L...G...#
+#M###N#H###.#
+#o#m..#i#jk.#
+#############

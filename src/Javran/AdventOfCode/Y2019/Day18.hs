@@ -1,56 +1,27 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE PatternGuards #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# OPTIONS_GHC -Wno-deprecations #-}
-{-# OPTIONS_GHC -Wno-typed-holes #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -fdefer-typed-holes #-}
 
 module Javran.AdventOfCode.Y2019.Day18
   (
   )
 where
 
-{- HLINT ignore -}
-
-import Control.Applicative
+import Control.Lens
 import Control.Monad
 import qualified Data.Array as Arr
 import qualified Data.Array.IArray as IArr
-import Data.Bifunctor
-import Data.Bool
 import Data.Char
-import Data.Either
-import Data.Function
-import Data.Function.Memoize (memoFix)
-import qualified Data.IntMap.Strict as IM
 import qualified Data.IntSet as IS
 import Data.List
-import Data.List.Split hiding (sepBy)
 import qualified Data.Map.Strict as M
 import Data.Maybe
-import Data.Monoid
-import Data.Ord
 import qualified Data.PSQueue as PQ
-import Data.Semigroup
 import qualified Data.Set as S
-import qualified Data.Text as T
-import qualified Data.Vector as V
 import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
-import Text.ParserCombinators.ReadP hiding (count, many)
 
 data Day18 deriving (Generic)
 
@@ -181,7 +152,7 @@ simplifyMapInfoAux mi@MapInfo {miGraph, miGet, miDist} q0 = case PQ.minView q0 o
             if miGet cx == Just COpen
               then PQ.insert cx (S.size $ miGraph' M.! cx)
               else id
-          q2 = enqueue c1 $ enqueue c2 $ q1
+          q2 = enqueue c1 . enqueue c2 $ q1
        in simplifyMapInfoAux mi {miGraph = miGraph', miDist = miDist'} q2
     _
       | deg >= 3 ->
@@ -205,7 +176,7 @@ bfs
   -> SearchQueue
   -> S.Set SearchKey
   -> Int
-bfs (mi@MapInfo {miGraph, miGet, miDist}) (q0 :: SearchQueue) discovered =
+bfs mi@MapInfo {miGraph, miGet, miDist} q0 discovered =
   case PQ.minView q0 of
     Nothing -> error "queue exhausted"
     Just ((coord, missingKeys) PQ.:-> (stepCount, missingKeyCount), q1) ->
@@ -214,6 +185,7 @@ bfs (mi@MapInfo {miGraph, miGet, miDist}) (q0 :: SearchQueue) discovered =
         else
           let nexts = do
                 coord' <- S.toList (miGraph M.! coord)
+                guard $ not $ null $ findReachableKeys mi missingKeys coord' (S.fromList [coord, coord'])
                 let stepCount' = stepCount + fromJust (getDist miDist (coord, coord'))
                 missingKeys' <-
                   let ok = pure missingKeys
@@ -252,8 +224,147 @@ startBfs mi@MapInfo {miGet, miGraph, miAllKeys} =
       Just CEntrance <- pure (miGet coord)
       pure coord
 
+debugMapInfo :: Int -> Int -> MapInfo -> IO ()
+debugMapInfo rows cols mi = do
+  forM_ [0 .. rows -1] $ \r -> do
+    let render c = case miGet mi coord of
+          Nothing -> unreachable
+          Just cell -> case cell of
+            COpen -> if isJust v then show $ fromJust (miGet mi coord) else " "
+            _ -> show $ fromJust (miGet mi coord)
+          where
+            v = miGraph mi M.!? coord
+            coord = (r, c)
+    putStrLn (concatMap render [0 .. cols -1])
+  c <- forM (M.toAscList (miDist mi)) $ \((c0, c1), dist) -> do
+    let v0 = fromJust (miGet mi c0)
+        v1 = fromJust (miGet mi c1)
+    if M.member c0 (miGraph mi) && M.member c1 (miGraph mi)
+      then do
+        putStrLn $
+          show c0
+            <> " '"
+            <> show v0
+            <> "' <=> "
+            <> show c1
+            <> " '"
+            <> show v1
+            <> "': "
+            <> show dist
+        pure (1 :: Int)
+      else pure 0
+  print $ sum c
+
+type FloorPlan = Arr.Array Coord Cell
+
+updateFloorPlanForPart2 :: FloorPlan -> FloorPlan
+updateFloorPlanForPart2 fp =
+  fp Arr.// do
+    let coords =
+          (,)
+            <$> [r0 -1 .. r0 + 1]
+            <*> [c0 -1 .. c0 + 1]
+        rawUpdate =
+          fmap
+            parseCell
+            "@#@\
+            \###\
+            \@#@"
+    zip coords rawUpdate
+  where
+    (r0, c0) = head do
+      (coord, CEntrance) <- IArr.assocs fp
+      pure coord
+
+type SearchKey2 = ([Coord], MissingKeys)
+
+type SearchQueue2 =
+  PQ.PSQ
+    SearchKey2
+    ( Int -- # of steps taken
+    , Int -- size of missing keys.
+    )
+
+{-
+  TODO: we can probably use this for branching rather than
+  using this for pruning after branching.
+ -}
+findReachableKeys :: MapInfo -> IS.IntSet -> Coord -> S.Set Coord -> [()]
+findReachableKeys mi@MapInfo {miGraph, miGet} missingKeys coord visited = do
+  let proceed = do
+        coord' <- S.toList (miGraph M.! coord)
+        guard $ S.notMember coord' visited
+        findReachableKeys mi missingKeys coord' (S.insert coord' visited)
+  case fromJust (miGet coord) of
+    COpen -> proceed
+    CEntrance -> proceed
+    CWall -> unreachable
+    CKey k ->
+      if IS.member k missingKeys
+        then pure ()
+        else proceed
+    CDoor k -> guard (IS.notMember k missingKeys) *> proceed
+
+{-
+  TODO: unify with part1
+ -}
+bfs2
+  :: MapInfo
+  -> SearchQueue2
+  -> S.Set SearchKey2
+  -> Int
+bfs2 mi@MapInfo {miGraph, miGet, miDist} q0 discovered =
+  case PQ.minView q0 of
+    Nothing -> error "queue exhausted"
+    Just ((coords, missingKeys) PQ.:-> (stepCount, missingKeyCount), q1) ->
+      if missingKeyCount == 0
+        then stepCount
+        else
+          let nexts = do
+                (i, coord) <- zip [0 :: Int ..] coords
+                coord' <- S.toList (miGraph M.! coord)
+                -- only allow this move when it leads to collecting some new keys.
+                guard $ not $ null $ findReachableKeys mi missingKeys coord' (S.fromList [coord, coord'])
+                let stepCount' = stepCount + fromJust (getDist miDist (coord, coord'))
+                    coords' = coords & ix i .~ coord'
+                missingKeys' <-
+                  let ok = pure missingKeys
+                   in case fromJust (miGet coord') of
+                        COpen -> ok
+                        CEntrance -> ok
+                        CWall -> unreachable
+                        CKey k -> pure (IS.delete k missingKeys)
+                        CDoor k -> guard (IS.notMember k missingKeys) *> ok
+                guard $ S.notMember (coords', missingKeys') discovered
+                pure ((coords', missingKeys'), stepCount')
+              discovered' = foldr (\(x, _) -> S.insert x) discovered nexts
+              q2 = foldl' updateQ q1 nexts
+                where
+                  updateQ curQ (k@(_, missingKeys'), stepCount') =
+                    PQ.alter
+                      (let p' = (stepCount', IS.size missingKeys')
+                        in \case
+                             Nothing -> Just p'
+                             Just p -> Just (min p' p))
+                      k
+                      curQ
+           in q2 `seq` discovered' `seq` bfs2 mi q2 discovered'
+
+startBfs2 :: MapInfo -> Int
+startBfs2 mi@MapInfo {miGet, miGraph, miAllKeys} =
+  bfs2
+    mi
+    (PQ.singleton startKey (0, IS.size miAllKeys))
+    (S.singleton startKey)
+  where
+    startKey :: SearchKey2
+    startKey = (coordEnts, miAllKeys)
+    coordEnts = do
+      coord <- M.keys miGraph
+      Just CEntrance <- pure (miGet coord)
+      pure coord
+
 instance Solution Day18 where
-  solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     (extraOps, rawInput) <- consumeExtraLeadingLines <$> getInputS
     let xs = lines rawInput
@@ -261,44 +372,20 @@ instance Solution Day18 where
         cols = length (head xs)
         runPart1 = maybe True ("part1" `elem`) extraOps
         runPart2 = maybe True ("part2" `elem`) extraOps
+        floorPlan :: FloorPlan
         floorPlan = Arr.array
           ((0, 0), (rows -1, cols -1))
           do
             (r, rs) <- zip [0 ..] xs
             (c, x) <- zip [0 ..] rs
             pure ((r, c), parseCell x)
-        mi = simplifyMapInfo $ mkMapInfo floorPlan
-        debug = True
+        debug = False
     when runPart1 do
-      when debug do
-        forM_ [0 .. rows -1] $ \r -> do
-          let render c = case miGet mi coord of
-                Nothing -> unreachable
-                Just cell -> case cell of
-                  COpen -> if isJust v then show $ fromJust (miGet mi coord) else " "
-                  _ -> show $ fromJust (miGet mi coord)
-                where
-                  v = miGraph mi M.!? coord
-                  coord = (r, c)
-          putStrLn (concatMap render [0 .. cols -1])
-        c <- forM (M.toAscList (miDist mi)) $ \((c0, c1), dist) -> do
-          let v0 = fromJust (miGet mi c0)
-              v1 = fromJust (miGet mi c1)
-          if (M.member c0 (miGraph mi) && M.member c1 (miGraph mi))
-            then do
-              putStrLn $
-                show c0
-                  <> " '"
-                  <> show v0
-                  <> "' <=> "
-                  <> show c1
-                  <> " '"
-                  <> show v1
-                  <> "': "
-                  <> show dist
-              pure (1 :: Int)
-            else pure 0
-        print $ sum c
+      let mi = simplifyMapInfo $ mkMapInfo floorPlan
+      when debug $ debugMapInfo rows cols mi
       answerShow $ startBfs mi
     when runPart2 do
-      pure ()
+      let floorPlan2 = updateFloorPlanForPart2 floorPlan
+          mi = simplifyMapInfo $ mkMapInfo floorPlan2
+      when debug $ debugMapInfo rows cols mi
+      answerShow $ startBfs2 mi
