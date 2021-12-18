@@ -253,6 +253,11 @@ updateFloorPlanForPart2 fp =
 {-
   TODO: we can probably use this for branching rather than
   using this for pruning after branching.
+
+  Note: one needs to be careful when extending this to handle branching -
+  if we jump aggressively, chances are we end up with extra steps that
+  are not possible to get rid of.
+
  -}
 findReachableKeys :: MapInfo -> IS.IntSet -> Coord -> S.Set Coord -> [()]
 findReachableKeys mi@MapInfo {miGraph, miGet} missingKeys coord visited = do
@@ -286,7 +291,7 @@ bfs mi@MapInfo {miGraph, miGet, miDist} q0 discovered =
                 (i, coord) <- zip [0 :: Int ..] coords
                 coord' <- S.toList (miGraph M.! coord)
                 -- only allow this move when it leads to collecting some new keys.
-                guard $ not $ null $ findReachableKeys mi missingKeys coord' (S.fromList [coord, coord'])
+                _:_ <- pure $ findReachableKeys mi missingKeys coord' (S.fromList [coord, coord'])
                 let stepCount' = stepCount + fromJust (getDist miDist (coord, coord'))
                     coords' = coords & ix i .~ coord'
                 missingKeys' <-
