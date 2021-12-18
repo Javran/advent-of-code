@@ -1,3 +1,6 @@
+# EXAMPLE_EXTRA_BEGIN
+part1
+# EXAMPLE_EXTRA_END
 ########################
 #@..............ac.GI.b#
 ###d#e#f####.###########

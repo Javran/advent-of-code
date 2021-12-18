@@ -255,9 +255,12 @@ startBfs mi@MapInfo {miGet, miGraph, miAllKeys} =
 instance Solution Day18 where
   solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    xs <- lines <$> getInputS
-    let rows = length xs
+    (extraOps, rawInput) <- consumeExtraLeadingLines <$> getInputS
+    let xs = lines rawInput
+        rows = length xs
         cols = length (head xs)
+        runPart1 = maybe True ("part1" `elem`) extraOps
+        runPart2 = maybe True ("part2" `elem`) extraOps
         floorPlan = Arr.array
           ((0, 0), (rows -1, cols -1))
           do
@@ -265,23 +268,37 @@ instance Solution Day18 where
             (c, x) <- zip [0 ..] rs
             pure ((r, c), parseCell x)
         mi = simplifyMapInfo $ mkMapInfo floorPlan
-    forM_ [0 .. rows -1] $ \r -> do
-      let render c = case miGet mi coord of
-            Nothing -> unreachable
-            Just cell -> case cell of
-              COpen -> if isJust v then show $ fromJust (miGet mi coord) else " "
-              _ -> show $ fromJust (miGet mi coord)
-            where
-              v = miGraph mi M.!? coord
-              coord = (r, c)
-      putStrLn (concatMap render [0 .. cols -1])
-    c <- forM (M.toAscList (miDist mi)) $ \((c0, c1), dist) -> do
-      let v0 = fromJust (miGet mi c0)
-          v1 = fromJust (miGet mi c1)
-      if (M.member c0 (miGraph mi) && M.member c1 (miGraph mi))
-        then do
-          putStrLn $ show c0 <> " '" <> show v0 <> "' <=> " <> show c1 <> " '" <> show v1 <> "': " <> show dist
-          pure (1 :: Int)
-        else pure 0
-    print $ sum c
-    print $ startBfs mi
+        debug = True
+    when runPart1 do
+      when debug do
+        forM_ [0 .. rows -1] $ \r -> do
+          let render c = case miGet mi coord of
+                Nothing -> unreachable
+                Just cell -> case cell of
+                  COpen -> if isJust v then show $ fromJust (miGet mi coord) else " "
+                  _ -> show $ fromJust (miGet mi coord)
+                where
+                  v = miGraph mi M.!? coord
+                  coord = (r, c)
+          putStrLn (concatMap render [0 .. cols -1])
+        c <- forM (M.toAscList (miDist mi)) $ \((c0, c1), dist) -> do
+          let v0 = fromJust (miGet mi c0)
+              v1 = fromJust (miGet mi c1)
+          if (M.member c0 (miGraph mi) && M.member c1 (miGraph mi))
+            then do
+              putStrLn $
+                show c0
+                  <> " '"
+                  <> show v0
+                  <> "' <=> "
+                  <> show c1
+                  <> " '"
+                  <> show v1
+                  <> "': "
+                  <> show dist
+              pure (1 :: Int)
+            else pure 0
+        print $ sum c
+      answerShow $ startBfs mi
+    when runPart2 do
+      pure ()
