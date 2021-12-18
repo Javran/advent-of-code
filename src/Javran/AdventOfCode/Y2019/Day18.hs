@@ -277,6 +277,43 @@ findReachableKeys mi@MapInfo {miGraph, miGet} missingKeys coord visited = do
         else proceed
     CDoor k -> guard (IS.notMember k missingKeys) *> proceed
 
+{- another attempt at coord expansion with priority queue -}
+_findProductiveNext :: MapInfo -> IS.IntSet -> PQ.PSQ Coord Int -> S.Set Coord -> [((Coord, IS.IntSet), Int)]
+_findProductiveNext mi@MapInfo {miGraph, miGet, miDist} missingKeys q0 discovered =
+  case PQ.minView q0 of
+    Nothing -> []
+    Just (coord PQ.:-> stepCount, q1) -> do
+      let proceed = do
+            let nexts = do
+                  coord' <- S.toList (miGraph M.! coord)
+                  guard $ S.notMember coord' discovered
+                  let stepCount' = stepCount + fromJust (getDist miDist (coord, coord'))
+                  pure (coord', stepCount')
+                q2 =
+                  foldr
+                    (\(c, s) ->
+                       PQ.alter
+                         (\case
+                            Nothing -> Just s
+                            Just s' -> Just (min s s'))
+                         c)
+                    q1
+                    nexts
+            _findProductiveNext
+              mi
+              missingKeys
+              q2
+              (S.union discovered (S.fromList (fmap fst nexts)))
+      case fromJust (miGet coord) of
+        COpen -> proceed
+        CEntrance -> proceed
+        CWall -> unreachable
+        CKey k ->
+          if IS.member k missingKeys
+            then pure ((coord, IS.delete k missingKeys), stepCount)
+            else proceed
+        CDoor k -> guard (IS.notMember k missingKeys) *> proceed
+
 bfs
   :: MapInfo
   -> SearchQueue
@@ -296,6 +333,10 @@ bfs mi@MapInfo {miGraph, miGet, miDist} q0 discovered =
                 _ : _ <-
                   pure $
                     findReachableKeys mi missingKeys coord' (S.fromList [coord, coord'])
+                {- TODO: not working, pruning is too aggressive.
+                ((coord', missingKeys'), stepCount') <-
+                  _findProductiveNext mi missingKeys (PQ.singleton coord stepCount) (S.singleton coord)
+                 -}
                 let stepCount' = stepCount + fromJust (getDist miDist (coord, coord'))
                     coords' = coords & ix i .~ coord'
                 missingKeys' <-
