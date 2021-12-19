@@ -168,26 +168,25 @@ debugMapInfo MapInfo {miGraph, miStartEnd = (startCoord, endCoord), miDist} = do
         else pure 0
     print $ sum c
 
-shortestPath :: MapInfo -> State (M.Map Coord Int) (Maybe Int)
-shortestPath MapInfo {miStartEnd = (startCoord, endCoord), miGraph, miDist} = do
-  put (M.singleton startCoord 0)
-  fix
-    (\loop ->
-       \case
-         Seq.Empty ->
-           gets (M.!? endCoord)
-         (u Seq.:<| q0) -> do
-           distU <- gets (M.! u)
-           performEnqs <- forM (S.toList (miGraph M.! u)) $ \v -> do
-             let distV' = distU + fromJust (getDist miDist (u, v))
-             mDistV <- gets (M.!? v)
-             if maybe True (distV' <) mDistV
-               then do
-                 modify (M.insert v distV')
-                 pure (Seq.|> v)
-               else pure id
-           loop $ appEndo (foldMap Endo performEnqs) q0)
-    (Seq.singleton startCoord)
+runSpfa :: MapInfo -> M.Map Coord Int
+runSpfa MapInfo {miStartEnd = (startCoord, endCoord), miGraph, miDist} =
+  execState (spfaWith (Seq.singleton startCoord)) (M.singleton startCoord 0)
+  where
+    spfaWith =
+      \case
+        Seq.Empty ->
+          gets (M.!? endCoord)
+        (u Seq.:<| q0) -> do
+          distU <- gets (M.! u)
+          performEnqs <- forM (S.toList (miGraph M.! u)) $ \v -> do
+            let distV' = distU + fromJust (getDist miDist (u, v))
+            mDistV <- gets (M.!? v)
+            if maybe True (distV' <) mDistV
+              then do
+                modify (M.insert v distV')
+                pure (Seq.|> v)
+              else pure id
+          spfaWith $ appEndo (foldMap Endo performEnqs) q0
 
 simplifyMapInfo :: MapInfo -> MapInfo
 simplifyMapInfo mi@MapInfo {miGraph} = simplifyMapInfoAux mi $ PQ.fromList do
@@ -257,5 +256,6 @@ instance Solution Day20 where
             (c, x) <- zip [0 ..] rs
             pure ((r, c), x)
         mi = mkMapInfo rawFloor
-        mi' = simplifyMapInfo mi
-    answerShow (fromJust $ evalState (shortestPath mi') M.empty)
+        mi'@MapInfo {miStartEnd = (_, endCoord)} = simplifyMapInfo mi
+        shortestPaths = runSpfa mi'
+    answerShow (shortestPaths M.! endCoord)
