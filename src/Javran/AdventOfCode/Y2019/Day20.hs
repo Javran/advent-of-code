@@ -168,25 +168,29 @@ debugMapInfo MapInfo {miGraph, miStartEnd = (startCoord, endCoord), miDist} = do
         else pure 0
     print $ sum c
 
-runSpfa :: MapInfo -> M.Map Coord Int
+runSpfa :: MapInfo -> (Maybe Int, M.Map Coord Int)
 runSpfa MapInfo {miStartEnd = (startCoord, endCoord), miGraph, miDist} =
-  execState (spfaWith (Seq.singleton startCoord)) (M.singleton startCoord 0)
+  runState (spfaWith (PQ.singleton startCoord 0)) (M.singleton startCoord 0)
   where
-    spfaWith =
-      \case
-        Seq.Empty ->
+    spfaWith q0 =
+      case PQ.minView q0 of
+        Nothing ->
           gets (M.!? endCoord)
-        (u Seq.:<| q0) -> do
-          distU <- gets (M.! u)
+        Just (u PQ.:-> distU, q1) -> do
           performEnqs <- forM (S.toList (miGraph M.! u)) $ \v -> do
             let distV' = distU + fromJust (getDist miDist (u, v))
             mDistV <- gets (M.!? v)
             if maybe True (distV' <) mDistV
               then do
                 modify (M.insert v distV')
-                pure (Seq.|> v)
+                pure
+                  (PQ.alter
+                     (\case
+                        Nothing -> Just distV'
+                        Just distV -> Just (min distV distV'))
+                     v)
               else pure id
-          spfaWith $ appEndo (foldMap Endo performEnqs) q0
+          spfaWith $ appEndo (foldMap Endo performEnqs) q1
 
 simplifyMapInfo :: MapInfo -> MapInfo
 simplifyMapInfo mi@MapInfo {miGraph} = simplifyMapInfoAux mi $ PQ.fromList do
@@ -256,6 +260,6 @@ instance Solution Day20 where
             (c, x) <- zip [0 ..] rs
             pure ((r, c), x)
         mi = mkMapInfo rawFloor
-        mi'@MapInfo {miStartEnd = (_, endCoord)} = simplifyMapInfo mi
-        shortestPaths = runSpfa mi'
-    answerShow (shortestPaths M.! endCoord)
+        mi' = simplifyMapInfo mi
+        (Just endDist, _) = runSpfa mi'
+    answerShow endDist
