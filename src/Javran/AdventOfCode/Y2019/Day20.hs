@@ -27,8 +27,10 @@ where
 
 import Control.Applicative
 import Control.Monad
+import Control.Monad.State.Strict
 import qualified Data.Array as Arr
 import qualified Data.Array.IArray as IArr
+import qualified Data.Array.ST as Arr
 import Data.Bifunctor
 import Data.Bool
 import Data.Char
@@ -44,14 +46,16 @@ import qualified Data.Map.Strict as M
 import Data.Maybe
 import Data.Monoid
 import Data.Ord
+import qualified Data.PSQueue as PQ
 import Data.Semigroup
+import qualified Data.Sequence as Seq
 import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Vector as V
 import Debug.Trace
 import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
-import Text.ParserCombinators.ReadP hiding (count, many)
+import Text.ParserCombinators.ReadP hiding (count, get, many)
 
 data Day20 deriving (Generic)
 
@@ -144,6 +148,27 @@ debugMapInfo MapInfo {miGraph, miStartEnd = (startCoord, endCoord)} = do
             coord = (r, c)
     putStrLn (fmap render [minC - 2 .. maxC + 2])
 
+shortestPath :: MapInfo -> State (M.Map Coord Int) (Maybe Int)
+shortestPath MapInfo {miStartEnd = (startCoord, endCoord), miGraph} = do
+  put (M.singleton startCoord 0)
+  fix
+    (\loop ->
+       \case
+         Seq.Empty ->
+           gets (M.!? endCoord)
+         (u Seq.:<| q0) -> do
+           distU <- gets (M.! u)
+           performEnqs <- forM (S.toList (miGraph M.! u)) $ \v -> do
+             let distV' = distU + 1
+             mDistV <- gets (M.!? v)
+             if maybe True (distV' <) mDistV
+               then do
+                 modify (M.insert v distV')
+                 pure (Seq.|> v)
+               else pure id
+           loop $ appEndo (foldMap Endo performEnqs) q0)
+    (Seq.singleton startCoord)
+
 instance Solution Day20 where
   solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
@@ -157,4 +182,6 @@ instance Solution Day20 where
             (r, rs) <- zip [0 ..] xs
             (c, x) <- zip [0 ..] rs
             pure ((r, c), x)
-    debugMapInfo $ mkMapInfo rawFloor
+        mi = mkMapInfo rawFloor
+    -- debugMapInfo mi
+    answerShow (fromJust $ evalState (shortestPath mi) M.empty)
