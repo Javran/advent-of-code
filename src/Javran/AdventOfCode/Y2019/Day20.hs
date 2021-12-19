@@ -62,48 +62,42 @@ data Day20 deriving (Generic)
 
 type Coord = (Int, Int)
 
-data MapInfo = MapInfo
-  { miGraph :: M.Map Coord (S.Set Coord)
-  , miStartEnd :: (Coord, Coord)
-  , miDist :: M.Map (Coord, Coord) Int
+data ParsedMap = ParsedMap
+  { pmGraph :: M.Map Coord [Either String Coord]
+  , pmPortals :: M.Map String [Coord]
+  , pmStartEnd :: (Coord, Coord)
+  , pmInnerOuter :: (MinMax2D Int Int, MinMax2D Int Int)
   }
 
-mkMapInfo :: Arr.Array Coord Char -> MapInfo
-mkMapInfo rawFloor =
-  MapInfo
-    { miStartEnd = (startCoord, endCoord)
-    , miGraph
-    , miDist = M.fromList do
-        (u, vs) <- M.toList miGraph
-        v <- S.toList vs
-        guard $ u <= v
-        pure ((u, v), 1)
+parseMap :: Arr.Array Coord Char -> ParsedMap
+parseMap rawFloor =
+  ParsedMap
+    { pmGraph
+    , pmStartEnd = (startCoord, endCoord)
+    , pmPortals
+    , pmInnerOuter = (inner, outer)
     }
   where
-    ([startCoord], [endCoord]) =
-      ( portals M.! "AA"
-      , portals M.! "ZZ"
-      )
     getCell coord = rawFloor Arr.! coord
-    portals :: M.Map String [Coord]
-    portals = M.unionsWith (<>) pPre
-    miGraph :: M.Map Coord (S.Set Coord)
-    miGraph = M.mapWithKey connectPortal miGraphPre
-      where
-        connectPortal :: Coord -> [Either String Coord] -> S.Set Coord
-        connectPortal coord vs = S.fromList (ls <> rs)
-          where
-            (lsPre, rs) = partitionEithers vs
-            ls =
-              mapMaybe
-                (\tag -> do
-                   guard $ tag `notElem` ["AA", "ZZ"]
-                   let [c'] = (portals M.! tag) \\ [coord]
-                   pure c')
-                lsPre
+    ([startCoord], [endCoord]) =
+      ( pmPortals M.! "AA"
+      , pmPortals M.! "ZZ"
+      )
+    pmGraph = M.unionsWith (<>) gPre
+    pmPortals = M.unionsWith (<>) pPre
+    Just outer = foldMap (Just . minMax2D) do
+      (coord, x) <- Arr.assocs rawFloor
+      guard $ x `elem` "#."
+      pure coord
 
-    miGraphPre :: M.Map Coord [Either String Coord]
-    miGraphPre = M.unionsWith (<>) gPre
+    Just inner = foldMap (Just . minMax2D) do
+      let isInside =
+            let MinMax2D ((minR, maxR), (minC, maxC)) = outer
+             in inRange ((minR, minC), (maxR, maxC))
+      (coord, ' ') <- Arr.assocs rawFloor
+      guard $ isInside coord
+      pure coord
+
     (gPre, pPre) = unzip do
       (coord@(r, c), '.') <- Arr.assocs rawFloor
       let tryDir coord0 p0 p1 = do
@@ -136,37 +130,92 @@ mkMapInfo rawFloor =
             mPortal
         )
 
+data MapInfo = MapInfo
+  { miGraph :: M.Map Coord (S.Set Coord)
+  , miStartEnd :: (Coord, Coord)
+  , miDist :: M.Map (Coord, Coord) Int
+  , miInnerOuter :: (MinMax2D Int Int, MinMax2D Int Int)
+  }
+
+mkMapInfo :: ParsedMap -> MapInfo
+mkMapInfo
+  ParsedMap
+    { pmGraph
+    , pmStartEnd = miStartEnd
+    , pmPortals
+    , pmInnerOuter = miInnerOuter
+    } =
+    MapInfo
+      { miStartEnd
+      , miInnerOuter
+      , miGraph
+      , miDist = M.fromList do
+          (u, vs) <- M.toList miGraph
+          v <- S.toList vs
+          guard $ u <= v
+          pure ((u, v), 1)
+      }
+    where
+      miGraph :: M.Map Coord (S.Set Coord)
+      miGraph = M.mapWithKey connectPortal miGraphPre
+        where
+          connectPortal :: Coord -> [Either String Coord] -> S.Set Coord
+          connectPortal coord vs = S.fromList (ls <> rs)
+            where
+              (lsPre, rs) = partitionEithers vs
+              ls =
+                mapMaybe
+                  (\tag -> do
+                     guard $ tag `notElem` ["AA", "ZZ"]
+                     let [c'] = (pmPortals M.! tag) \\ [coord]
+                     pure c')
+                  lsPre
+
+      miGraphPre :: M.Map Coord [Either String Coord]
+      miGraphPre = pmGraph
+
 debugMapInfo :: MapInfo -> IO ()
-debugMapInfo MapInfo {miGraph, miStartEnd = (startCoord, endCoord), miDist} = do
-  let Just (MinMax2D ((minR, maxR), (minC, maxC))) =
-        foldMap (Just . minMax2D) $ M.keys miGraph
-  forM_ [minR - 1 .. maxR + 1] $ \r -> do
-    let render c =
-          if
-              | coord == startCoord -> 'S'
-              | coord == endCoord -> 'E'
-              | minR <= r && r <= maxR && minC <= c && c <= maxC ->
-                case miGraph M.!? coord of
-                  Nothing -> '█'
-                  Just _ -> '.'
-              | otherwise -> ' '
+debugMapInfo
+  MapInfo
+    { miGraph
+    , miStartEnd = (startCoord, endCoord)
+    , miDist
+    , miInnerOuter = (inner, outer)
+    } = do
+    let isOuter = inRange ((minR, minC), (maxR, maxC))
+        MinMax2D ((minR, maxR), (minC, maxC)) = outer
+        isInner = inRange ((a, c), (b, d))
           where
-            coord = (r, c)
-    putStrLn (fmap render [minC - 2 .. maxC + 2])
-  let showRoutes = True
-  when showRoutes do
-    c <- forM (M.toAscList miDist) $ \((c0, c1), dist) -> do
-      if M.member c0 miGraph && M.member c1 miGraph
-        then do
-          putStrLn $
-            show c0
-              <> " <=> "
-              <> show c1
-              <> ": "
-              <> show dist
-          pure (1 :: Int)
-        else pure 0
-    print $ sum c
+            MinMax2D ((a, b), (c, d)) = inner
+
+    forM_ [minR - 1 .. maxR + 1] $ \r -> do
+      let render c =
+            if
+                | isInner coord -> ' '
+                | coord == startCoord -> 'S'
+                | coord == endCoord -> 'E'
+                | isOuter coord ->
+                  case miGraph M.!? coord of
+                    Nothing -> '█'
+                    Just _ -> '.'
+                | otherwise -> ' '
+            where
+              coord = (r, c)
+      putStrLn (fmap render [minC - 2 .. maxC + 2])
+    let showRoutes = True
+    when showRoutes do
+      c <- forM (M.toAscList miDist) $ \((c0, c1), dist) -> do
+        if M.member c0 miGraph && M.member c1 miGraph
+          then do
+            putStrLn $
+              show c0
+                <> " <=> "
+                <> show c1
+                <> ": "
+                <> show dist
+            pure (1 :: Int)
+          else pure 0
+      print $ sum c
 
 runSpfa :: MapInfo -> (Maybe Int, M.Map Coord Int)
 runSpfa MapInfo {miStartEnd = (startCoord, endCoord), miGraph, miDist} =
@@ -259,7 +308,11 @@ instance Solution Day20 where
             (r, rs) <- zip [0 ..] xs
             (c, x) <- zip [0 ..] rs
             pure ((r, c), x)
-        mi = mkMapInfo rawFloor
+        parsed = parseMap rawFloor
+        mi = mkMapInfo parsed
         mi' = simplifyMapInfo mi
         (Just endDist, _) = runSpfa mi'
+        debug = False
+    when debug do
+      debugMapInfo mi'
     answerShow endDist
