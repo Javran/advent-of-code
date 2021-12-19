@@ -148,8 +148,7 @@ debugMapInfo MapInfo {miGraph, miStartEnd = (startCoord, endCoord), miDist} = do
               | minR <= r && r <= maxR && minC <= c && c <= maxC ->
                 case miGraph M.!? coord of
                   Nothing -> '█'
-                  Just cs ->
-                    chr (ord '0' + S.size cs)
+                  Just _ -> '.'
               | otherwise -> ' '
           where
             coord = (r, c)
@@ -197,8 +196,9 @@ simplifyMapInfo mi@MapInfo {miGraph} = simplifyMapInfoAux mi $ PQ.fromList do
   guard $ deg <= 2
   pure (coord PQ.:-> deg)
 
+-- TODO: we should probably have an util module that deal with this kind of things for undirected graphs.
 getDist :: M.Map (Coord, Coord) Int -> (Coord, Coord) -> Maybe Int
-getDist m (a, b) = m M.!? if a < b then (a, b) else (b, a)
+getDist m (a, b) = m M.!? if a <= b then (a, b) else (b, a)
 
 {-
   Basically the same simplification process as in day 18.
@@ -258,7 +258,4 @@ instance Solution Day20 where
             pure ((r, c), x)
         mi = mkMapInfo rawFloor
         mi' = simplifyMapInfo mi
-    -- debugMapInfo (simplifyMapInfo mi)
-
-    -- answerShow (fromJust $ evalState (shortestPath mi) M.empty)
     answerShow (fromJust $ evalState (shortestPath mi') M.empty)
