@@ -133,7 +133,7 @@ parseMap rawFloor =
 data MapInfo = MapInfo
   { miGraph :: M.Map Coord (S.Set Coord)
   , miStartEnd :: (Coord, Coord)
-  , miDist :: M.Map (Coord, Coord) Int
+  , miDist :: M.Map (MinMax Coord) Int
   , miInnerOuter :: (MinMax2D Int Int, MinMax2D Int Int)
   }
 
@@ -153,7 +153,7 @@ mkMapInfo
           (u, vs) <- M.toList miGraph
           v <- S.toList vs
           guard $ u <= v
-          pure ((u, v), 1)
+          pure (minMaxFromPair (u, v), 1)
       }
     where
       miGraph :: M.Map Coord (S.Set Coord)
@@ -204,7 +204,7 @@ debugMapInfo
       putStrLn (fmap render [minC - 2 .. maxC + 2])
     let showRoutes = True
     when showRoutes do
-      c <- forM (M.toAscList miDist) $ \((c0, c1), dist) -> do
+      c <- forM (M.toAscList miDist) $ \(MinMax (c0, c1), dist) -> do
         if M.member c0 miGraph && M.member c1 miGraph
           then do
             putStrLn $
@@ -249,8 +249,8 @@ simplifyMapInfo mi@MapInfo {miGraph} = simplifyMapInfoAux mi $ PQ.fromList do
   pure (coord PQ.:-> deg)
 
 -- TODO: we should probably have an util module that deal with this kind of things for undirected graphs.
-getDist :: M.Map (Coord, Coord) Int -> (Coord, Coord) -> Maybe Int
-getDist m (a, b) = m M.!? if a <= b then (a, b) else (b, a)
+getDist :: M.Map (MinMax Coord) Int -> (Coord, Coord) -> Maybe Int
+getDist m p = m M.!? minMaxFromPair p
 
 {-
   Basically the same simplification process as in day 18.
@@ -281,9 +281,8 @@ simplifyMapInfoAux
                     M.adjust (S.insert c2 . S.delete c) c1 $
                       M.delete c miGraph
                 miDist' =
-                  let p = if c1 <= c2 then (c1, c2) else (c2, c1)
-                   in -- probably not worth removing old ones
-                      M.insert p newDist miDist
+                  -- probably not worth removing old ones
+                  M.insert (minMaxFromPair (c1, c2)) newDist miDist
                 enqueue cx = PQ.insert cx (S.size $ miGraph' M.! cx)
                 q2 = enqueue c1 . enqueue c2 $ q1
              in if safeToPrune

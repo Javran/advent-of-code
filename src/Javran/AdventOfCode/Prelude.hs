@@ -15,6 +15,7 @@ module Javran.AdventOfCode.Prelude
   , universe
   , MinMax (..)
   , minMax
+  , minMaxFromPair
   , MinMax2D (..)
   , minMax2D
   , -- infrastructures
@@ -74,14 +75,17 @@ todo = error "todo"
 
 newtype MinMax a = MinMax {getMinMax :: (a, a)}
   deriving (Semigroup) via (Min a, Max a)
-  deriving stock Show
+  deriving stock (Show, Eq, Ord)
 
 minMax :: a -> MinMax a
 minMax a = MinMax (a, a)
 
+minMaxFromPair :: Ord a => (a, a) -> MinMax a
+minMaxFromPair (a, b) = MinMax $ if a <= b then (a, b) else (b, a)
+
 newtype MinMax2D u v = MinMax2D {getMinMax2D :: ((u, u), (v, v))}
   deriving (Semigroup) via ((Min u, Max u), (Min v, Max v))
-  deriving stock Show
+  deriving stock (Show)
 
 minMax2D :: (u, v) -> MinMax2D u v
 minMax2D (u, v) = MinMax2D ((u, u), (v, v))
