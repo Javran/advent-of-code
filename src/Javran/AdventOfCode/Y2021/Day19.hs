@@ -1,51 +1,24 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE PatternGuards #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# OPTIONS_GHC -Wno-deprecations #-}
-{-# OPTIONS_GHC -Wno-typed-holes #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -fdefer-typed-holes #-}
 
 module Javran.AdventOfCode.Y2021.Day19
   (
   )
 where
 
-{- HLINT ignore -}
-
-import Control.Applicative
 import Control.Monad
 import Data.Bifunctor
-import Data.Bool
-import Data.Char
-import Data.Either
-import Data.Function
-import Data.Function.Memoize (memoFix)
 import qualified Data.IntMap.Strict as IM
 import qualified Data.IntSet as IS
 import Data.List
 import Data.List.Split hiding (sepBy)
 import qualified Data.Map.Strict as M
-import Data.Maybe
-import Data.Monoid
-import Data.Ord
 import Data.Semigroup
 import qualified Data.Set as S
-import qualified Data.Text as T
-import qualified Data.Vector as V
-import Debug.Trace
 import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Linear.Affine
@@ -57,43 +30,61 @@ data Day19 deriving (Generic)
 
 type Pos = Point V3 Int
 
-type Beacons = [Pos]
+type PosSet = S.Set Pos
 
-type ScannerInfo = (Int, Beacons)
-
-data BeaconSet = BeaconSet
-  { bsItems :: S.Set Pos
-  , bsQds :: M.Map Int Int
-  }
-  deriving (Show)
-
-mkBeaconSet :: Beacons -> BeaconSet
-mkBeaconSet xs = BeaconSet {bsItems = S.fromList xs, bsQds}
-  where
-    bsQds = M.fromListWith (+) do
-      (a, as) <- pickInOrder xs
-      (b, _) <- pickInOrder as
-      pure (qdA a b, 1)
+type ScannerInfo = (Int, [Pos])
 
 scannerHeaderP :: ReadP Int
 scannerHeaderP = string "--- scanner " *> decimal1P <* string " ---"
+
+parseScannerInfo :: [String] -> ScannerInfo
+parseScannerInfo = \case
+  [] -> errInvalid
+  (hd : tl) ->
+    ( consumeOrDie scannerHeaderP hd
+    , fmap
+        ((\[a, b, c] -> P (V3 a b c))
+           . fmap (read @Int)
+           . splitOn ",")
+        tl
+    )
+
+{-
+  Beacon coordinates for a single scanner,
+  together with some auxiliary info to help finding scanners that have beacons in common.
+ -}
+data BeaconAuxSet = BeaconAuxSet
+  { basItems :: S.Set Pos
+  , basQds :: M.Map Int Int -- the bag of all quadrance of the differences within this set.
+  }
+  deriving (Show)
+
+mkBeaconAuxSet :: [Pos] -> BeaconAuxSet
+mkBeaconAuxSet xs =
+  BeaconAuxSet
+    { basItems = S.fromList xs
+    , basQds
+    }
+  where
+    basQds = M.fromListWith (+) do
+      (a, as) <- pickInOrder xs
+      (b, _) <- pickInOrder as
+      pure (qdA a b, 1)
 
 orientPos :: Pos -> [Pos]
 orientPos (P (V3 a b c)) = do
   (x, xs) <- pick [a, b, c]
   (y, ys) <- pick xs
   (z, _) <- pick ys
-  sigX <- [1, -1]
-  sigY <- [1, -1]
-  sigZ <- [1, -1]
+  [sigX, sigY, sigZ] <- replicateM 3 [1, -1]
   pure (P (V3 (sigX * x) (sigY * y) (sigZ * z)))
 
-parseScannerInfo :: [String] -> ScannerInfo
-parseScannerInfo = \case
-  [] -> errInvalid
-  (hd : tl) -> (consumeOrDie scannerHeaderP hd, fmap ((\[a, b, c] -> P (V3 a b c)) . fmap (read @Int) . splitOn ",") tl)
-
-realignRhs :: S.Set Pos -> S.Set Pos -> (S.Set Pos, V3 Int)
+{-
+  Assumes that lhs and rhs have at least 12 beacons in common,
+  re-orientation rhs's x,y,z axis so that it matches with that of lhs.
+  In addition returns a vector that can translate rhs coords to lhs coords.
+ -}
+realignRhs :: PosSet -> PosSet -> (PosSet, V3 Int)
 realignRhs lhs rhsPre = head do
   -- try all orientations for rhs
   rhs <- transpose (fmap orientPos (S.toList rhsPre))
@@ -105,11 +96,18 @@ realignRhs lhs rhsPre = head do
   guard $ S.size (S.intersection lhs rSet) >= 12
   pure (S.fromList rhs, tr)
 
--- aligned positions with a vector to translate back to scanner 0 coordinate system
--- scanner 0 always have the vector being zero
-type MergeResult = IM.IntMap (S.Set Pos, V3 Int)
+{-
+  All PosSet within MergeResult has their x,y,z axis consistently aligned.
+  The accompanying vector translates that PosSet to scanner 0's coordinate system.
+  Scanner 0 always has its translation vector being 0.
+ -}
+type MergeResult = IM.IntMap (PosSet, V3 Int)
 
-performMerge :: MergeResult -> Int -> Int -> S.Set Pos -> MergeResult
+{-
+  Merges in beacons from scanner r by realigning it using scanner l
+  (which must be a member of MergeResult).
+ -}
+performMerge :: MergeResult -> Int -> Int -> PosSet -> MergeResult
 performMerge mr lScannerId rScannerId rSet =
   IM.insert rScannerId (rSet', trR ^+^ trL) mr
   where
@@ -119,39 +117,41 @@ performMerge mr lScannerId rScannerId rSet =
 instance Solution Day19 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     xs <- fmap parseScannerInfo . splitOn [""] . lines <$> getInputS
-    let ys :: IM.IntMap BeaconSet
-        ys = IM.fromList $ (fmap . second) mkBeaconSet xs
+    let ys :: IM.IntMap BeaconAuxSet
+        ys = IM.fromList $ (fmap . second) mkBeaconAuxSet xs
         mergablePairs = do
+          -- find pairs of scanner ids that share at least 12 beacons
           ((x, xm), as) <- pickInOrder (IM.toList ys)
           ((y, ym), _) <- pickInOrder as
-          let qdInCommon = sum $ M.elems (M.intersectionWith (\a b -> min a b) (bsQds xm) (bsQds ym))
-          guard $ qdInCommon >= 66
+          let qdInCommon =
+                -- bag intersection.
+                sum $ M.elems (M.intersectionWith min (basQds xm) (basQds ym))
+          guard $ qdInCommon >= (12 * 11) `quot` 2
           [(x, y), (y, x)]
-        initMergeResult = IM.singleton 0 (bsItems (ys IM.! 0), 0)
-        computeMergeResult mr =
-          if null scannerToMerge
-            then mr
-            else
-              let (i, j) : _ = scannerToMerge
-               in computeMergeResult (performMerge mr i j (bsItems $ ys IM.! j))
+        computeMergeResult mr = case scannerToMerge of
+          [] -> mr
+          (i, j) : _ ->
+            computeMergeResult (performMerge mr i j (basItems $ ys IM.! j))
           where
             missingScanners = IS.difference (IM.keysSet ys) (IM.keysSet mr)
             scannerToMerge = do
               sId <- IS.toList missingScanners
-              (i, j) <- mergablePairs
-              guard (j == sId)
-              guard (IM.member i mr)
-              pure (i, j)
-
-    let merged = computeMergeResult initMergeResult
+              p@(i, j) <- mergablePairs
+              p <$ guard (j == sId && IM.member i mr)
+    let merged =
+          computeMergeResult $
+            IM.singleton 0 (basItems (ys IM.! 0), 0) -- scanner 0 as merge base.
         allBeacons = S.unions $ fmap (\(s, tr) -> S.map (.+^ tr) s) $ IM.elems merged
         scannersLoc :: [Pos]
-        scannersLoc = do
-          (_, tr) <- IM.elems merged
-          pure (0 .+^ tr)
+        scannersLoc =
+          fmap
+            (\(_, tr) ->
+               origin .+^ tr)
+            $ IM.elems merged
         Just (Max maxDist) = mconcat do
-          ((P (V3 x0 y0 z0)), as) <- pick $ scannersLoc
-          ((P (V3 x1 y1 z1), _)) <- pick as
-          pure (Just (Max (sum (fmap abs [x0 - x1, y0 - y1, z0 - z1]))))
-    answerShow (S.size allBeacons)
+          (p0, as) <- pickInOrder scannersLoc
+          (p1, _) <- pickInOrder as
+          let (V3 dx dy dz) = p0 .-. p1
+          pure . Just . Max . sum $ fmap abs [dx, dy, dz]
+    answerShow $ S.size allBeacons
     answerShow maxDist
