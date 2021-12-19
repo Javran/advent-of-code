@@ -166,13 +166,16 @@ simplifyMapInfoAux mi@MapInfo {miGraph, miGet, miDist} q0 = case PQ.minView q0 o
        in simplifyMapInfoAux mi {miGraph = miGraph'} q2
     2 ->
       let [c1, c2] = S.toList (miGraph M.! c)
-          newEdgeAlreadyExistNotSelfLink =
+          newDist = fromJust (getDist miDist (c, c1)) + fromJust (getDist miDist (c, c2))
+          mOldDist = getDist miDist (c1, c2)
+          safeToPrune =
             {-
               One needs to be careful not to prune tunnels that has its both ends
               already connected, as we might overwrite a short distance with a longer one.
              -}
-            c1 /= c2
-              && S.member c2 (miGraph M.! c1)
+            case mOldDist of
+              Nothing -> True
+              Just oldDist -> newDist <= oldDist
           miGraph' =
             {-
               note that in this process we could create a node that links to itself,
@@ -184,7 +187,6 @@ simplifyMapInfoAux mi@MapInfo {miGraph, miGet, miDist} q0 = case PQ.minView q0 o
                 M.delete c miGraph
           miDist' =
             let p = if c1 < c2 then (c1, c2) else (c2, c1)
-                newDist = fromJust (getDist miDist (c, c1)) + fromJust (getDist miDist (c, c2))
              in -- probably not worth removing old ones
                 M.insert p newDist miDist
           enqueue cx =
@@ -192,9 +194,9 @@ simplifyMapInfoAux mi@MapInfo {miGraph, miGet, miDist} q0 = case PQ.minView q0 o
               then PQ.insert cx (S.size $ miGraph' M.! cx)
               else id
           q2 = enqueue c1 . enqueue c2 $ q1
-       in if newEdgeAlreadyExistNotSelfLink
-            then simplifyMapInfoAux mi q1
-            else simplifyMapInfoAux mi {miGraph = miGraph', miDist = miDist'} q2
+       in if safeToPrune
+            then simplifyMapInfoAux mi {miGraph = miGraph', miDist = miDist'} q2
+            else simplifyMapInfoAux mi q1
     _
       | deg >= 3 ->
         -- meaning all deg 1 and 2 are done.

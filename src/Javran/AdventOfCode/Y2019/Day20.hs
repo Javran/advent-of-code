@@ -201,48 +201,47 @@ getDist :: M.Map (Coord, Coord) Int -> (Coord, Coord) -> Maybe Int
 getDist m (a, b) = m M.!? if a < b then (a, b) else (b, a)
 
 {-
-  For the priority queue, the invariant is that only COpen cells are allowed to be in the queue.
+  Basically the same simplification process as in day 18.
  -}
 simplifyMapInfoAux :: MapInfo -> PQ.PSQ Coord Int -> MapInfo
-simplifyMapInfoAux mi@MapInfo {miGraph, miDist, miStartEnd = (startCoord, endCoord)} q0 = case PQ.minView q0 of
-  Nothing -> mi
-  Just (c PQ.:-> deg, q1) ->
-    if c == startCoord || c == endCoord
-      then simplifyMapInfoAux mi q1
-      else case deg of
-        1 ->
-          let [c'] = S.toList (miGraph M.! c)
-              miGraph' = M.adjust (S.delete c) c' $ M.delete c miGraph
-              q2 = PQ.insert c' (S.size $ miGraph' M.! c') q1
-           in simplifyMapInfoAux mi {miGraph = miGraph'} q2
-        2 ->
-          let [c1, c2] = S.toList (miGraph M.! c)
-              newEdgeAlreadyExist = S.member c2 (miGraph M.! c1)
-              miGraph' =
-                {-
-                  note that in this process we could create a node that links to itself,
-                  if the original graph contains one.
-                  but that will get eliminated in a subsequent simplification (by degree 1 case).
-                 -}
-                M.adjust (S.insert c1 . S.delete c) c2 $
-                  M.adjust (S.insert c2 . S.delete c) c1 $
-                    M.delete c miGraph
-              miDist' =
-                let p = if c1 <= c2 then (c1, c2) else (c2, c1)
-                    newDist =
-                      fromJust (getDist miDist (c, c1)) + fromJust (getDist miDist (c, c2))
-                 in -- probably not worth removing old ones
-                    M.insert p newDist miDist
-              enqueue cx = PQ.insert cx (S.size $ miGraph' M.! cx)
-              q2 = enqueue c1 . enqueue c2 $ q1
-           in if newEdgeAlreadyExist
-                then simplifyMapInfoAux mi q1
-                else simplifyMapInfoAux mi {miGraph = miGraph', miDist = miDist'} q2
-        _
-          | deg >= 3 ->
-            -- meaning all deg 1 and 2 are done.
-            mi
-        _ -> unreachable
+simplifyMapInfoAux
+  mi@MapInfo {miGraph, miDist, miStartEnd = (startCoord, endCoord)}
+  q0 = case PQ.minView q0 of
+    Nothing -> mi
+    Just (c PQ.:-> deg, q1) ->
+      if c == startCoord || c == endCoord
+        then simplifyMapInfoAux mi q1
+        else case deg of
+          1 ->
+            let [c'] = S.toList (miGraph M.! c)
+                miGraph' = M.adjust (S.delete c) c' $ M.delete c miGraph
+                q2 = PQ.insert c' (S.size $ miGraph' M.! c') q1
+             in simplifyMapInfoAux mi {miGraph = miGraph'} q2
+          2 ->
+            let [c1, c2] = S.toList (miGraph M.! c)
+                mOldDist = getDist miDist (c1, c2)
+                newDist = fromJust (getDist miDist (c, c1)) + fromJust (getDist miDist (c, c2))
+                safeToPrune = case mOldDist of
+                  Nothing -> True
+                  Just oldDist -> newDist <= oldDist
+                miGraph' =
+                  M.adjust (S.insert c1 . S.delete c) c2 $
+                    M.adjust (S.insert c2 . S.delete c) c1 $
+                      M.delete c miGraph
+                miDist' =
+                  let p = if c1 <= c2 then (c1, c2) else (c2, c1)
+                   in -- probably not worth removing old ones
+                      M.insert p newDist miDist
+                enqueue cx = PQ.insert cx (S.size $ miGraph' M.! cx)
+                q2 = enqueue c1 . enqueue c2 $ q1
+             in if safeToPrune
+                  then simplifyMapInfoAux mi {miGraph = miGraph', miDist = miDist'} q2
+                  else simplifyMapInfoAux mi q1
+          _
+            | deg >= 3 ->
+              -- meaning all deg 1 and 2 are done.
+              mi
+          _ -> unreachable
 
 instance Solution Day20 where
   solutionSolved _ = False
@@ -260,5 +259,6 @@ instance Solution Day20 where
         mi = mkMapInfo rawFloor
         mi' = simplifyMapInfo mi
     -- debugMapInfo (simplifyMapInfo mi)
+
     -- answerShow (fromJust $ evalState (shortestPath mi) M.empty)
     answerShow (fromJust $ evalState (shortestPath mi') M.empty)
