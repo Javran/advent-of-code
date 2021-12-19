@@ -73,9 +73,7 @@ mkBeaconAuxSet xs =
 
 orientPos :: Pos -> [Pos]
 orientPos (P (V3 a b c)) = do
-  (x, xs) <- pick [a, b, c]
-  (y, ys) <- pick xs
-  (z, _) <- pick ys
+  [x, y, z] <- permutations [a, b, c]
   [sigX, sigY, sigZ] <- replicateM 3 [1, -1]
   pure (P (V3 (sigX * x) (sigY * y) (sigZ * z)))
 
