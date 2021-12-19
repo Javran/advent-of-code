@@ -141,7 +141,13 @@ simplifyMapInfo :: MapInfo -> MapInfo
 simplifyMapInfo mi@MapInfo {miGraph, miGet} = simplifyMapInfoAux mi $ PQ.fromList do
   coord <- M.keys miGraph
   Just COpen <- pure (miGet coord)
-  pure (coord PQ.:-> S.size (miGraph M.! coord))
+  let deg = S.size (miGraph M.! coord)
+  {-
+    We only need those that we can prune initially to be around,
+    more edges can be pulled in through enqueue.
+   -}
+  guard $ deg <= 2
+  pure (coord PQ.:-> deg)
 
 {-
   For the priority queue, the invariant is that only COpen cells are allowed to be in the queue.
@@ -160,6 +166,13 @@ simplifyMapInfoAux mi@MapInfo {miGraph, miGet, miDist} q0 = case PQ.minView q0 o
        in simplifyMapInfoAux mi {miGraph = miGraph'} q2
     2 ->
       let [c1, c2] = S.toList (miGraph M.! c)
+          newEdgeAlreadyExistNotSelfLink =
+            {-
+              One needs to be careful not to prune tunnels that has its both ends
+              already connected, as we might overwrite a short distance with a longer one.
+             -}
+            c1 /= c2
+              && S.member c2 (miGraph M.! c1)
           miGraph' =
             {-
               note that in this process we could create a node that links to itself,
@@ -179,7 +192,9 @@ simplifyMapInfoAux mi@MapInfo {miGraph, miGet, miDist} q0 = case PQ.minView q0 o
               then PQ.insert cx (S.size $ miGraph' M.! cx)
               else id
           q2 = enqueue c1 . enqueue c2 $ q1
-       in simplifyMapInfoAux mi {miGraph = miGraph', miDist = miDist'} q2
+       in if newEdgeAlreadyExistNotSelfLink
+            then simplifyMapInfoAux mi q1
+            else simplifyMapInfoAux mi {miGraph = miGraph', miDist = miDist'} q2
     _
       | deg >= 3 ->
         -- meaning all deg 1 and 2 are done.
