@@ -62,7 +62,14 @@ data Day20 deriving (Generic)
 
 type Coord = (Int, Int)
 
-data Dir = U | D | L | R deriving (Eq)
+data Dir = U | D | L | R deriving (Eq, Show)
+
+applyDir :: Dir -> Coord -> Coord
+applyDir = \case
+  U -> first pred
+  D -> first succ
+  L -> second pred
+  R -> second succ
 
 data ParsedMap = ParsedMap
   { pmGraph :: M.Map Coord [Either String Coord]
@@ -128,9 +135,9 @@ parseMap rawFloor =
             mPortal
         )
 
-data PortalSide = PsInner | PsOuter
+data PortalSide = PsInner | PsOuter deriving (Show)
 
-type Edges = M.Map Coord (Maybe (String, PortalSide))
+type Edges = M.Map Coord (Maybe (String, Dir, PortalSide))
 
 data MapInfo = MapInfo
   { miGraph :: M.Map Coord Edges
@@ -169,13 +176,14 @@ mkMapInfo
           connectPortal coord vs = M.fromList (ls <> fmap (,Nothing) rs)
             where
               (lsPre, rs) = partitionEithers vs
-              ls :: [(Coord, Maybe (String, PortalSide))]
+              ls :: [(Coord, Maybe (String, Dir, PortalSide))]
               ls =
                 mapMaybe
                   (\tag -> do
                      guard $ tag `notElem` ["AA", "ZZ"]
                      let [(c', _)] = filter ((/= coord) . fst) (pmPortals M.! tag)
-                     pure (c', Just (tag, if isOnInnerRim coord then PsInner else PsOuter)))
+                         Just dir = lookup coord (pmPortals M.! tag)
+                     pure (c', Just (tag, dir, if isOnInnerRim coord then PsInner else PsOuter)))
                   lsPre
 
       miGraphPre :: M.Map Coord [Either String Coord]
@@ -194,10 +202,19 @@ debugMapInfo
         isInner = inRange ((a, c), (b, d))
           where
             MinMax2D ((a, b), (c, d)) = inner
+        portalExtras :: M.Map Coord PortalSide
+        portalExtras = M.fromList do
+          (u, es) <- M.toList miGraph
+          (_, Just (_, d, ps)) <- M.toList es
+          pure (applyDir d u, ps)
 
-    forM_ [minR - 1 .. maxR + 1] $ \r -> do
+    forM_ [minR - 2 .. maxR + 2] $ \r -> do
       let render c =
             if
+                | Just p <- portalExtras M.!? coord ->
+                  case p of
+                    PsInner -> 'i'
+                    PsOuter -> 'o'
                 | isInner coord -> ' '
                 | coord == startCoord -> 'S'
                 | coord == endCoord -> 'E'
@@ -208,20 +225,36 @@ debugMapInfo
                 | otherwise -> ' '
             where
               coord = (r, c)
-      putStrLn (fmap render [minC - 2 .. maxC + 2])
+      putStrLn (fmap render [minC - 4 .. maxC + 4])
     let showRoutes = True
     when showRoutes do
+      putStrLn $ "start, end: " <> show (startCoord, endCoord)
       c <- forM (M.toAscList miDist) $ \(MinMax (c0, c1), dist) -> do
-        if M.member c0 miGraph && M.member c1 miGraph
-          then do
+        case (miGraph M.!? c0, miGraph M.!? c1) of
+          (Just edges0, Just edges1) -> do
+            let e01 = edges0 M.! c1
+                e10 = edges1 M.! c0
+                renderExtra = \case
+                  Nothing -> ""
+                  Just (xs, _d, ps) ->
+                    concat
+                      [ " "
+                      , xs
+                      , ","
+                      , case ps of
+                          PsInner -> "I"
+                          PsOuter -> "O"
+                      ]
             putStrLn $
               show c0
+                <> renderExtra e01
                 <> " <=> "
                 <> show c1
+                <> renderExtra e10
                 <> ": "
                 <> show dist
             pure (1 :: Int)
-          else pure 0
+          _ -> pure 0
       print $ sum c
 
 runSpfa :: MapInfo -> (Maybe Int, M.Map Coord Int)
@@ -272,7 +305,10 @@ simplifyMapInfoAux
         then simplifyMapInfoAux mi q1
         else case deg of
           1 ->
-            let [(c', _)] = M.toList (miGraph M.! c)
+            let [ ( c'
+                    , Nothing {- it should never be the case that dead end leads to anywhere. -}
+                    )
+                  ] = M.toList (miGraph M.! c)
                 miGraph' = M.adjust (M.delete c) c' $ M.delete c miGraph
                 q2 = PQ.insert c' (M.size $ miGraph' M.! c') q1
              in simplifyMapInfoAux mi {miGraph = miGraph'} q2
@@ -321,7 +357,7 @@ instance Solution Day20 where
         mi = mkMapInfo parsed
         mi' = simplifyMapInfo mi
         (Just endDist, _) = runSpfa mi'
-        debug = False
+        debug = True
     when debug do
       debugMapInfo mi'
     answerShow endDist
