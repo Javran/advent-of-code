@@ -340,12 +340,49 @@ simplifyMapInfoAux
               mi
           _ -> unreachable
 
+bfs
+  mi@MapInfo
+    { miStartEnd = (_startCoord, endCoord)
+    , miGraph
+    , miDist
+    }
+  q0
+  discovered = case PQ.minView q0 of
+    Nothing -> error "queue exhausted"
+    Just (st@(coord, level) PQ.:-> stepCount, q1) ->
+      if st == (endCoord, 0)
+        then stepCount
+        else
+          let nexts = do
+                (coord', mPortal) <- M.toList (miGraph M.! coord)
+                let stepCount' = stepCount + (miDist M.! minMaxFromPair (coord, coord'))
+                    level' = case mPortal of
+                      Nothing -> level
+                      Just (_, _, PsInner) -> level + 1
+                      Just (_, _, PsOuter) -> level - 1
+                    st' = (coord', level')
+                guard $ level' >= 0 && S.notMember st' discovered
+                pure (st', stepCount')
+              discovered' = S.union discovered $ S.fromList (fmap fst nexts)
+              q2 = foldr enqueue q1 nexts
+                where
+                  enqueue (st', stepCount') curQ =
+                    PQ.alter
+                      (\case
+                         Nothing -> Just stepCount'
+                         Just sc -> Just (min sc stepCount'))
+                      st'
+                      curQ
+           in bfs mi q2 discovered'
+
 instance Solution Day20 where
-  solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    xs <- lines <$> getInputS
-    let rows = length xs
+    (extraOps, rawInput) <- consumeExtraLeadingLines <$> getInputS
+    let xs = lines rawInput
+        rows = length xs
         cols = length (head xs)
+        runPart1 = maybe True ("part1" `elem`) extraOps
+        runPart2 = maybe True ("part2" `elem`) extraOps
         rawFloor :: Arr.Array Coord Char
         rawFloor = Arr.array
           ((0, 0), (rows -1, cols -1))
@@ -355,9 +392,12 @@ instance Solution Day20 where
             pure ((r, c), x)
         parsed = parseMap rawFloor
         mi = mkMapInfo parsed
-        mi' = simplifyMapInfo mi
+        mi'@MapInfo {miStartEnd = (startCoord, _)} = simplifyMapInfo mi
         (Just endDist, _) = runSpfa mi'
-        debug = True
+        debug = False
     when debug do
       debugMapInfo mi'
-    answerShow endDist
+    when runPart1 do
+      answerShow endDist
+    when runPart2 do
+      answerShow (bfs mi' (PQ.singleton (startCoord, 0) (0 :: Int)) (S.singleton (startCoord, 0 :: Int)))
