@@ -1,62 +1,30 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE PatternGuards #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# OPTIONS_GHC -Wno-deprecations #-}
-{-# OPTIONS_GHC -Wno-typed-holes #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -fdefer-typed-holes #-}
 
 module Javran.AdventOfCode.Y2019.Day20
   (
   )
 where
 
-{- HLINT ignore -}
-
-import Control.Applicative
 import Control.Monad
 import Control.Monad.State.Strict
 import qualified Data.Array as Arr
-import qualified Data.Array.IArray as IArr
-import qualified Data.Array.ST as Arr
 import Data.Bifunctor
-import Data.Bool
 import Data.Char
 import Data.Either
 import Data.Foldable
-import Data.Function
-import Data.Function.Memoize (memoFix)
-import qualified Data.IntMap.Strict as IM
-import qualified Data.IntSet as IS
-import Data.List
-import Data.List.Split hiding (sepBy)
 import qualified Data.Map.Strict as M
 import Data.Maybe
 import Data.Monoid
-import Data.Ord
 import qualified Data.PSQueue as PQ
-import Data.Semigroup
-import qualified Data.Sequence as Seq
 import qualified Data.Set as S
-import qualified Data.Text as T
-import qualified Data.Vector as V
-import Debug.Trace
 import GHC.Generics (Generic)
-import GHC.IO (unsafePerformIO)
 import Javran.AdventOfCode.Prelude
-import Text.ParserCombinators.ReadP hiding (count, get, many)
 
 data Day20 deriving (Generic)
 
@@ -113,11 +81,11 @@ parseMap rawFloor =
             let v = getCell coord0
             case v of
               '#' -> []
-              '.' -> pure $ (Right coord0, Nothing)
+              '.' -> pure (Right coord0, Nothing)
               _
                 | isAsciiUpper v -> do
                   let pTag = [getCell p0, getCell p1]
-                  pure $ (Left pTag, Just (pTag, dir))
+                  pure (Left pTag, Just (pTag, dir))
               _ -> errInvalid
       (val, mPortal) <-
         asum
@@ -340,6 +308,9 @@ simplifyMapInfoAux
               mi
           _ -> unreachable
 
+type SearchState2 = (Coord, Int) -- current coord and recursion level
+
+bfs :: MapInfo -> PQ.PSQ SearchState2 Int -> S.Set SearchState2 -> Int
 bfs
   mi@MapInfo
     { miStartEnd = (_startCoord, endCoord)
@@ -392,7 +363,8 @@ instance Solution Day20 where
             pure ((r, c), x)
         parsed = parseMap rawFloor
         mi = mkMapInfo parsed
-        mi'@MapInfo {miStartEnd = (startCoord, _)} = simplifyMapInfo mi
+        mi'@MapInfo {miStartEnd = (startCoord, _)} =
+          simplifyMapInfo mi
         (Just endDist, _) = runSpfa mi'
         debug = False
     when debug do
@@ -400,4 +372,10 @@ instance Solution Day20 where
     when runPart1 do
       answerShow endDist
     when runPart2 do
-      answerShow (bfs mi' (PQ.singleton (startCoord, 0) (0 :: Int)) (S.singleton (startCoord, 0 :: Int)))
+      let initSt :: SearchState2
+          initSt = (startCoord, 0)
+      answerShow $
+        bfs
+          mi'
+          (PQ.singleton initSt 0)
+          (S.singleton initSt)
