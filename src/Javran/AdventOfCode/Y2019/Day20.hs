@@ -39,29 +39,37 @@ applyDir = \case
   L -> second pred
   R -> second succ
 
-data ParsedMap = ParsedMap
-  { pmGraph :: M.Map Coord [Either String Coord]
-  , pmPortals :: M.Map String [(Coord, Dir)]
-  , pmStartEnd :: (Coord, Coord)
-  , pmInnerOuter :: (MinMax2D Int Int, MinMax2D Int Int)
+data PortalSide = PsInner | PsOuter deriving (Show)
+
+type Edges = M.Map Coord (Maybe (String, Dir, PortalSide))
+
+data MapInfo = MapInfo
+  { miGraph :: M.Map Coord Edges
+  , miStartEnd :: (Coord, Coord)
+  , miDist :: M.Map (MinMax Coord) Int
+  , miInnerOuter :: (MinMax2D Int Int, MinMax2D Int Int)
   }
 
-parseMap :: Arr.Array Coord Char -> ParsedMap
-parseMap rawFloor =
-  ParsedMap
-    { pmGraph
-    , pmStartEnd = (startCoord, endCoord)
-    , pmPortals
-    , pmInnerOuter = (inner, outer)
+mkMapInfo :: Arr.Array Coord Char -> MapInfo
+mkMapInfo rawFloor =
+  MapInfo
+    { miStartEnd = (startCoord, endCoord)
+    , miInnerOuter = (inner, outer)
+    , miGraph
+    , miDist = M.fromList do
+        (u, vs) <- M.toList miGraph
+        v <- M.keys vs
+        guard $ u <= v
+        pure (minMaxFromPair (u, v), 1)
     }
   where
     getCell coord = rawFloor Arr.! coord
     ([(startCoord, _)], [(endCoord, _)]) =
-      ( pmPortals M.! "AA"
-      , pmPortals M.! "ZZ"
+      ( portals M.! "AA"
+      , portals M.! "ZZ"
       )
-    pmGraph = M.unionsWith (<>) gPre
-    pmPortals = M.unionsWith (<>) pPre
+    miGraphPre = M.unionsWith (<>) gPre
+    portals = M.unionsWith (<>) pPre
     Just outer = foldMap (Just . minMax2D) do
       (coord, x) <- Arr.assocs rawFloor
       guard $ x `elem` "#."
@@ -103,59 +111,26 @@ parseMap rawFloor =
             mPortal
         )
 
-data PortalSide = PsInner | PsOuter deriving (Show)
-
-type Edges = M.Map Coord (Maybe (String, Dir, PortalSide))
-
-data MapInfo = MapInfo
-  { miGraph :: M.Map Coord Edges
-  , miStartEnd :: (Coord, Coord)
-  , miDist :: M.Map (MinMax Coord) Int
-  , miInnerOuter :: (MinMax2D Int Int, MinMax2D Int Int)
-  }
-
-mkMapInfo :: ParsedMap -> MapInfo
-mkMapInfo
-  ParsedMap
-    { pmGraph
-    , pmStartEnd = miStartEnd
-    , pmPortals
-    , pmInnerOuter = miInnerOuter
-    } =
-    MapInfo
-      { miStartEnd
-      , miInnerOuter
-      , miGraph
-      , miDist = M.fromList do
-          (u, vs) <- M.toList miGraph
-          v <- M.keys vs
-          guard $ u <= v
-          pure (minMaxFromPair (u, v), 1)
-      }
-    where
-      isOnInnerRim :: Coord -> Bool
-      isOnInnerRim = inRange ((minR -1, minC -1), (maxR + 1, maxC + 1))
-        where
-          (MinMax2D ((minR, maxR), (minC, maxC)), _Outer) = miInnerOuter
-      miGraph :: M.Map Coord Edges
-      miGraph = M.mapWithKey connectPortal miGraphPre
-        where
-          connectPortal :: Coord -> [Either String Coord] -> Edges
-          connectPortal coord vs = M.fromList (ls <> fmap (,Nothing) rs)
-            where
-              (lsPre, rs) = partitionEithers vs
-              ls :: [(Coord, Maybe (String, Dir, PortalSide))]
-              ls =
-                mapMaybe
-                  (\tag -> do
-                     guard $ tag `notElem` ["AA", "ZZ"]
-                     let [(c', _)] = filter ((/= coord) . fst) (pmPortals M.! tag)
-                         Just dir = lookup coord (pmPortals M.! tag)
-                     pure (c', Just (tag, dir, if isOnInnerRim coord then PsInner else PsOuter)))
-                  lsPre
-
-      miGraphPre :: M.Map Coord [Either String Coord]
-      miGraphPre = pmGraph
+    isOnInnerRim :: Coord -> Bool
+    isOnInnerRim = inRange ((minR -1, minC -1), (maxR + 1, maxC + 1))
+      where
+        MinMax2D ((minR, maxR), (minC, maxC)) = inner
+    miGraph :: M.Map Coord Edges
+    miGraph = M.mapWithKey connectPortal miGraphPre
+      where
+        connectPortal :: Coord -> [Either String Coord] -> Edges
+        connectPortal coord vs = M.fromList (ls <> fmap (,Nothing) rs)
+          where
+            (lsPre, rs) = partitionEithers vs
+            ls :: [(Coord, Maybe (String, Dir, PortalSide))]
+            ls =
+              mapMaybe
+                (\tag -> do
+                   guard $ tag `notElem` ["AA", "ZZ"]
+                   let [(c', _)] = filter ((/= coord) . fst) (portals M.! tag)
+                       Just dir = lookup coord (portals M.! tag)
+                   pure (c', Just (tag, dir, if isOnInnerRim coord then PsInner else PsOuter)))
+                lsPre
 
 debugMapInfo :: MapInfo -> IO ()
 debugMapInfo
@@ -361,8 +336,7 @@ instance Solution Day20 where
             (r, rs) <- zip [0 ..] xs
             (c, x) <- zip [0 ..] rs
             pure ((r, c), x)
-        parsed = parseMap rawFloor
-        mi = mkMapInfo parsed
+        mi = mkMapInfo rawFloor
         mi'@MapInfo {miStartEnd = (startCoord, _)} =
           simplifyMapInfo mi
         (Just endDist, _) = runSpfa mi'
