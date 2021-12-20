@@ -128,8 +128,12 @@ parseMap rawFloor =
             mPortal
         )
 
+data PortalSide = PsInner | PsOuter
+
+type Edges = M.Map Coord (Maybe (String, PortalSide))
+
 data MapInfo = MapInfo
-  { miGraph :: M.Map Coord (S.Set Coord)
+  { miGraph :: M.Map Coord Edges
   , miStartEnd :: (Coord, Coord)
   , miDist :: M.Map (MinMax Coord) Int
   , miInnerOuter :: (MinMax2D Int Int, MinMax2D Int Int)
@@ -149,24 +153,29 @@ mkMapInfo
       , miGraph
       , miDist = M.fromList do
           (u, vs) <- M.toList miGraph
-          v <- S.toList vs
+          v <- M.keys vs
           guard $ u <= v
           pure (minMaxFromPair (u, v), 1)
       }
     where
-      miGraph :: M.Map Coord (S.Set Coord)
+      isOnInnerRim :: Coord -> Bool
+      isOnInnerRim = inRange ((minR -1, minC -1), (maxR + 1, maxC + 1))
+        where
+          (MinMax2D ((minR, maxR), (minC, maxC)), _Outer) = miInnerOuter
+      miGraph :: M.Map Coord Edges
       miGraph = M.mapWithKey connectPortal miGraphPre
         where
-          connectPortal :: Coord -> [Either String Coord] -> S.Set Coord
-          connectPortal coord vs = S.fromList (ls <> rs)
+          connectPortal :: Coord -> [Either String Coord] -> Edges
+          connectPortal coord vs = M.fromList (ls <> fmap (,Nothing) rs)
             where
               (lsPre, rs) = partitionEithers vs
+              ls :: [(Coord, Maybe (String, PortalSide))]
               ls =
                 mapMaybe
                   (\tag -> do
                      guard $ tag `notElem` ["AA", "ZZ"]
-                     let [c'] = (fmap fst (pmPortals M.! tag)) \\ [coord]
-                     pure c')
+                     let [(c', _)] = filter ((/= coord) . fst) (pmPortals M.! tag)
+                     pure (c', Just (tag, if isOnInnerRim coord then PsInner else PsOuter)))
                   lsPre
 
       miGraphPre :: M.Map Coord [Either String Coord]
@@ -224,7 +233,7 @@ runSpfa MapInfo {miStartEnd = (startCoord, endCoord), miGraph, miDist} =
         Nothing ->
           gets (M.!? endCoord)
         Just (u PQ.:-> distU, q1) -> do
-          performEnqs <- forM (S.toList (miGraph M.! u)) $ \v -> do
+          performEnqs <- forM (M.keys (miGraph M.! u)) $ \v -> do
             let distV' = distU + fromJust (getDist miDist (u, v))
             mDistV <- gets (M.!? v)
             if maybe True (distV' <) mDistV
@@ -242,7 +251,7 @@ runSpfa MapInfo {miStartEnd = (startCoord, endCoord), miGraph, miDist} =
 simplifyMapInfo :: MapInfo -> MapInfo
 simplifyMapInfo mi@MapInfo {miGraph} = simplifyMapInfoAux mi $ PQ.fromList do
   (coord, cs) <- M.toList miGraph
-  let deg = S.size cs
+  let deg = M.size cs
   guard $ deg <= 2
   pure (coord PQ.:-> deg)
 
@@ -263,25 +272,28 @@ simplifyMapInfoAux
         then simplifyMapInfoAux mi q1
         else case deg of
           1 ->
-            let [c'] = S.toList (miGraph M.! c)
-                miGraph' = M.adjust (S.delete c) c' $ M.delete c miGraph
-                q2 = PQ.insert c' (S.size $ miGraph' M.! c') q1
+            let [(c', _)] = M.toList (miGraph M.! c)
+                miGraph' = M.adjust (M.delete c) c' $ M.delete c miGraph
+                q2 = PQ.insert c' (M.size $ miGraph' M.! c') q1
              in simplifyMapInfoAux mi {miGraph = miGraph'} q2
           2 ->
-            let [c1, c2] = S.toList (miGraph M.! c)
+            let [(c1, p1), (c2, p2)] = M.toList (miGraph M.! c)
                 mOldDist = getDist miDist (c1, c2)
                 newDist = fromJust (getDist miDist (c, c1)) + fromJust (getDist miDist (c, c2))
-                safeToPrune = case mOldDist of
-                  Nothing -> True
-                  Just oldDist -> newDist <= oldDist
+                safeToPrune = case (p1, p2) of
+                  (Nothing, Nothing) ->
+                    case mOldDist of
+                      Nothing -> True
+                      Just oldDist -> newDist <= oldDist
+                  _ -> False
                 miGraph' =
-                  M.adjust (S.insert c1 . S.delete c) c2 $
-                    M.adjust (S.insert c2 . S.delete c) c1 $
+                  M.adjust (M.insert c1 Nothing . M.delete c) c2 $
+                    M.adjust (M.insert c2 Nothing . M.delete c) c1 $
                       M.delete c miGraph
                 miDist' =
                   -- probably not worth removing old ones
                   M.insert (minMaxFromPair (c1, c2)) newDist miDist
-                enqueue cx = PQ.insert cx (S.size $ miGraph' M.! cx)
+                enqueue cx = PQ.insert cx (M.size $ miGraph' M.! cx)
                 q2 = enqueue c1 . enqueue c2 $ q1
              in if safeToPrune
                   then simplifyMapInfoAux mi {miGraph = miGraph', miDist = miDist'} q2
