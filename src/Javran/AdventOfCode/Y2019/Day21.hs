@@ -66,6 +66,7 @@ import qualified Data.Text as T
 import qualified Data.Vector as V
 import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
+import Javran.AdventOfCode.Y2019.IntCode
 import Text.ParserCombinators.ReadP hiding (count, many)
 
 data Day21 deriving (Generic)
@@ -73,5 +74,32 @@ data Day21 deriving (Generic)
 instance Solution Day21 where
   solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    xs <- fmap id . lines <$> getInputS
-    mapM_ print xs
+    code <- parseCodeOrDie <$> getInputS
+    let runPart1 = False
+    when runPart1 do
+      let progInput =
+            [ "NOT C J" -- jump when C is empty but D is not.
+            , "AND D J"
+            , "NOT A T" -- jump when A is empty.
+            , "OR T J"
+            , "WALK"
+            ]
+      (_, out) <- runProgram code (fmap ord $ unlines progInput)
+      let isSolved = last out > 0x7f
+      if isSolved
+        then print (last out)
+        else putStrLn (fmap chr out)
+    do
+      -- TODO.
+      let progInput =
+            [ "NOT C J"
+            , "AND D J"
+            , "NOT A T" -- jump when A is empty.
+            , "OR T J"
+            , "RUN"
+            ]
+      (_, out) <- runProgram code (fmap ord $ unlines progInput)
+      let isSolved = last out > 0x7f
+      if isSolved
+        then print (last out)
+        else putStrLn (fmap chr out)
