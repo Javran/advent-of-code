@@ -1,6 +1,6 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 
 module Javran.AdventOfCode.Y2021.Day15
@@ -13,7 +13,7 @@ import qualified Data.Array.Base as Arr
 import qualified Data.Array.ST as Arr
 import Data.Function
 import Data.Monoid
-import qualified Data.Sequence as Seq
+import qualified Data.PSQueue as PQ
 import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 
@@ -29,25 +29,24 @@ shortestPath vs = Arr.runSTUArray do
   dist <- Arr.newArray arrBound maxBound
   Arr.writeArray dist (0, 0) 0
   fix
-    (\loop ->
-       \case
-         Seq.Empty -> pure dist
-         (u Seq.:<| q0) -> do
-           distU <- Arr.readArray dist u
-           {-
-             For implementing SPFA proper, we are supposed to not enqueue
-             elements that are already in the queue.
-             However this induces an overhead of maintaining an extra set of queue elements
-             that results in worse performance.
-            -}
+    (\loop q ->
+       case PQ.minView q of
+         Nothing -> pure dist
+         Just (u PQ.:-> distU, q0) -> do
            performEnqs <- forM (neighbors u) $ \v -> do
              distV <- Arr.readArray dist v
              let distV' = distU + vs Arr.! v
              if distV' < distV
-               then (Seq.|> v) <$ Arr.writeArray dist v distV'
+               then
+                 PQ.alter
+                   (\case
+                      Nothing -> Just distV'
+                      Just v' -> Just (min v' distV'))
+                   v
+                   <$ Arr.writeArray dist v distV'
                else pure id
            loop $ appEndo (foldMap Endo performEnqs) q0)
-    (Seq.singleton (0, 0))
+    (PQ.singleton (0, 0) 0)
 
 instance Solution Day15 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
