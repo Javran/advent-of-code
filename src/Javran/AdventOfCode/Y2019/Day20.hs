@@ -62,9 +62,11 @@ data Day20 deriving (Generic)
 
 type Coord = (Int, Int)
 
+data Dir = U | D | L | R deriving (Eq)
+
 data ParsedMap = ParsedMap
   { pmGraph :: M.Map Coord [Either String Coord]
-  , pmPortals :: M.Map String [Coord]
+  , pmPortals :: M.Map String [(Coord, Dir)]
   , pmStartEnd :: (Coord, Coord)
   , pmInnerOuter :: (MinMax2D Int Int, MinMax2D Int Int)
   }
@@ -79,7 +81,7 @@ parseMap rawFloor =
     }
   where
     getCell coord = rawFloor Arr.! coord
-    ([startCoord], [endCoord]) =
+    ([(startCoord, _)], [(endCoord, _)]) =
       ( pmPortals M.! "AA"
       , pmPortals M.! "ZZ"
       )
@@ -100,7 +102,7 @@ parseMap rawFloor =
 
     (gPre, pPre) = unzip do
       (coord@(r, c), '.') <- Arr.assocs rawFloor
-      let tryDir coord0 p0 p1 = do
+      let tryDir dir coord0 p0 p1 = do
             let v = getCell coord0
             case v of
               '#' -> []
@@ -108,25 +110,21 @@ parseMap rawFloor =
               _
                 | isAsciiUpper v -> do
                   let pTag = [getCell p0, getCell p1]
-                  pure $ (Left pTag, Just pTag)
+                  pure $ (Left pTag, Just (pTag, dir))
               _ -> errInvalid
       (val, mPortal) <-
         asum
-          [ -- up
-            tryDir (r -1, c) (r -2, c) (r -1, c)
-          , -- down
-            tryDir (r + 1, c) (r + 1, c) (r + 2, c)
-          , -- left
-            tryDir (r, c -1) (r, c -2) (r, c -1)
-          , --right
-            tryDir (r, c + 1) (r, c + 1) (r, c + 2)
+          [ tryDir U (r -1, c) (r -2, c) (r -1, c)
+          , tryDir D (r + 1, c) (r + 1, c) (r + 2, c)
+          , tryDir L (r, c -1) (r, c -2) (r, c -1)
+          , tryDir R (r, c + 1) (r, c + 1) (r, c + 2)
           ]
       pure
         ( M.singleton coord [val] -- one piece of miGraph
         , -- portal tag to this coord.
           maybe
             M.empty
-            (\tag -> M.singleton tag [coord])
+            (\(tag, dir) -> M.singleton tag [(coord, dir)])
             mPortal
         )
 
@@ -167,7 +165,7 @@ mkMapInfo
                 mapMaybe
                   (\tag -> do
                      guard $ tag `notElem` ["AA", "ZZ"]
-                     let [c'] = (pmPortals M.! tag) \\ [coord]
+                     let [c'] = (fmap fst (pmPortals M.! tag)) \\ [coord]
                      pure c')
                   lsPre
 
