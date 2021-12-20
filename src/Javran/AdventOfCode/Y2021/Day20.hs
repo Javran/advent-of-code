@@ -1,4 +1,3 @@
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -6,6 +5,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Javran.AdventOfCode.Y2021.Day20
   (
@@ -48,12 +48,13 @@ mkStep :: Rule -> World -> World
 mkStep rule (xs, (MinMax2D wRange, negative)) =
   (xs', (MinMax2D wRange', negative'))
   where
-    wRange'@(rRange, cRange) = bimap stepRange stepRange wRange
+    wRange'@(rRange', cRange') = bimap stepRange stepRange wRange
     needNegative = rule V.! 0
     negative' = if needNegative then not negative else negative
     xs' = S.fromList do
-      r <- uncurry enumFromTo rRange
-      c <- uncurry enumFromTo cRange
+      coord@(r, c) <-
+        let f = uncurry enumFromTo
+         in (,) <$> f rRange' <*> f cRange'
       let inp = bitsToDigit do
             r' <- [r -1 .. r + 1]
             c' <- [c -1 .. c + 1]
@@ -64,7 +65,7 @@ mkStep rule (xs, (MinMax2D wRange, negative)) =
       guard $
         -- whether output is supposed to be negated.
         if negative' then not actualVal else actualVal
-      pure (r, c)
+      pure coord
 
 showWorld :: World -> IO ()
 showWorld (xs, (MinMax2D ((minR, maxR), (minC, maxC)), negative)) = do
