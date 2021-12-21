@@ -160,29 +160,109 @@ p1Input =
   , "WALK"
   ]
 
+{-
+  Starting from scratch, but `NOT A J` looks good to keep.
+
+Failure:
+
+> #####..#@########
+
+let's make it jump when D is present
+
+> @
+> ##..#.####
+>  ABCDEFGHI
+
+- NOT A J
+- OR D T
+- OR T J
+
+... I get the feeling that this is exactly p1,
+let's just use the stuff there...
+
+also let's change notation.
+
+say in p1 we have:
+
+> !A + !C*D
+
+should not jump:
+
+> @..............
+> ###.#.#..######
+>  ABCDEFGHI
+
+> !A + !C*D*H
+
+should not jump:
+
+> @............
+> #.##.#.######
+>  ABCDEFGHI
+
+> @
+> ##.##.#.##
+>  ABCDEFGHI
+
+> !A + !C*D*H + !B*F
+
+should not jump:
+
+> @.........
+> ##...#####
+>  ABCDEFGHI
+
+> !A + !C*D*H + !B*D*F
+
+should jump:
+
+> @............
+> #.##...##.###
+>  ABCDEFGHI
+
+> @...?...?
+> ##.##...##.###
+>  ABCDEFGHI
+
+> !A + !C*D*H + !B*D*F + !B*D*H
+
+ -}
+p2Input :: [String]
+p2Input =
+  [ "NOT A J"
+  , "NOT C T"
+  , "AND D T"
+  , "AND H T"
+  , "OR T J"
+  , "NOT B T"
+  , "AND D T"
+  , "AND F T"
+  , "OR T J"
+  , "NOT B T"
+  , "AND D T"
+  , "AND H T"
+  , "OR T J"
+  , "RUN"
+  ]
+
+{-
+  TODO: find something not that manual...
+ -}
+
 instance Solution Day21 where
-  solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     code <- parseCodeOrDie <$> getInputS
     let runPart1 = True
-        runPart2 = False
+        runPart2 = True
     when runPart1 do
       (_, out) <- runProgram code (fmap ord $ unlines p1Input)
       let isSolved = last out > 0x7f
       if isSolved
-        then print (last out)
+        then answerShow (last out)
         else putStrLn (fmap chr out)
     when runPart2 do
-      -- TODO.
-      let progInput =
-            [ "NOT C J"
-            , "AND D J"
-            , "NOT A T" -- jump when A is empty.
-            , "OR T J"
-            , "RUN"
-            ]
-      (_, out) <- runProgram code (fmap ord $ unlines progInput)
+      (_, out) <- runProgram code (fmap ord $ unlines p2Input)
       let isSolved = last out > 0x7f
       if isSolved
-        then print (last out)
+        then answerShow (last out)
         else putStrLn (fmap chr out)
