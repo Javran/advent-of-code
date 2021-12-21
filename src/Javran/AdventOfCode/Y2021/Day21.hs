@@ -1,152 +1,164 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# OPTIONS_GHC -Wno-deprecations #-}
-{-# OPTIONS_GHC -Wno-typed-holes #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -fdefer-typed-holes #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
 
 module Javran.AdventOfCode.Y2021.Day21
   (
   )
 where
 
-{- HLINT ignore -}
-
 import Control.Applicative
+import Control.Lens
 import Control.Monad
 import Control.Monad.State.Strict
 import Data.Bifunctor
-import Data.Bool
-import Data.Char
-import Data.Either
-import Data.Function
-import Data.Function.Memoize (memoFix)
+import Data.Coerce
 import qualified Data.IntMap.Strict as IM
-import qualified Data.IntSet as IS
 import Data.List
-import Data.List.Split hiding (sepBy)
 import qualified Data.Map.Strict as M
 import Data.Maybe
 import Data.Monoid
-import Data.Ord
-import Data.Semigroup
-import qualified Data.Set as S
-import qualified Data.Text as T
-import qualified Data.Vector as V
 import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (count, get, many)
 
 data Day21 deriving (Generic)
 
+newtype Player = Player Bool
+  deriving (Eq, Ord) via Bool
+
+pattern P1, P2 :: Player
+pattern P1 = Player False
+pattern P2 = Player True
+
+{-# COMPLETE P1, P2 #-}
+
+instance Show Player where
+  show = \case
+    P1 -> "P1"
+    P2 -> "P2"
+
 playerP :: ReadP (Int, Int)
 playerP =
   (,) <$> (string "Player " *> decimal1P)
     <*> (string " starting position: " *> decimal1P)
 
-data GameState = GameState
-  { gsDie :: [(Int, Int)]
-  , gsPlayer :: IM.IntMap (Int, Sum Int)
-  }
+type PlayerState = (Int, Sum Int)
 
-stepPlayer :: Int -> State GameState (Maybe Int)
-stepPlayer who = do
-  pt <- diceRoll
-  advance (sum (fmap snd pt))
-  score <- gets (snd . (IM.! who) . gsPlayer)
-  pure do
-    guard $ score >= 1000
-    pure who
+type GameState =
+  ( [(Int, Int)] -- die sequence
+  , (PlayerState, PlayerState)
+  )
+
+_p :: Player -> Lens' (a, a) a
+_p = \case
+  P1 -> _1
+  P2 -> _2
+
+not' :: Player -> Player
+not' = coerce not
+
+applyStep :: Int -> PlayerState -> PlayerState
+applyStep incr (pos, sc) = (pos', sc <> Sum pos')
   where
-    diceRoll =
-      state
-        (\gs@GameState {gsDie} ->
-           let (ls, die') = splitAt 3 gsDie
-            in (ls, gs {gsDie = die'}))
-    advance pt = do
-      let upd (pos, score) = (pos', score <> Sum pos')
-            where
-              pos' = let x = (pos + pt) `rem` 10 in if x == 0 then 10 else x
-      modify (\gs@GameState {gsPlayer} -> gs {gsPlayer = IM.adjust upd who gsPlayer})
+    pos' = let x = (pos + incr) `rem` 10 in if x == 0 then 10 else x
 
-stepTillWon (p : ps) = do
-  mWinner <- stepPlayer p
-  case mWinner of
-    Just w -> pure w
-    Nothing -> stepTillWon ps
+stepPlayer :: Player -> State GameState (Maybe Player)
+stepPlayer who = do
+  pt <- sum . fmap snd <$> roll
+  advance pt
+  score <- gets (snd . view _who . snd)
+  pure $ who <$ guard (score >= 1000)
+  where
+    _who = _p who
+    roll = state \(die, p) ->
+      -- https://www.youtube.com/watch?v=dQw4w9WgXcQ
+      let (ls, die') = splitAt 3 die
+       in (ls, (die', p))
+    advance pt =
+      modify (second (& _who %~ applyStep pt))
 
-type GameState2 = (Bool {-p1's turn if false-}, ((Int {- pos -}, Int {- score -}), (Int, Int)))
+stepTillConclusion :: [Player] -> State GameState Player
+stepTillConclusion = \case
+  [] -> error "expected infinite list"
+  (p : ps) ->
+    stepPlayer p
+      >>= maybe
+        -- no conclusion
+        (stepTillConclusion ps)
+        -- winner found
+        pure
 
-allSteps :: IM.IntMap Int
-allSteps = IM.fromListWith (+) do
+type GameState2 = (Player, (PlayerState, PlayerState))
+
+oneStep :: [(Int, Int)]
+oneStep = IM.toList $ IM.fromListWith (+) do
   x <- sum <$> replicateM 3 [1, 2, 3]
   pure (x, 1)
 
-step2 :: GameState2 -> M.Map GameState2 Int
-step2 (False, ((p1Loc, p1Score), p2)) = M.fromListWith (+) do
-  (step, univCount) <- IM.toList allSteps
-  let p1Loc' = let x = (p1Loc + step) `rem` 10 in if x == 0 then 10 else x
-      p1Score' = p1Score + p1Loc'
-  pure ((True, ((p1Loc', p1Score'), p2)), univCount)
-step2 (True, (p1, (p2Loc, p2Score))) = M.fromListWith (+) do
-  (step, univCount) <- IM.toList allSteps
-  let p2Loc' = let x = (p2Loc + step) `rem` 10 in if x == 0 then 10 else x
-      p2Score' = p2Score + p2Loc'
-  pure ((False, (p1, (p2Loc', p2Score'))), univCount)
+stepUniverse :: GameState2 -> M.Map GameState2 Int
+stepUniverse (p, ps) = M.fromListWith (+) do
+  (step, univCount) <- oneStep
+  let ps' = ps & _p p %~ applyStep step
+  pure ((not' p, ps'), univCount)
 
-stepUniv :: M.Map GameState2 Int -> ((Sum Int, Sum Int), M.Map GameState2 Int)
-stepUniv m = (w, inconclusives)
+{-
+  Steps one turn forward, and discharges universes that have concluded.
+ -}
+stepMultiverse
+  :: M.Map GameState2 Int
+  -> ( (Sum Int, Sum Int)
+     , M.Map GameState2 Int
+     )
+stepMultiverse m = (w, inconclusives)
   where
     w =
-      mconcat $
-        mapMaybe
+      mconcat
+        . mapMaybe
           (\(univ, count) -> do
-             p2Won <- isConclusive univ
-             pure $ if p2Won then (0, Sum count) else (Sum count, 0))
-          (M.toList conclusives)
-    conclusives, inconclusives :: M.Map GameState2 Int
-    (conclusives, inconclusives) = M.partitionWithKey (\k _v -> isJust (isConclusive k)) stepped
+             winner <- getWinner univ
+             pure $ (0, 0) & _p winner .~ Sum count)
+        $ M.toList conclusives
+    (conclusives, inconclusives) =
+      M.partitionWithKey
+        (\k _v -> isJust (getWinner k))
+        stepped
 
-    isConclusive :: GameState2 -> Maybe Bool
-    isConclusive (_, ((_, p1Score), (_, p2Score)))
-      | p1Score >= 21 = Just False
-      | p2Score >= 21 = Just True
-      | otherwise = Nothing
-    stepped :: M.Map GameState2 Int
+    getWinner (_, ((_, p1Score), (_, p2Score))) =
+      (P1 <$ guard (p1Score >= 21))
+        <|> (P2 <$ guard (p2Score >= 21))
+
     stepped = M.unionsWith (+) do
       (univ, count) <- M.toList m
-      let univ' = M.map (* count) $ step2 univ
-      pure univ'
+      pure $ M.map (* count) $ stepUniverse univ
 
 instance Solution Day21 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     [(1, p1), (2, p2)] <- fmap (consumeOrDie playerP) . lines <$> getInputS
-    let initSt = GameState {gsDie = zip [0 ..] (cycle [1 .. 100]), gsPlayer = IM.fromList [(1, (p1, 0)), (2, (p2, 0))]}
-        (winner, GameState {gsDie = (dieCount, _) : _, gsPlayer = pFin}) = runState (stepTillWon (cycle [1, 2])) initSt
-        loser = 3 - winner
-        initAllUniv = (M.singleton (False, ((p1, 0), (p2, 0))) 1)
+    let initPlayerSt = ((p1, 0), (p2, 0))
+    do
+      let initSt =
+            ( zip [0 ..] (cycle [1 .. 100])
+            , initPlayerSt
+            )
+          (winner, ((dieCount, _) : _, players)) =
+            runState (stepTillConclusion (cycle [P1, P2])) initSt
+          loser :: Player
+          loser = not' winner
+          (_, Sum loserScore) = players ^. _p loser
+      answerShow (dieCount * loserScore)
+    let initAllUniv = M.singleton (P1, initPlayerSt) 1
         univs =
           unfoldr
-            (\univ -> do
-               guard $ not $ null univ
-               let (w, univ') = stepUniv univ
-               pure (w, univ'))
+            (\univ ->
+               stepMultiverse univ
+                 <$ guard (not $ null univ))
             initAllUniv
-        ans2 = max l r
-          where
-            (Sum l, Sum r) = mconcat univs
-    answerShow (dieCount * (getSum $ snd $ pFin IM.! loser))
-    answerShow ans2
+    answerShow $ let (Sum l, Sum r) = mconcat univs in max l r
