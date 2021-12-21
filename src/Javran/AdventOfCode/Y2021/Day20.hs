@@ -32,7 +32,9 @@ type Coord = (Int, Int)
 
 type World =
   ( S.Set Coord
-  , (MinMax2D Int Int, Bool {- delayed negation flag -})
+  , ( MinMax2D Int Int {- TODO: it's probably not necessary to have this bound. -}
+    , Bool {- delayed negation flag -}
+    )
   )
 
 bitsToDigit :: [Bool] -> Int
@@ -41,6 +43,22 @@ bitsToDigit = foldl' (\acc i -> acc * 2 + bool 0 1 i) 0
 stepRange :: Enum e => (e, e) -> (e, e)
 stepRange = bimap pred succ
 
+{-
+  The tricky bit of this puzzle is when Rule[0] = 1,
+  in which case all zeros results in one -
+  In this situation we can no longer just store the set of coordinates of ones,
+  as it's infinitely many.
+
+  To deal with that, we have a negation flag, flip it every turn.
+  to get the actual value, we also look at this flag and see if
+  we want to flip what we have read.
+
+  Also a note that, when Rule[0] = 1, we also relies on
+  Rule[511] = 0 so we can flip back right next turn.
+  This actually must be true, otherwise all ones will stay on ones,
+  resulting in infinitely many ones,
+  which cannot be a finite answer to this puzzle.
+ -}
 mkStep :: Rule -> World -> World
 mkStep rule (xs, (MinMax2D wRange, negative)) =
   (xs', (MinMax2D wRange', negative'))
