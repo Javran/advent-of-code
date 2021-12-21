@@ -95,25 +95,84 @@ data Day21 deriving (Generic)
   automate what we can.
  -}
 
+{-
+
+if we do nothing, we fall at this scenario:
+
+> #####@###########
+
+So we issue `NOT A J`, which should allow us to jump here:
+
+> @
+> # ###
+>  ABCD
+
+Next failure:
+
+> #####..#@########
+
+Meaning we should not jump here:
+
+> @
+> #..#.
+>  ABCD
+
+or, recognizing jumping a bit earlier will allow us to
+landing on a safe block, we should jump here:
+
+> @
+> ##..#
+>  ABCD
+
+So `OR D J`, but we now have two branches.
+making room by using T:
+
+- NOT A J
+- OR D T
+- OR T J
+
+Next failure:
+
+> #####..#@########
+
+We jumped too eagerly here:
+
+> @
+> #####
+>  ABCD
+
+Probably putting in a condition that C should be missing:
+
+- NOT A J
+- NOT C T
+- AND D T
+- OR T J
+
+notice how NOT must be the first one of each "AND-section"
+
+ -}
+p1Input :: [String]
+p1Input =
+  [ "NOT A J"
+  , "NOT C T"
+  , "AND D T"
+  , "OR T J"
+  , "WALK"
+  ]
+
 instance Solution Day21 where
   solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     code <- parseCodeOrDie <$> getInputS
-    let runPart1 = False
+    let runPart1 = True
+        runPart2 = False
     when runPart1 do
-      let progInput =
-            [ "NOT C J" -- jump when C is empty but D is not.
-            , "AND D J"
-            , "NOT A T" -- jump when A is empty.
-            , "OR T J"
-            , "WALK"
-            ]
-      (_, out) <- runProgram code (fmap ord $ unlines progInput)
+      (_, out) <- runProgram code (fmap ord $ unlines p1Input)
       let isSolved = last out > 0x7f
       if isSolved
         then print (last out)
         else putStrLn (fmap chr out)
-    do
+    when runPart2 do
       -- TODO.
       let progInput =
             [ "NOT C J"
