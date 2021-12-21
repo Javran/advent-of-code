@@ -40,6 +40,23 @@ where
 
   https://en.wikipedia.org/wiki/Karnaugh_map
 
+  Update: forget about Karnaugh map, it does not scale to variables >= 6.
+
+  However we have some constraints that might be interesting:
+
+  Notice that while the truth table of AND and OR depends on
+  the values of both of the input registers, NOT completely ignores
+  what value is in Y, meaning it could destroy information so
+  if we want to get some negated read from a register,
+  NOT must be the first instruction to read from it.
+
+  In addition, although this is not explicitly specified that *when* does
+  register J and T reset to false, but I suspect it means every turn,
+  meaning we can't take advange of "hidden states" - say we have
+  two different situations where all read-only registers are the same
+  but T is different - this assumption actually limits the solution space
+  quite a lot.
+
  -}
 
 {- HLINT ignore -}
@@ -70,6 +87,13 @@ import Javran.AdventOfCode.Y2019.IntCode
 import Text.ParserCombinators.ReadP hiding (count, many)
 
 data Day21 deriving (Generic)
+
+{-
+  TODO: I don't have a good idea of how to solve this in a general way for now,
+  but I think the best we can do is to have some tools
+  to help the process of getting one solution and gradually
+  automate what we can.
+ -}
 
 instance Solution Day21 where
   solutionSolved _ = False
