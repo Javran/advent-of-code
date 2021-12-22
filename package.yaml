@@ -53,6 +53,8 @@ library:
     - writer-cps-mtl
     - recursion-schemes
     - PSQueue
+    - hashable
+    - hashtables
   ghc-options:
     - -Wall
     - -O2

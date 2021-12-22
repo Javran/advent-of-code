@@ -97,6 +97,7 @@ library
       Javran.AdventOfCode.Y2021.Day2
       Javran.AdventOfCode.Y2021.Day20
       Javran.AdventOfCode.Y2021.Day21
+      Javran.AdventOfCode.Y2021.Day22
       Javran.AdventOfCode.Y2021.Day3
       Javran.AdventOfCode.Y2021.Day4
       Javran.AdventOfCode.Y2021.Day5
@@ -121,6 +122,8 @@ library
     , dlist
     , filepath
     , foldl
+    , hashable
+    , hashtables
     , html-conduit
     , http-client
     , http-client-tls
