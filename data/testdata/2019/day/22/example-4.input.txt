@@ -1,0 +1,6 @@
+# EXAMPLE_EXTRA_BEGIN
+10
+# EXAMPLE_EXTRA_END
+deal with increment 7
+deal with increment 9
+cut -2

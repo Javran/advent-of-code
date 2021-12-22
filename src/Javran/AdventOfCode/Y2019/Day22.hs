@@ -85,12 +85,24 @@ applyShufTech m st xs = case st of
 
 instance Solution Day22 where
   solutionSolved _ = False
-  solutionRun _ SolutionContext {getInputS, answerShow} = do
-    xs <- fmap (consumeOrDie shufTechP) . lines <$> getInputS
-    let result =
-          foldl
-            (flip (applyShufTech 10007))
-            (VU.fromListN 10007 [0 ..])
-            xs
-        (ans :: Int, _) : _ = filter ((== 2019) . snd) $ zip [0 ..] (VU.toList result)
-    answerShow ans
+  solutionRun _ SolutionContext {getInputS, answerShow, answerS} = do
+    (extraOps, rawInput) <- consumeExtraLeadingLines <$> getInputS
+    let xs = fmap (consumeOrDie shufTechP) . lines $ rawInput
+    case extraOps of
+      Nothing -> do
+        let result =
+              foldl
+                (flip (applyShufTech 10007))
+                (VU.fromListN 10007 [0 ..])
+                xs
+            (ans :: Int, _) : _ =
+              filter ((== 2019) . snd) $ zip [0 ..] (VU.toList result)
+        answerShow ans
+      Just extra -> do
+        let p = read @Int (head extra)
+        mapM_ (answerS . unwords . fmap show . VU.toList) $
+          tail $
+            scanl
+              (flip (applyShufTech p))
+              (VU.fromListN p [0 ..])
+              xs

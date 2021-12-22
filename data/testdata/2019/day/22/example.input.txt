@@ -1,3 +1,6 @@
+# EXAMPLE_EXTRA_BEGIN
+10
+# EXAMPLE_EXTRA_END
 deal into new stack
 cut -2
 deal with increment 7
