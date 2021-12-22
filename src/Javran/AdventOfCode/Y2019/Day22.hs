@@ -47,6 +47,8 @@ import Data.Semigroup
 import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Vector as V
+import qualified Data.Vector.Unboxed as VU
+import qualified Data.Vector.Unboxed.Mutable as VUM
 import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Math.NumberTheory.Moduli.Class
@@ -68,8 +70,27 @@ shufTechP =
       (StDealIntoNewStack <$ string "into new stack")
         <++ (StDealWithIncrement <$> (string "with increment " *> decimal1P))
 
+applyShufTech :: Int -> ShufTech -> VU.Vector Int -> VU.Vector Int
+applyShufTech m st xs = case st of
+  StDealIntoNewStack -> VU.reverse xs
+  StCutCards n -> let (ys, zs) = VU.splitAt (n `mod` m) xs in zs <> ys
+  StDealWithIncrement n ->
+    VU.create do
+      v' <- VUM.new (VU.length xs)
+      let n' = n `mod` m
+      forM_ [0 .. VU.length xs -1] $ \i -> do
+        let j = (i * n') `mod` m
+        VUM.unsafeWrite v' j (xs VU.! i)
+      pure v'
+
 instance Solution Day22 where
   solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     xs <- fmap (consumeOrDie shufTechP) . lines <$> getInputS
-    print (length xs)
+    let result =
+          foldl
+            (flip (applyShufTech 10007))
+            (VU.fromListN 10007 [0 ..])
+            xs
+        (ans :: Int, _) : _ = filter ((== 2019) . snd) $ zip [0 ..] (VU.toList result)
+    answerShow ans
