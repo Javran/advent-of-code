@@ -70,6 +70,12 @@ shufTechP =
       (StDealIntoNewStack <$ string "into new stack")
         <++ (StDealWithIncrement <$> (string "with increment " *> decimal1P))
 
+{-
+  TODO: probably don't operate on values, but on the viewer,
+  the actual object we are shuffling is not our interest, but
+  the reordering itself is probably composable.
+ -}
+
 applyShufTech :: Int -> ShufTech -> VU.Vector Int -> VU.Vector Int
 applyShufTech m st xs = case st of
   StDealIntoNewStack -> VU.reverse xs
