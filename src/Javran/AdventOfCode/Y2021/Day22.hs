@@ -59,6 +59,7 @@ solve xs = sum vols
              , (seg : rs, todos')
              ))
         ([], reverse xs)
+    -- https://en.wikipedia.org/wiki/Inclusion%E2%80%93exclusion_principle
     overlap :: Seg -> [Seg] -> Int
     overlap seg segs =
       sum $
