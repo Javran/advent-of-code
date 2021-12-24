@@ -55,6 +55,7 @@ library:
     - PSQueue
     - hashable
     - hashtables
+    - semirings
   ghc-options:
     - -Wall
     - -O2

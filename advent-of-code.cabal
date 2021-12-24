@@ -141,6 +141,7 @@ library
     , petbox
     , random
     , recursion-schemes
+    , semirings
     , split
     , strict
     , system-filepath

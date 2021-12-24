@@ -32,6 +32,8 @@ import Data.Bifunctor
 import Data.Bool
 import Data.Char
 import Data.Either
+import Data.Euclidean
+import Data.Euclidean (gcdExt)
 import Data.Function
 import Data.Function.Memoize (memoFix)
 import qualified Data.IntMap.Strict as IM
@@ -53,6 +55,7 @@ import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Math.NumberTheory.Moduli.Class
 import Text.ParserCombinators.ReadP hiding (count, many)
+import qualified Data.Sequence as VU
 
 data Day22 deriving (Generic)
 
@@ -71,23 +74,24 @@ shufTechP =
         <++ (StDealWithIncrement <$> (string "with increment " *> decimal1P))
 
 {-
+
   TODO: probably don't operate on values, but on the viewer,
   the actual object we are shuffling is not our interest, but
   the reordering itself is probably composable.
+
+  Update: this idea is working, and it's likely we can indeed compose those.
+
  -}
+shufTechToIndexMap :: Int -> ShufTech -> (Int -> Int)
+shufTechToIndexMap m = \case
+  StDealIntoNewStack -> \x -> (- x -1) `mod` m
+  StCutCards n -> \x -> (x + n) `mod` m
+  StDealWithIncrement n ->
+    let (1, s) = gcdExt n m
+     in \x -> (x * s) `mod` m
 
 applyShufTech :: Int -> ShufTech -> VU.Vector Int -> VU.Vector Int
-applyShufTech m st xs = case st of
-  StDealIntoNewStack -> VU.reverse xs
-  StCutCards n -> let (ys, zs) = VU.splitAt (n `mod` m) xs in zs <> ys
-  StDealWithIncrement n ->
-    VU.create do
-      v' <- VUM.new (VU.length xs)
-      let n' = n `mod` m
-      forM_ [0 .. VU.length xs -1] $ \i -> do
-        let j = (i * n') `mod` m
-        VUM.unsafeWrite v' j (xs VU.! i)
-      pure v'
+applyShufTech m st xs = VU.imap (\i _ -> xs VU.! shufTechToIndexMap m st i) xs
 
 instance Solution Day22 where
   solutionSolved _ = False
