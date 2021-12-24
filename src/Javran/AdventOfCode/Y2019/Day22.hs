@@ -1,64 +1,25 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# OPTIONS_GHC -Wno-deprecations #-}
-{-# OPTIONS_GHC -Wno-typed-holes #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -fdefer-typed-holes #-}
 
 module Javran.AdventOfCode.Y2019.Day22
   (
   )
 where
 
-{- HLINT ignore -}
-
-import Control.Applicative
-import Control.Monad
-import Data.Bifunctor
-import Data.Bool
-import Data.Char
-import Data.Either
-import Data.Euclidean
-import Data.Euclidean (gcdExt)
-import Data.Function
-import Data.Function.Memoize (memoFix)
-import qualified Data.IntMap.Strict as IM
-import qualified Data.IntSet as IS
 import Data.List
-import Data.List.Split hiding (sepBy)
-import qualified Data.Map.Strict as M
-import Data.Maybe
 import Data.Mod
-import Data.Monoid
-import Data.Ord
 import Data.Proxy
 import Data.Semigroup
-import qualified Data.Sequence as VU
-import qualified Data.Set as S
-import qualified Data.Text as T
-import qualified Data.Vector as V
-import qualified Data.Vector.Unboxed as VU
-import qualified Data.Vector.Unboxed.Mutable as VUM
 import GHC.Generics (Generic)
-import GHC.TypeLits (SomeNat (SomeNat))
-import GHC.TypeNats (Nat, SomeNat, someNatVal)
+import GHC.TypeNats hiding (Mod)
 import Javran.AdventOfCode.Prelude
-import Math.NumberTheory.Moduli.Class
 import Text.ParserCombinators.ReadP hiding (count, many)
 
 data Day22 deriving (Generic)
@@ -77,62 +38,77 @@ shufTechP =
       (StDealIntoNewStack <$ string "into new stack")
         <++ (StDealWithIncrement <$> (string "with increment " *> decimal1P))
 
-newtype LinFn (m :: Nat) = LinFn (Mod m, Mod m)
+{-
+  LinFn (a,b) is linear function under modulo m:
+
+  f(x) = (a * x + b) `mod` m.
+
+  For the index i after transformation f,
+  f(i) is its original index.
+
+ -}
+newtype LinFn (m :: Nat) = LinFn (Mod m, Mod m) deriving (Show)
 
 applyLinFn :: KnownNat m => LinFn m -> Mod m -> Mod m
 applyLinFn (LinFn (a, b)) x = a * x + b
 
-shufTechToIndexMap' :: KnownNat m => ShufTech -> LinFn m
-shufTechToIndexMap' = \case
+{-
+  y = a*x + b
+  => x = y * inv(a) - b * inv(a)
+ -}
+undoLinFn :: KnownNat m => LinFn m -> LinFn m
+undoLinFn (LinFn (a, b)) = LinFn (invA, - invA * b)
+  where
+    Just invA = invertMod a
+
+{-
+  Given f(x) = a * x + b, g(x) = c * x + d,
+  we have:
+
+  g(f(x))
+  = c * (a * x + b) + d
+  = c * a * x + (c * b + d)
+
+  Note that the arguments are (g `composeFn` f),
+
+  as LinFn is composed in the opposite direction of how we apply ShufTech in order.
+ -}
+composeLinFn :: KnownNat m => LinFn m -> LinFn m -> LinFn m
+LinFn (c, d) `composeLinFn` LinFn (a, b) = LinFn (c * a, c * b + d)
+
+instance KnownNat m => Semigroup (LinFn m) where
+  (<>) = composeLinFn
+
+shufTechToLinFn :: ShufTech -> (forall m. KnownNat m => LinFn m)
+shufTechToLinFn = \case
   StDealIntoNewStack -> LinFn (-1, -1)
   StCutCards n -> LinFn (1, fromIntegral n)
   StDealWithIncrement n ->
     let Just nInv = invertMod (fromIntegral n)
      in LinFn (nInv, 0)
 
-{-
-
-  TODO: probably don't operate on values, but on the viewer,
-  the actual object we are shuffling is not our interest, but
-  the reordering itself is probably composable.
-
-  Update: this idea is working, and it's likely we can indeed compose those.
-
- -}
-shufTechToIndexMap :: Int -> ShufTech -> (Int -> Int)
-shufTechToIndexMap m = \case
-  StDealIntoNewStack -> \x -> (- x -1) `mod` m
-  StCutCards n -> \x -> (x + n) `mod` m
-  StDealWithIncrement n ->
-    let (1, s) = gcdExt n m
-     in \x -> (x * s) `mod` m
-
-applyShufTech :: Int -> ShufTech -> VU.Vector Int -> VU.Vector Int
-applyShufTech m st xs = case someNatVal (fromIntegral m) of
-  SomeNat (_ :: Proxy m) ->
-    let lf = shufTechToIndexMap' @m st
-     in VU.imap (\i _ -> xs VU.! (fromIntegral $ unMod $ applyLinFn lf (fromIntegral i))) xs
-
 instance Solution Day22 where
-  solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow, answerS} = do
     (extraOps, rawInput) <- consumeExtraLeadingLines <$> getInputS
-    let xs = fmap (consumeOrDie shufTechP) . lines $ rawInput
+    let xs :: [ShufTech]
+        xs = fmap (consumeOrDie shufTechP) . lines $ rawInput
+        composed :: forall m. KnownNat m => LinFn m
+        composed = foldl' (composeLinFn @m) (LinFn (1, 0)) (fmap shufTechToLinFn xs)
     case extraOps of
       Nothing -> do
-        let result =
-              foldl
-                (flip (applyShufTech 10007))
-                (VU.fromListN 10007 [0 ..])
-                xs
-            (ans :: Int, _) : _ =
-              filter ((== 2019) . snd) $ zip [0 ..] (VU.toList result)
-        answerShow ans
-      Just extra -> do
+        case someNatVal 10007 of
+          SomeNat (_ :: Proxy m) -> do
+            answerShow (unMod $ applyLinFn (undoLinFn (composed @m)) 2019)
+        case someNatVal 119315717514047 of
+          SomeNat (_ :: Proxy m) -> do
+            -- TODO: test coverage for part 2.
+            let tr = stimes @_ @Int 101741582076661 (composed @m)
+            answerShow (unMod $ applyLinFn tr 2020)
+      Just extra ->
         let p = read @Int (head extra)
-        mapM_ (answerS . unwords . fmap show . VU.toList) $
-          tail $
-            scanl
-              (flip (applyShufTech p))
-              (VU.fromListN p [0 ..])
-              xs
+         in case someNatVal (fromIntegral p) of
+              SomeNat (_ :: Proxy m) -> do
+                let steps =
+                      tail $ scanl (composeLinFn @m) (LinFn (1, 0)) (fmap shufTechToLinFn xs)
+                mapM_ (answerS . unwords . fmap (show . unMod)) $
+                  fmap (\lf -> fmap (applyLinFn lf) (take p [0 ..])) steps
