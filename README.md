@@ -48,6 +48,7 @@ Files with name `example.input.txt` or `example.expect.txt` under `data/testdata
   + [X] [Day 21](src/Javran/AdventOfCode/Y2021/Day21.hs)
   + [X] [Day 22](src/Javran/AdventOfCode/Y2021/Day22.hs)
   + [ ] [Day 23](src/Javran/AdventOfCode/Y2021/Day23.hs)
+  + [ ] [Day 24](src/Javran/AdventOfCode/Y2021/Day24.hs)
 - Year 2020
   + [X] [Day 1](src/Javran/AdventOfCode/Y2020/Day1.hs)
   + [X] [Day 2](src/Javran/AdventOfCode/Y2020/Day2.hs)
@@ -96,6 +97,6 @@ Files with name `example.input.txt` or `example.expect.txt` under `data/testdata
   + [X] [Day 19](src/Javran/AdventOfCode/Y2019/Day19.hs)
   + [X] [Day 20](src/Javran/AdventOfCode/Y2019/Day20.hs)
   + [X] [Day 21](src/Javran/AdventOfCode/Y2019/Day21.hs)
-  + [ ] [Day 22](src/Javran/AdventOfCode/Y2019/Day22.hs)
+  + [X] [Day 22](src/Javran/AdventOfCode/Y2019/Day22.hs)
 
 [//]: # (PROGRESS_AUTOGEN_END)
