@@ -4,6 +4,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
@@ -45,17 +46,20 @@ import Data.Maybe
 import Data.Mod
 import Data.Monoid
 import Data.Ord
+import Data.Proxy
 import Data.Semigroup
+import qualified Data.Sequence as VU
 import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Vector as V
 import qualified Data.Vector.Unboxed as VU
 import qualified Data.Vector.Unboxed.Mutable as VUM
 import GHC.Generics (Generic)
+import GHC.TypeLits (SomeNat (SomeNat))
+import GHC.TypeNats (Nat, SomeNat, someNatVal)
 import Javran.AdventOfCode.Prelude
 import Math.NumberTheory.Moduli.Class
 import Text.ParserCombinators.ReadP hiding (count, many)
-import qualified Data.Sequence as VU
 
 data Day22 deriving (Generic)
 
@@ -72,6 +76,19 @@ shufTechP =
       _ <- string "deal "
       (StDealIntoNewStack <$ string "into new stack")
         <++ (StDealWithIncrement <$> (string "with increment " *> decimal1P))
+
+newtype LinFn (m :: Nat) = LinFn (Mod m, Mod m)
+
+applyLinFn :: KnownNat m => LinFn m -> Mod m -> Mod m
+applyLinFn (LinFn (a, b)) x = a * x + b
+
+shufTechToIndexMap' :: KnownNat m => ShufTech -> LinFn m
+shufTechToIndexMap' = \case
+  StDealIntoNewStack -> LinFn (-1, -1)
+  StCutCards n -> LinFn (1, fromIntegral n)
+  StDealWithIncrement n ->
+    let Just nInv = invertMod (fromIntegral n)
+     in LinFn (nInv, 0)
 
 {-
 
@@ -91,7 +108,10 @@ shufTechToIndexMap m = \case
      in \x -> (x * s) `mod` m
 
 applyShufTech :: Int -> ShufTech -> VU.Vector Int -> VU.Vector Int
-applyShufTech m st xs = VU.imap (\i _ -> xs VU.! shufTechToIndexMap m st i) xs
+applyShufTech m st xs = case someNatVal (fromIntegral m) of
+  SomeNat (_ :: Proxy m) ->
+    let lf = shufTechToIndexMap' @m st
+     in VU.imap (\i _ -> xs VU.! (fromIntegral $ unMod $ applyLinFn lf (fromIntegral i))) xs
 
 instance Solution Day22 where
   solutionSolved _ = False
