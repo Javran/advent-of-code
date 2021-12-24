@@ -1,2 +1,0 @@
-inp x
-mul x -1
