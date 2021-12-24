@@ -6,10 +6,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -30,7 +27,6 @@ import Control.Monad.Writer.CPS
 import Data.Bifunctor
 import Data.Bool
 import Data.List.Split hiding (sepBy)
-import Data.Maybe
 import qualified Data.Text as T
 import GHC.Generics (Generic)
 import GHC.IO.Exception (ExitCode (ExitSuccess))
@@ -159,9 +155,9 @@ genZ3Script zs lowDs highDs = do
   p "(get-model)"
   p "(exit)"
 
+solveWithZ3 :: [(Int, Int, Int)] -> [Int] -> [Int] -> Z3.Z3 Bool
 solveWithZ3 zs lowDs highDs = do
   wVars <- mapM (\i -> Z3.mkFreshIntVar ("w_" <> show i)) [0 :: Int .. 13]
-
   forM_ (zip [0 :: Int ..] (zip lowDs highDs)) \(i, (dLo, dHi)) -> do
     -- lo <= w_i
     le0 <- (\lo -> Z3.mkLe lo (wVars !! i)) =<< Z3.mkInteger (toInteger dLo)
@@ -169,7 +165,6 @@ solveWithZ3 zs lowDs highDs = do
     Z3.assert =<< Z3.mkAnd [le0, le1]
 
   zVars <- mapM (\i -> Z3.mkFreshIntVar ("z_" <> show i)) [0 :: Int .. 14]
-
   Z3.assert =<< Z3.mkEq (zVars !! 0) =<< Z3.mkInteger 0
   Z3.assert =<< Z3.mkEq (zVars !! 14) =<< Z3.mkInteger 0
 
@@ -206,8 +201,9 @@ solveWithZ3 zs lowDs highDs = do
   forM_ (zip [0 :: Int ..] zs) $ \(i, (a, b, c)) -> do
     lhs <- mkMystery (zVars !! i) (wVars !! i) (a, b, c)
     Z3.assert =<< Z3.mkEq lhs (zVars !! (i + 1))
-  (_, m) <- Z3.solverCheckAndGetModel
-  pure $ isJust m
+  r <- Z3.check
+
+  pure $ r == Z3.Sat
 
 checkSat' :: Z3.Z3Env -> [(Int, Int, Int)] -> [Int] -> [Int] -> IO Bool
 checkSat' env zs lowDs highDs = do
@@ -227,19 +223,24 @@ checkSat zs lowDs highDs = do
 narrowNth :: [(Int, Int, Int)] -> Bool -> Int -> StateT ([Int], [Int]) IO ()
 narrowNth zs findMax i = do
   (lowDs, highDs) <- get
-  -- ev <- liftIO $ Z3.newEnv (Just Z3.QF_NIA) Z3.stdOpts
-  let binSearch l r mAns =
+  let useBinding = False
+  mEnv <-
+    if useBinding
+      then Just <$> liftIO (Z3.newEnv (Just Z3.QF_NIA) Z3.stdOpts)
+      else pure Nothing
+  let curCheckSat = maybe checkSat checkSat' mEnv
+      binSearch l r mAns =
         if l <= r
           then do
             let mid = (l + r) `quot` 2
             if findMax
               then do
-                sat <- checkSat zs (lowDs & ix i .~ mid) highDs
+                sat <- curCheckSat zs (lowDs & ix i .~ mid) highDs
                 if sat
                   then binSearch (mid + 1) r (Just mid)
                   else binSearch l (mid -1) mAns
               else do
-                sat <- checkSat zs lowDs (highDs & ix i .~ mid)
+                sat <- curCheckSat zs lowDs (highDs & ix i .~ mid)
                 if sat
                   then binSearch l (mid -1) (Just mid)
                   else binSearch (mid + 1) r mAns
