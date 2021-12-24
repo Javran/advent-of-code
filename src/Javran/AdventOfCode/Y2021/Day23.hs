@@ -259,9 +259,16 @@ bfs mi@MapInfo {miRoomSize} q0 discovered = case PQ.minView q0 of
 
 instance Solution Day23 where
   solutionSolved _ = False
-  solutionRun _ SolutionContext {getInputS, answerShow} = do
+  solutionRun _ SolutionContext {getInputS, answerShow, terminal} = do
     xs <- lines <$> getInputS
     let (mi, startState) = parseRawMap xs
         targetState = targetWorld (miRoomSize mi)
-    answerShow $
-      bfs mi (PQ.singleton startState (homingPriority startState targetState, 0)) (S.singleton startState)
+    -- TODO: disable this when done.
+    when (isJust terminal) do
+      answerShow $
+        bfs
+          mi
+          (PQ.singleton
+             startState
+             (homingPriority startState targetState, 0))
+          (S.singleton startState)
