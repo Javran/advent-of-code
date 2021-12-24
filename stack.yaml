@@ -12,3 +12,4 @@ extra-deps:
 - PSQueue-1.1.0.1
 - SegmentTree-0.3
 - impure-containers-0.5.1
+- z3-408.2
