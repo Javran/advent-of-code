@@ -25,8 +25,8 @@ type World = S.Set Coord
 isIn5x5 :: Coord -> Bool
 isIn5x5 = inRange ((0, 0), (4, 4))
 
-step :: World -> World
-step w =
+mkStep :: Ord coord => (coord -> [coord]) -> S.Set coord -> S.Set coord
+mkStep getAdjacents w =
   S.union
     (S.filter
        (\coord -> case adjs M.!? coord of
@@ -40,9 +40,11 @@ step w =
         (M.filter (\v -> v == 1 || v == 2) $ M.withoutKeys adjs w)
     adjs = M.fromListWith (+) do
       coord <- S.toList w
-      coord' <- udlrOfCoord coord
-      guard $ isIn5x5 coord'
+      coord' <- getAdjacents coord
       pure (coord', 1 :: Int)
+
+step :: World -> World
+step = mkStep $ filter isIn5x5 . udlrOfCoord
 
 encodeWorld :: World -> Int
 encodeWorld = S.foldl' (\acc (r, c) -> setBit acc (r * 5 + c)) 0
@@ -51,8 +53,8 @@ type Coord2 = (Int, Coord)
 
 type World2 = S.Set Coord2
 
-adjacents :: Coord2 -> [Coord2]
-adjacents (level, coord) = case coord of
+adjacents2 :: Coord2 -> [Coord2]
+adjacents2 (level, coord) = case coord of
   (2, 2) -> error "invalid coord"
   (r, c) ->
     (do
@@ -68,24 +70,8 @@ adjacents (level, coord) = case coord of
       <> [(level + 1, (r', 0)) | coord == (2, 1), r' <- [0 .. 4]]
       <> [(level + 1, (r', 4)) | coord == (2, 3), r' <- [0 .. 4]]
 
-{- TODO: this could merge with step -}
 step2 :: World2 -> World2
-step2 w =
-  S.union
-    (S.filter
-       (\coord -> case adjs M.!? coord of
-          Just 1 -> True
-          _ -> False)
-       w)
-    newBorns
-  where
-    newBorns =
-      M.keysSet
-        (M.filter (\v -> v == 1 || v == 2) $ M.withoutKeys adjs w)
-    adjs = M.fromListWith (+) do
-      coord <- S.toList w
-      coord' <- adjacents coord
-      pure (coord', 1 :: Int)
+step2 = mkStep adjacents2
 
 instance Solution Day24 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
@@ -104,7 +90,7 @@ instance Solution Day24 where
                pure (w', (w', S.insert curW discovered, found')))
             (initWorld, S.empty, False)
     answerShow (encodeWorld $ last ans)
-    let initWorld2 = S.map (0,) $ S.filter (/= (2, 2)) initWorld
+    let initWorld2 = S.map (0,) $ S.delete (2, 2) initWorld
         progression = iterate step2 initWorld2
     case extraOps of
       Nothing ->
