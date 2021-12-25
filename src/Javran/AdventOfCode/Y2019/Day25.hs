@@ -175,16 +175,18 @@ mayTakeItem item =
     else pure ()
 
 findPathRev
-  :: M.Map String (M.Map Dir String)
+  :: (String -> Bool)
+  -> M.Map String (M.Map Dir String)
   -> M.Map String (S.Set Dir)
   -> S.Set String
   -> Seq.Seq (Maybe String, [Dir])
   -> Maybe [Dir]
-findPathRev graph unknowns discovered = \case
+findPathRev isTargetRoom graph unknowns discovered = \case
   Seq.Empty -> Nothing
   (mRoomName, pathRev) Seq.:<| q1 ->
     case mRoomName of
       Nothing -> pure pathRev
+      Just roomName | isTargetRoom roomName -> pure pathRev
       Just roomName -> do
         let nexts = do
               d <- universe @Dir
@@ -207,7 +209,7 @@ findPathRev graph unknowns discovered = \case
                    Just room -> S.insert room acc)
                 discovered
                 nexts
-        findPathRev graph unknowns discovered' (q1 <> Seq.fromList nexts)
+        findPathRev isTargetRoom graph unknowns discovered' (q1 <> Seq.fromList nexts)
 
 linkRoom :: String -> Dir -> String -> ExplorerState -> ExplorerState
 linkRoom curRoom d newRoom es@ExplorerState {esUnknowns, esGraph} =
@@ -229,6 +231,26 @@ linkRoom curRoom d newRoom es@ExplorerState {esUnknowns, esGraph} =
           . M.adjust (S.delete d) curRoom
           $ esUnknowns
     }
+
+moveToSecurityCheckpoint :: Explorer ()
+moveToSecurityCheckpoint = do
+  let secCp = "Security Checkpoint"
+  Just planRev <- gets \ExplorerState {esGraph, esUnknowns, esLocation} ->
+    findPathRev
+      (== secCp)
+      esGraph
+      esUnknowns
+      (S.singleton esLocation)
+      (Seq.singleton (Just esLocation, []))
+  forM_ (reverse planRev) \d -> do
+    AsciiNeedCommand k0 <- liftIO =<< gets esProg
+    AsciiOutput out1 k1 <- liftIO $ k0 (fmap toLower $ show d)
+    let Just [RespRoomInfo RoomInfo {riName = riName'}] =
+          consumeAllWithReadP responsesP out1
+    modify (\es -> es {esProg = k1, esLocation = riName'})
+  curRoom <- gets esLocation
+  unless (curRoom == secCp) do
+    error $ "Failed to get to " <> secCp
 
 explore :: Explorer ()
 explore = do
@@ -263,29 +285,37 @@ explore = do
                  -- path finding
                  mPlan <- gets \ExplorerState {esGraph, esUnknowns} ->
                    findPathRev
+                     (const False)
                      esGraph
                      esUnknowns
                      (S.singleton riName)
                      (Seq.singleton (Just riName, []))
                  case mPlan of
                    Nothing -> do
-                     g <- gets esGraph
                      unk <- gets esUnknowns
-                     curLoc <- gets esLocation
-                     inv <- gets esInventory
-                     liftIO $ do
-                       putStrLn $ "Current location: " <> curLoc
-                       putStrLn $ "Inventory: " <> intercalate ", " inv
-                       putStrLn $ "Graph:"
-                       forM_ (M.toList g) \(k, v) -> do
-                         putStrLn k
-                         forM_ (M.toList v) $ \(d, dst) -> do
-                           putStrLn $ "  " <> show d <> " -> " <> dst
-                       putStrLn $ "Todos:"
-                       forM_ (M.toList unk) \(k, v) -> do
-                         unless (null v) do
-                           putStrLn $ k <> ": " <> intercalate ", " (fmap show $ S.toList v)
-                     error "TODO: proceed to go to Security Checkpoint."
+                     unless (all S.null unk) do
+                       error "Unexpected: some unknown areas are unreachable."
+
+                     let debug = False
+                     when debug do
+                       g <- gets esGraph
+
+                       curLoc <- gets esLocation
+                       inv <- gets esInventory
+                       liftIO $ do
+                         putStrLn $ "Current location: " <> curLoc
+                         putStrLn $ "Inventory: " <> intercalate ", " inv
+                         putStrLn $ "Graph:"
+                         forM_ (M.toList g) \(k, v) -> do
+                           putStrLn k
+                           forM_ (M.toList v) $ \(d, dst) -> do
+                             putStrLn $ "  " <> show d <> " -> " <> dst
+                         putStrLn $ "Todos:"
+                         forM_ (M.toList unk) \(k, v) -> do
+                           unless (null v) do
+                             putStrLn $ k <> ": " <> intercalate ", " (fmap show $ S.toList v)
+
+                     moveToSecurityCheckpoint
                    Just pathRev -> do
                      let lastStep : knownStepsRev = pathRev
                      -- known steps to execute.
@@ -305,10 +335,6 @@ explore = do
                      modify (linkRoom curRoom lastStep newRoom)
                      -- re-enter to let esLocation and esProg update properly.
                      loop r
-               [RespRoomInfo {}, RespRoomInfo {}] -> do
-                 -- two room info, this only happens with that pressure-sensitive stuff.
-                 error "hello"
-               [RespSimple {}] -> todo
                _ -> error $ "Unexpected output structure: " <> show resps
              Nothing ->
                error $ "Parse failure, the output was: " <> show out)
@@ -320,8 +346,6 @@ explore = do
   the sequence of preset command only works on my specific input,
   we need few parts to be more flexible to solve this puzzle in general:
 
-  - room and item detection
-  - now we can head to Security Checkpoint
   - bruteforce or do something smarter.
 
  -}
@@ -330,8 +354,8 @@ instance Solution Day25 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     code <- parseCodeOrDie <$> getInputS
     let prog = asciiRun $ startProgramFromFoldable code
-        shouldRunProgram = True
-    _ <-
+        shouldRunProgram = False
+    ((), ExplorerState {esLocation, esInventory}) <-
       runStateT
         explore
         ExplorerState
@@ -341,6 +365,7 @@ instance Solution Day25 where
           , esInventory = []
           , esProg = prog
           }
+    print (esLocation ,esInventory)
     when shouldRunProgram do
       fix
         (\loop curP curPresetCmds -> do
