@@ -27,6 +27,7 @@ import Control.Monad.Writer.CPS
 import Data.Bifunctor
 import Data.Bool
 import Data.List.Split hiding (sepBy)
+import Data.Maybe
 import qualified Data.Text as T
 import GHC.Generics (Generic)
 import GHC.IO.Exception (ExitCode (ExitSuccess))
@@ -250,11 +251,14 @@ narrowNth zs findMax i = do
 
 instance Solution Day24 where
   solutionSolved _ = False
-  solutionRun _ SolutionContext {getInputS, answerShow} = do
+  solutionRun _ SolutionContext {getInputS, answerShow, terminal} = do
     xs <- fmap (consumeOrDie instrP) . lines <$> getInputS
     let [] : ys = splitOn [Inp RegW] xs
         zs = fmap (matchChunk . (Inp RegW :)) ys
-    do
+        shouldRun =
+          -- TODO: for now too slow to run as tests.
+          isJust terminal
+    when shouldRun do
       (_, (lowDs, _)) <-
         runStateT
           (do
@@ -262,7 +266,7 @@ instance Solution Day24 where
                narrowNth zs True i)
           (replicate 14 1, replicate 14 9)
       answerShow (digitsToInt @Int lowDs)
-    do
+    when shouldRun do
       (_, (_, highDs)) <-
         runStateT
           (do
