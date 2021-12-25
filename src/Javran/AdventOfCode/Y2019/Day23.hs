@@ -62,7 +62,7 @@ type MsgQueue = Seq.Seq PacketRecv
 
 type StepResult =
   ( Maybe PacketSent
-  , Bool -- should we consider this computer idle?
+  , Bool -- did this computer attempt to receive but got nothing?
   )
 
 newtype Computer = Computer
@@ -90,6 +90,10 @@ mkComputer code netAddr recv = Computer cpInit
           case mMsg of
             Nothing -> do
               ([], k2) <- communicate [-1] 0 (pure result)
+              {-
+                TODO: idle cond is not quite right: we might discover that
+                this be sending packets when resumed.
+               -}
               pure ((Nothing, True), Computer $ resume k2)
             Just (x, y) -> do
               ([], k2) <- communicate [x, y] 0 (pure result)
@@ -124,8 +128,8 @@ stepNet = do
   computers <- gets fst
   results <- liftIO $ mapM runComputer computers
   let (stepResults, computers') = unzip results
-      (outgoings', idleFlags) = unzip stepResults
-      isFullNetworkIdle = and idleFlags
+      (outgoings', failedRecvAttempts) = unzip stepResults
+      isFullNetworkIdle = and failedRecvAttempts -- TODO: not quite right
       outs :: [PacketSent]
       outs = catMaybes outgoings'
   modify (first (const computers'))
@@ -140,7 +144,8 @@ stepNet = do
             putStrLn $ "Packet: " <> show p
             pure (Just (recipient, p))
   let _unknowns = catMaybes unknownsPre
-  _isFullNetworkIdle <- gets (snd . snd)
+  isFullNetworkIdle' <- gets (snd . snd)
+  liftIO $ print (isFullNetworkIdle, null outs)
   when isFullNetworkIdle do
     Data.Monoid.Last m <- gets (fst . snd)
     case m of
