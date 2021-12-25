@@ -129,17 +129,9 @@ instance Solution Day25 where
     code <- parseCodeOrDie <$> getInputS
     let prog = asciiRun $ startProgramFromFoldable code
         shouldRunProgram = False
-    ((), ExplorerState {esLocation, esInventory}) <-
-      runStateT
-        explore
-        ExplorerState
-          { esGraph = M.empty
-          , esLocation = error "unkown"
-          , esUnknowns = M.empty
-          , esInventory = []
-          , esProg = prog
-          }
-    print (esLocation, esInventory)
+    unless shouldRunProgram do
+      (inventory, psfDir, prog') <- runExplorer prog
+      print (inventory, psfDir)
     when shouldRunProgram do
       fix
         (\loop curP curPresetCmds -> do

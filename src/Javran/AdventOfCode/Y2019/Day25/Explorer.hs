@@ -6,8 +6,19 @@
 module Javran.AdventOfCode.Y2019.Day25.Explorer
   ( ExplorerState (..)
   , explore
+  , ExplorerResult
+  , runExplorer
   )
 where
+
+{-
+  The Explorer operates the droid to:
+
+  - explore all the rooms
+  - pick up all items that we need
+  - and finally head to Security Checkpoint
+
+ -}
 
 import Control.Applicative
 import Control.Monad
@@ -20,15 +31,6 @@ import qualified Data.Set as S
 import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.Y2019.Day25.Common
 import Javran.AdventOfCode.Y2019.Day25.ResponseParser
-
-{-
-  The Explorer operates the droid to:
-
-  - explore all the rooms
-  - pick up all items that we need
-  - and finally head to Security Checkpoint
-
- -}
 
 data ExplorerState = ExplorerState
   { esGraph :: M.Map String (M.Map Dir String)
@@ -149,7 +151,13 @@ linkRoom curRoom d newRoom es@ExplorerState {esUnknowns, esGraph} =
           $ esUnknowns
     }
 
-moveToSecurityCheckpoint :: Explorer ()
+type ExplorerResult =
+  ( [String] -- full inventory, which is also current inventory
+  , Dir -- the direction leading to Pressure-Sensitive Floor
+  , IO AsciiResult -- suspended program
+  )
+
+moveToSecurityCheckpoint :: Explorer ExplorerResult
 moveToSecurityCheckpoint = do
   let secCp = "Security Checkpoint"
   Just planRev <- gets \ExplorerState {esGraph, esUnknowns, esLocation} ->
@@ -168,8 +176,11 @@ moveToSecurityCheckpoint = do
   curRoom <- gets esLocation
   unless (curRoom == secCp) do
     error $ "Failed to get to " <> secCp
+  gets \ExplorerState {esGraph, esInventory, esProg} ->
+    let [(opDir, _)] = M.toList (esGraph M.! "Pressure-Sensitive Floor")
+     in (esInventory, oppositeDir opDir, esProg)
 
-explore :: Explorer ()
+explore :: Explorer ExplorerResult
 explore = do
   r0 <- liftIO =<< gets esProg
   fix
@@ -256,3 +267,15 @@ explore = do
              Nothing ->
                error $ "Parse failure, the output was: " <> show out)
     r0
+
+runExplorer :: IO AsciiResult -> IO ExplorerResult
+runExplorer prog =
+  evalStateT
+    explore
+    ExplorerState
+      { esGraph = M.empty
+      , esLocation = error "unkown"
+      , esUnknowns = M.empty
+      , esInventory = []
+      , esProg = prog
+      }
