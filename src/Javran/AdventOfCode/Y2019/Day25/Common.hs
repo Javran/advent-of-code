@@ -21,7 +21,7 @@ data Dir
   | West
   | South
   | East
-  deriving (Bounded, Enum, Show)
+  deriving (Bounded, Enum, Show, Eq, Ord)
 
 oppositeDir :: Dir -> Dir
 oppositeDir d = allDirs !! (fromEnum d + 2)
