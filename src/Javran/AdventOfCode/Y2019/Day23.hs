@@ -59,21 +59,26 @@ type PacketSent = (Int, PacketRecv)
 
 type MsgQueue = Seq.Seq PacketRecv
 
+type StepResult =
+  ( Maybe PacketSent
+  , Bool -- should we consider this computer idle?
+  )
+
 newtype Computer = Computer
-  { runComputer :: IO (Maybe PacketSent, Computer)
+  { runComputer :: IO (StepResult, Computer)
   }
 
 mkComputer :: [Int] -> Int -> MVar MsgQueue -> Computer
 mkComputer code netAddr recv = Computer cpInit
   where
     noOp :: Computer
-    noOp = Computer (pure (Nothing, noOp))
+    noOp = Computer (pure ((Nothing, True), noOp))
 
-    resume :: IO (Result ()) -> IO (Maybe PacketSent, Computer)
+    resume :: IO (Result ()) -> IO (StepResult, Computer)
     resume k0 = do
       result <- k0
       case result of
-        Done {} -> pure (Nothing, noOp)
+        Done {} -> pure ((Nothing, True), noOp)
         NeedInput {} -> do
           mMsg <-
             modifyMVar
@@ -84,23 +89,24 @@ mkComputer code netAddr recv = Computer cpInit
           case mMsg of
             Nothing -> do
               ([], k2) <- communicate [-1] 0 (pure result)
-              pure (Nothing, Computer $ resume k2)
+              pure ((Nothing, True), Computer $ resume k2)
             Just (x, y) -> do
               ([], k2) <- communicate [x, y] 0 (pure result)
-              pure (Nothing, Computer $ resume k2)
+              pure ((Nothing, False), Computer $ resume k2)
         SentOutput {} -> do
           ([recipient, x, y], k1) <- communicate [] 3 (pure result)
-          pure (Just (recipient, (x, y)), Computer $ resume k1)
+          pure ((Just (recipient, (x, y)), False), Computer $ resume k1)
 
-    cpInit :: IO (Maybe PacketSent, Computer)
+    cpInit :: IO (StepResult, Computer)
     cpInit = do
       ([], prog) <- communicate [netAddr] 0 (startProgramFromFoldable code)
-      pure (Nothing, Computer $ resume (void <$> prog))
+      pure ((Nothing, False), Computer $ resume (void <$> prog))
 
 stepNetwork :: V.Vector (MVar MsgQueue) -> [Computer] -> IO (Maybe Int, [Computer])
 stepNetwork recvs computers = do
   results <- mapM runComputer computers
-  let (outgoings', computers') = unzip results
+  let (stepResults, computers') = unzip results
+      (outgoings', idleFlags) = unzip stepResults
       outs :: [PacketSent]
       outs = catMaybes outgoings'
   unknownsPre <- forM outs \(recipient, p) -> do
