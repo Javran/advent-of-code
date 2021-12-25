@@ -27,6 +27,7 @@ where
 import Control.Applicative
 import Control.Concurrent
 import Control.Monad
+import Control.Monad.RWS.CPS
 import Data.Bifunctor
 import Data.Bool
 import Data.Char
@@ -102,27 +103,58 @@ mkComputer code netAddr recv = Computer cpInit
       ([], prog) <- communicate [netAddr] 0 (startProgramFromFoldable code)
       pure ((Nothing, False), Computer $ resume (void <$> prog))
 
-stepNetwork :: V.Vector (MVar MsgQueue) -> [Computer] -> IO (Maybe Int, [Computer])
-stepNetwork recvs computers = do
-  results <- mapM runComputer computers
+type Net =
+  RWST
+    -- msgqueue references
+    (V.Vector (MVar MsgQueue))
+    ()
+    ( -- computer states
+      [Computer]
+    , ( -- the message NAT is holding
+        Data.Monoid.Last PacketRecv
+      , -- whether the network is idle in last step
+        Bool
+      )
+    )
+    IO
+
+stepNet :: Net (Maybe Int)
+stepNet = do
+  recvs <- ask
+  computers <- gets fst
+  results <- liftIO $ mapM runComputer computers
   let (stepResults, computers') = unzip results
       (outgoings', idleFlags) = unzip stepResults
+      isFullNetworkIdle = and idleFlags
       outs :: [PacketSent]
       outs = catMaybes outgoings'
+  modify (first (const computers'))
   unknownsPre <- forM outs \(recipient, p) -> do
     if recipient < V.length recvs
-      then Nothing <$ modifyMVar_ (recvs V.! recipient) (\q -> pure $ q Seq.|> p)
+      then Nothing <$ (liftIO $ modifyMVar_ (recvs V.! recipient) (\q -> pure $ q Seq.|> p))
       else do
-        putStrLn $ "Unknown recipient: " <> show recipient
-        putStrLn $ "Packet: " <> show p
-        pure (Just (recipient, p))
-  let unknowns = catMaybes unknownsPre
-  pure
-    ( case unknowns of
-        (_r, (_x, y)) : _ -> Just y
-        [] -> Nothing
-    , computers'
-    )
+        if recipient == 255
+          then Nothing <$ modify ((second . first) (<> Data.Monoid.Last (Just p)))
+          else liftIO $ do
+            putStrLn $ "Warning: Unknown recipient: " <> show recipient
+            putStrLn $ "Packet: " <> show p
+            pure (Just (recipient, p))
+  let _unknowns = catMaybes unknownsPre
+  _isFullNetworkIdle <- gets (snd . snd)
+  when isFullNetworkIdle do
+    Data.Monoid.Last m <- gets (fst . snd)
+    case m of
+      Nothing ->
+        pure ()
+      -- error "Network idle but NAT haven't received any message."
+      Just p ->
+        liftIO $ modifyMVar_ (V.head recvs) (\q -> pure $ q Seq.|> p)
+    modify ((second . second) (const isFullNetworkIdle))
+
+  Data.Monoid.Last mToNat <- gets (fst . snd)
+  pure $ do
+    (_x, y) <- mToNat
+    pure y
 
 instance Solution Day23 where
   solutionSolved _ = False
@@ -134,12 +166,13 @@ instance Solution Day23 where
       V.fromListN computerCount
         <$> replicateM computerCount (newMVar (Seq.empty))
     let initComputers = zipWith (mkComputer code) [0 ..] (V.toList recvs)
-        stepper = stepNetwork recvs
-
-    fix
-      (\loop computers -> do
-         (m, computers') <- stepper computers
-         case m of
-           Nothing -> loop computers'
-           Just v -> answerShow v)
-      initComputers
+    (a, _s, ()) <-
+      runRWST
+        (fix \cont -> do
+           result <- stepNet
+           case result of
+             Nothing -> cont
+             Just v -> pure v)
+        recvs
+        (initComputers, (Data.Monoid.Last Nothing, False))
+    answerShow a
