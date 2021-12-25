@@ -2,56 +2,71 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Javran.AdventOfCode.Y2021.Day25
   (
   )
 where
 
-import qualified Data.Set as S
+import Control.Lens
+import Data.Bits
+import Data.Coerce
+import qualified Data.IntSet as IS
 import Javran.AdventOfCode.Prelude
 
 data Day25 deriving (Generic)
 
 type Dims = (Int, Int)
 
-type Coord = (Int, Int) -- row then col.
+newtype Coord = Coord Int {- 0~7 row, 8~15 col -}
+  deriving (Ord, Eq)
+
+type CoordSet = IS.IntSet
 
 type World =
-  ( S.Set Coord -- east facing
-  , S.Set Coord -- south facing
+  ( CoordSet -- east facing
+  , CoordSet -- south facing
   )
 
-eastNext :: Dims -> Coord -> Coord
-eastNext (_rows, cols) (r, c) = (r, (c + 1) `rem` cols)
-
-southNext :: Dims -> Coord -> Coord
-southNext (rows, _cols) (r, c) = ((r + 1) `rem` rows, c)
-
-stepEast :: Dims -> World -> World
-stepEast dims (es, ss) = (es', ss)
+toCoord :: (Int, Int) -> Coord
+toCoord (r, c) = Coord (lo .|. shift hi 8)
   where
-    occupied = S.union es ss
-    es' = S.fromList do
-      coord <- S.toList es
-      let coord' = eastNext dims coord
-      if S.member coord' occupied
-        then pure coord
-        else pure coord'
+    lo = r .&. 0xFF
+    hi = c .&. 0xFF
 
-stepSouth :: Dims -> World -> World
-stepSouth dims (es, ss) = (es, ss')
+fromCoord :: Coord -> (Int, Int)
+fromCoord (Coord v) = (r, c)
   where
-    occupied = S.union es ss
-    ss' = S.fromList do
-      coord <- S.toList ss
-      let coord' = southNext dims coord
-      if S.member coord' occupied
-        then pure coord
-        else pure coord'
+    r = v .&. 0xFF
+    c = shift v (-8)
+
+eastNext, southNext :: Dims -> Coord -> Coord
+(eastNext, southNext) = (withCoord eastNext', withCoord southNext')
+  where
+    withCoord f dim = toCoord . f dim . fromCoord
+    eastNext' (_rows, cols) (r, c) = (r, (c + 1) `rem` cols)
+    southNext' (rows, _cols) (r, c) = ((r + 1) `rem` rows, c)
+
+stepBy :: (Coord -> Coord) -> (Coord -> Bool) -> CoordSet -> CoordSet
+stepBy nextCoord isConflict xs = IS.fromList do
+  coord <- coerce @Int @Coord <$> IS.toList xs
+  let coord' = nextCoord coord
+  pure $
+    coerce $
+      if isConflict coord'
+        then coord
+        else coord'
+
+isOccupied :: World -> Coord -> Bool
+isOccupied (es, ss) =
+  coerce $ (||) <$> (`IS.member` es) <*> (`IS.member` ss)
 
 step :: Dims -> World -> World
-step dims = stepSouth dims . stepEast dims
+step dims = stepSouth . stepEast
+  where
+    stepSouth w = w & _2 %~ stepBy (southNext dims) (isOccupied w)
+    stepEast w = w & _1 %~ stepBy (eastNext dims) (isOccupied w)
 
 instance Solution Day25 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
@@ -59,18 +74,20 @@ instance Solution Day25 where
     let rows = length xs
         cols = length (head xs)
         dims = (rows, cols)
-        world = mconcat do
+        initWorld = mconcat do
           (r, rs) <- zip [0 ..] xs
           (c, x) <- zip [0 ..] rs
-          let coord = (r, c)
-          case x of
-            '.' -> pure mempty
-            '>' -> pure (S.singleton coord, mempty)
-            'v' -> pure (mempty, S.singleton coord)
+          let coord = toCoord (r, c)
+          pure case x of
+            '.' -> mempty
+            '>' -> (IS.singleton (coerce coord), mempty)
+            'v' -> (mempty, IS.singleton (coerce coord))
             _ -> errInvalid
-        progression = iterate (step dims) world
+        progression = iterate (step dims) initWorld
         (i, _) : _ =
           dropWhile
             (\(_, (a, b)) -> a /= b)
             $ zip [1 :: Int ..] (zip progression (tail progression))
-    answerShow i
+    if cols > 0xFF || rows > 0xFF
+      then error "dims out of bound"
+      else answerShow i
