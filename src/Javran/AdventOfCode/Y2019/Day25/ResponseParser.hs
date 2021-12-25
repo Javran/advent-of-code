@@ -2,7 +2,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 
 module Javran.AdventOfCode.Y2019.Day25.ResponseParser
-  ( responseP
+  ( responsesP
   , debugConsumeAllWithReadP
   )
 where
@@ -88,8 +88,8 @@ simpleResponseP =
       xs <- manyTill (string "- " *> munch1 (/= '\n') <* char '\n') (char '\n')
       pure $ SimpRespInventory xs
 
-responseP :: ReadP [Response]
-responseP =
+responsesP :: ReadP [Response]
+responsesP =
   manyTill
     ((string "\n\n\n" *> (RespRoomInfo <$> roomInfoP))
        <|> (RespSimple <$> simpleResponseP))

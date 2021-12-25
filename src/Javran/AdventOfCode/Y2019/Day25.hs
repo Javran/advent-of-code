@@ -144,7 +144,7 @@ instance Solution Day25 where
                    pure (pCmd, cs')
                loop (k cmd) nextPresetCmds
              AsciiOutput outs k -> do
-               let r = debugConsumeAllWithReadP responseP outs
+               let r = debugConsumeAllWithReadP responsesP outs
                case r of
                  Right v -> print v
                  Left msg -> do
