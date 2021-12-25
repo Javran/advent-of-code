@@ -11,9 +11,6 @@ where
 import Control.Applicative
 import Control.Monad
 import Data.Foldable
-import Data.Function
-import Data.Maybe
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (count, many)
 

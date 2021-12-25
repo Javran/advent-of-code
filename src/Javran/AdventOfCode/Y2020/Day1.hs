@@ -9,7 +9,6 @@ module Javran.AdventOfCode.Y2020.Day1
 where
 
 import qualified Data.IntSet as IS
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 
 data Day1 deriving (Generic)

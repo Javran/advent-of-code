@@ -10,9 +10,7 @@ where
 import Control.Monad.State
 import Data.Bifunctor
 import qualified Data.IntSet as IS
-import Data.Maybe
 import qualified Data.Vector as V
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP
 

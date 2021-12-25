@@ -12,7 +12,6 @@ import Control.Monad
 import Control.Monad.IO.Class
 import Data.List
 import qualified Data.Vector.Unboxed as VU
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.Y2019.IntCode
 import qualified ListT

@@ -14,11 +14,8 @@ where
 import Control.Lens hiding (universe)
 import Control.Monad
 import qualified Data.Map.Strict as M
-import Data.Maybe
-import Data.Ord
 import qualified Data.PSQueue as PQ
 import qualified Data.Set as S
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 
 data Day23 deriving (Generic)

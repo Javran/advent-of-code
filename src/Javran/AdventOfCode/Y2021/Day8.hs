@@ -16,8 +16,6 @@ import Data.List
 import Data.List.Split hiding (sepBy)
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
-import Data.Tuple
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 
 data Day8 deriving (Generic)

@@ -11,7 +11,6 @@ where
 import Data.Char
 import Data.List.Split hiding (sepBy)
 import qualified Data.Map.Strict as M
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (count, many)
 
@@ -58,7 +57,7 @@ compactCount m = M.fromListWith (+) do
 minMaxDiff :: [Int] -> Int
 minMaxDiff xs = b - a
   where
-    Just (MinMax (a,b)) = foldMap (Just . minMax) xs
+    Just (MinMax (a, b)) = foldMap (Just . minMax) xs
 
 instance Solution Day14 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do

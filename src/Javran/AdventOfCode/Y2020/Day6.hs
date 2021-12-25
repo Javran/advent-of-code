@@ -8,7 +8,6 @@ module Javran.AdventOfCode.Y2020.Day6
 where
 
 import qualified Data.Set as S
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 
 data Day6 deriving (Generic)

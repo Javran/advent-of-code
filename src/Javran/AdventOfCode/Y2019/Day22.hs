@@ -17,7 +17,6 @@ import Data.List
 import Data.Mod
 import Data.Proxy
 import Data.Semigroup
-import GHC.Generics (Generic)
 import GHC.TypeNats hiding (Mod)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (count, many)

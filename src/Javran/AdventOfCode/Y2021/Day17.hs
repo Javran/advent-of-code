@@ -9,7 +9,6 @@ module Javran.AdventOfCode.Y2021.Day17
 where
 
 import Control.Monad
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Linear.Affine
 import Linear.V2

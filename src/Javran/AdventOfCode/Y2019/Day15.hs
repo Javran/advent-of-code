@@ -18,7 +18,6 @@ import Data.List
 import qualified Data.Map.Strict as M
 import qualified Data.Sequence as Seq
 import qualified Data.Set as S
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.ColorfulTerminal
 import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.Y2019.IntCode

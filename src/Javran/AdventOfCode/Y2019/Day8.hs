@@ -8,13 +8,10 @@ module Javran.AdventOfCode.Y2019.Day8
   )
 where
 
-
 import Data.Coerce
 import Data.List
 import Data.List.Split hiding (sepBy)
 import Data.Monoid
-import Data.Ord
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 
 data Day8 deriving (Generic)

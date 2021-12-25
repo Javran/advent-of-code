@@ -13,9 +13,7 @@ import Control.Applicative
 import Control.Monad
 import Data.List
 import qualified Data.Map.Strict as M
-import Data.Maybe
 import qualified Data.Set as S
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (many)
 

@@ -13,10 +13,8 @@ where
 
 import Control.Applicative
 import Control.Monad
-import Data.Maybe
 import Data.Monoid
 import qualified Data.Vector as V
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (many)
 

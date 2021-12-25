@@ -10,10 +10,8 @@ where
 
 import Control.Monad
 import Control.Monad.IO.Class
-import Data.Function
 import qualified Data.IntMap.Strict as IM
 import Data.Semigroup
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.Y2019.IntCode
 

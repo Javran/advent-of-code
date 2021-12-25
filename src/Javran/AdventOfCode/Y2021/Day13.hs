@@ -12,7 +12,6 @@ where
 import Control.Monad
 import Data.List.Split hiding (sepBy)
 import qualified Data.Set as S
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (count, many)
 

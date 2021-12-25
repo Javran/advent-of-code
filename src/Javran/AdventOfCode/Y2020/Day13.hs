@@ -11,8 +11,6 @@ where
 import Control.Monad
 import Data.Bifunctor
 import qualified Data.List.Ordered as LOrdered
-import Data.Ord
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Math.NumberTheory.Moduli.Chinese
 import Math.NumberTheory.Moduli.Class

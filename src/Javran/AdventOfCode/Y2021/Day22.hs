@@ -11,8 +11,6 @@ where
 import Control.Monad
 import Data.Coerce
 import Data.List
-import Data.Maybe
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (count, many)
 

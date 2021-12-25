@@ -9,9 +9,7 @@ where
 
 import Data.Function.Memoize (memoFix)
 import qualified Data.Map.Strict as M
-import Data.Maybe
 import qualified Data.Set as S
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (count, many)
 

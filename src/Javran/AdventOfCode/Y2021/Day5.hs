@@ -11,8 +11,6 @@ where
 
 import Data.Bifunctor
 import qualified Data.Map.Strict as M
-import Data.Maybe
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (many)
 

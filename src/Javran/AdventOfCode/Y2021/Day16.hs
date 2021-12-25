@@ -12,13 +12,11 @@ where
 import Control.Monad
 import Control.Monad.State.Strict
 import Data.Bits
-import Data.Bool
 import qualified Data.DList as DL
 import Data.Functor.Base (TreeF (..))
 import Data.Functor.Foldable
 import Data.List
 import Data.Tree
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Numeric
 

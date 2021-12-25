@@ -8,7 +8,6 @@ module Javran.AdventOfCode.Y2019.Day9
 where
 
 import Data.List
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.Y2019.IntCode
 

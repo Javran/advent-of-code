@@ -11,10 +11,7 @@ import Control.Monad
 import Control.Monad.State.Strict
 import Data.List
 import qualified Data.Map.Strict as M
-import Data.Maybe
-import Data.Ord
 import qualified Data.Set as S
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 
 data Day9 deriving (Generic)

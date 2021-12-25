@@ -9,13 +9,10 @@ where
 
 import Control.Applicative
 import Control.Monad
-import Data.Function
 import Data.Function.Memoize (memoFix)
 import qualified Data.IntMap.Strict as IM
 import Data.List.Split hiding (sepBy)
-import Data.Maybe
 import qualified Data.Set as S
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (many)
 

@@ -14,9 +14,7 @@ import Control.Applicative
 import Control.Monad
 import Data.Bits
 import qualified Data.Map.Strict as M
-import Data.Maybe
 import Data.Monoid
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (count, many)
 

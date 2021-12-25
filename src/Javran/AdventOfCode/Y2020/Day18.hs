@@ -8,8 +8,6 @@ module Javran.AdventOfCode.Y2020.Day18
 where
 
 import Control.Monad.Combinators.Expr
-import Data.Maybe
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP
 

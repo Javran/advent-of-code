@@ -14,11 +14,9 @@ where
 import Control.Monad
 import Control.Monad.ST
 import Data.Char
-import Data.Function
 import Data.List
 import Data.STRef
 import qualified Data.Vector as V
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 
 data Day23 deriving (Generic)

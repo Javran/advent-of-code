@@ -10,7 +10,6 @@ import Control.Monad.State.Strict
 import Data.Bifunctor
 import qualified Data.IntSet as IS
 import Data.List
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 
 data Day4 deriving (Generic)

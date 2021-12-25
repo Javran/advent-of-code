@@ -14,12 +14,9 @@ where
 import Control.Monad
 import Control.Monad.State.Strict
 import Data.Bifunctor
-import Data.Bool
 import Data.List.Split hiding (sepBy)
 import qualified Data.Map.Strict as M
-import Data.Maybe
 import qualified Data.Vector.Unboxed as VU
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.ColorfulTerminal hiding (Color (..))
 import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.Y2019.IntCode
@@ -89,12 +86,14 @@ paintState outMethod ((roboLoc, roboTurn), m) = do
       outputInBasicMode outputer
     Right BasicTerm {} ->
       outputInBasicMode putStrLn
-    Right( ColorTerm
-      ColorfulTerminal
-        { setForeground = withFg
-        , setBackground = withBg
-        , runTermOut
-        } ) -> do
+    Right
+      ( ColorTerm
+          ColorfulTerminal
+            { setForeground = withFg
+            , setBackground = withBg
+            , runTermOut
+            }
+        ) -> do
         putStrLn infoLine
         let textAtLoc loc =
               if roboLoc == loc

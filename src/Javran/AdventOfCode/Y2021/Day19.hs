@@ -19,7 +19,6 @@ import Data.List.Split hiding (sepBy)
 import qualified Data.Map.Strict as M
 import Data.Semigroup
 import qualified Data.Set as S
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Linear.Affine
 import Linear.V3

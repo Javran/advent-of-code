@@ -16,14 +16,11 @@ import Control.Monad.State.Strict
 import qualified Data.Array as Arr
 import Data.Bifunctor
 import Data.Char
-import Data.Either
 import Data.Foldable
 import qualified Data.Map.Strict as M
-import Data.Maybe
 import Data.Monoid
 import qualified Data.PSQueue as PQ
 import qualified Data.Set as S
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 
 data Day20 deriving (Generic)

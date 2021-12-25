@@ -11,12 +11,10 @@ where
 
 import Control.Monad
 import Data.Bifunctor
-import Data.Bool
 import Data.List
 import Data.List.Split hiding (sepBy)
 import qualified Data.Set as S
 import qualified Data.Vector as V
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 
 data Day20 deriving (Generic)

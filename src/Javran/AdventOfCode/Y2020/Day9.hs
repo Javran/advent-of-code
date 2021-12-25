@@ -12,7 +12,6 @@ import Control.Monad
 import Data.List
 import qualified Data.Set as S
 import qualified Data.Vector as V
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 
 data Day9 deriving (Generic)

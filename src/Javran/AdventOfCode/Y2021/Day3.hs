@@ -7,10 +7,8 @@ module Javran.AdventOfCode.Y2021.Day3
   )
 where
 
-import Data.Function
 import Data.List
 import qualified Data.Map.Strict as M
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 
 data Day3 deriving (Generic)

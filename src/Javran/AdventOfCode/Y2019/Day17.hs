@@ -14,12 +14,10 @@ import Control.Monad
 import Control.Monad.Writer.CPS
 import Data.Bifunctor
 import Data.Char
-import Data.Either
 import Data.List
 import Data.List.Split hiding (sepBy)
 import Data.Monoid
 import qualified Data.Set as S
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.Y2019.IntCode
 

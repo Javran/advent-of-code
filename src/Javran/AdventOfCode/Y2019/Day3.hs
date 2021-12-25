@@ -12,10 +12,8 @@ where
 import Control.Monad
 import Control.Monad.State.Strict
 import Data.Bifunctor
-import Data.Function
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (count, get, many)
 

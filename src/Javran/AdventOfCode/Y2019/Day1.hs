@@ -7,7 +7,6 @@ module Javran.AdventOfCode.Y2019.Day1
   )
 where
 
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 
 data Day1 deriving (Generic)

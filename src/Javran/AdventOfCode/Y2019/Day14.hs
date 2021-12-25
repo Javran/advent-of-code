@@ -11,10 +11,8 @@ where
 
 import Data.Char
 import Data.Foldable
-import Data.Function
 import qualified Data.Graph as G
 import qualified Data.Map.Strict as M
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (count, many)
 

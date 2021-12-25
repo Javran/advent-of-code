@@ -1,6 +1,6 @@
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 
 module Javran.AdventOfCode.Y2021.Day15
@@ -11,10 +11,8 @@ where
 import Control.Monad
 import qualified Data.Array.Base as Arr
 import qualified Data.Array.ST as Arr
-import Data.Function
 import Data.Monoid
 import qualified Data.PSQueue as PQ
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 
 data Day15 deriving (Generic)

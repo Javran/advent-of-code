@@ -12,7 +12,6 @@ import Data.Char
 import Data.List.Split hiding (sepBy)
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 
 data Day12 deriving (Generic)

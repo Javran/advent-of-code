@@ -12,10 +12,8 @@ import Control.Monad
 import Data.Char
 import Data.List
 import qualified Data.Map.Strict as M
-import Data.Maybe
 import Data.Semigroup
 import qualified Data.Set as S
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (many)
 

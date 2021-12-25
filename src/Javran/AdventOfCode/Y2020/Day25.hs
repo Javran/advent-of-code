@@ -12,7 +12,6 @@ where
 import Control.Monad
 import qualified Data.HashMap.Strict as HM
 import Data.Mod
-import GHC.Generics (Generic)
 import GHC.Natural
 import GHC.TypeNats (KnownNat, natVal)
 import Javran.AdventOfCode.Prelude

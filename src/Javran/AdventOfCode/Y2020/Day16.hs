@@ -11,9 +11,6 @@ import Control.Monad
 import qualified Data.IntMap.Strict as IM
 import qualified Data.IntSet as IS
 import Data.List
-import Data.Maybe
-import Data.Ord
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP
 

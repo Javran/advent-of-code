@@ -9,11 +9,8 @@ module Javran.AdventOfCode.Y2019.Day10
   )
 where
 
-import Data.Function
 import Data.List
 import qualified Data.Map.Strict as M
-import Data.Ord
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Linear.Affine
 import Linear.V2

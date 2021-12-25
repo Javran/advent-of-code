@@ -16,10 +16,8 @@ import qualified Data.Array.IArray as IArr
 import Data.Char
 import qualified Data.IntSet as IS
 import qualified Data.Map.Strict as M
-import Data.Maybe
 import qualified Data.PSQueue as PQ
 import qualified Data.Set as S
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 
 data Day18 deriving (Generic)

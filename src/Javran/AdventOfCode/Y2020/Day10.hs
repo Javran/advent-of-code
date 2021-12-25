@@ -14,7 +14,6 @@ import Data.Function.Memoize (memoFix)
 import qualified Data.IntSet as IS
 import Data.List
 import qualified Data.Map.Strict as M
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 
 data Day10 deriving (Generic)

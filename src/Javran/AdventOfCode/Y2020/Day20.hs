@@ -13,19 +13,16 @@ where
 import Control.Monad
 import Data.Bifunctor
 import Data.Bits
-import Data.Bool
 import qualified Data.IntMap.Strict as IM
 import qualified Data.IntSet as IS
 import Data.List
 import Data.List.Split hiding (sepBy)
 import qualified Data.Map.Strict as M
-import Data.Maybe
 import Data.Monoid
 import Data.Semigroup
 import qualified Data.Set as S
 import qualified Data.Vector as V
 import Data.Word
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (many)
 

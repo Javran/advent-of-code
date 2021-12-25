@@ -8,9 +8,7 @@ module Javran.AdventOfCode.Y2020.Day12
 where
 
 import Data.Bifunctor
-import Data.Maybe
 import Data.Monoid
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP
 

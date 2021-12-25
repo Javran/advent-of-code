@@ -23,9 +23,7 @@ import Data.Coerce
 import qualified Data.IntMap.Strict as IM
 import Data.List
 import qualified Data.Map.Strict as M
-import Data.Maybe
 import Data.Monoid
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (count, get, many)
 

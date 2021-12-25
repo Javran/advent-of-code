@@ -25,11 +25,8 @@ import Control.Monad
 import Control.Monad.State.Strict
 import Control.Monad.Writer.CPS
 import Data.Bifunctor
-import Data.Bool
 import Data.List.Split hiding (sepBy)
-import Data.Maybe
 import qualified Data.Text as T
-import GHC.Generics (Generic)
 import GHC.IO.Exception (ExitCode (ExitSuccess))
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (count, get, many)

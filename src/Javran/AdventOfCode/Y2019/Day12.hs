@@ -13,7 +13,6 @@ where
 import Control.Lens
 import qualified Data.Map.Strict as M
 import Data.Monoid
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.Y2020.Day13 (chineseRemainder)
 import Linear.Affine

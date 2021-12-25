@@ -9,10 +9,8 @@ where
 
 import Control.Monad
 import Control.Monad.ST
-import Data.Function
 import qualified Data.Vector.Unboxed.Mutable as VUM
 import Data.Word
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 
 data Day15 deriving (Generic)

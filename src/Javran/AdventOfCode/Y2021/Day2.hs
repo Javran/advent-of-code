@@ -9,8 +9,6 @@ where
 
 import Control.Monad.State.Strict
 import Data.Bifunctor
-import Data.Maybe
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP
 

@@ -9,12 +9,9 @@ module Javran.AdventOfCode.Y2019.Day7
 where
 
 import Control.Monad
-import Data.Function
 import Data.List
 import Data.List.Split hiding (sepBy)
-import Data.Maybe
 import qualified Data.Vector.Unboxed as VU
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.Y2019.IntCode
 

@@ -10,7 +10,6 @@ where
 import Data.List
 import Data.List.Split hiding (sepBy)
 import qualified Data.Vector as V
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 
 data Day7 deriving (Generic)

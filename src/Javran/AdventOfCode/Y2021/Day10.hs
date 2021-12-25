@@ -9,10 +9,8 @@ module Javran.AdventOfCode.Y2021.Day10
   )
 where
 
-import Data.Either
 import Data.List
 import Data.Monoid
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 
 data Day10 deriving (Generic)

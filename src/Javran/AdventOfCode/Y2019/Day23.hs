@@ -10,16 +10,14 @@ where
 
 import Control.Concurrent
 import Control.Monad
+import Control.Monad.Loops
 import Control.Monad.RWS.CPS
 import Data.Bifunctor
-import Data.Maybe
 import Data.Monoid
 import qualified Data.Sequence as Seq
 import qualified Data.Vector as V
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.Y2019.IntCode
-import Control.Monad.Loops
 
 data Day23 deriving (Generic)
 

@@ -11,7 +11,6 @@ import Control.Monad.State.Strict
 import Data.List
 import Data.List.Split hiding (sepBy)
 import qualified Data.Set as S
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 
 data Day22 deriving (Generic)

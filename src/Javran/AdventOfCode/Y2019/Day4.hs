@@ -12,7 +12,6 @@ where
 
 import Control.Monad
 import Data.List.Split hiding (sepBy)
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 
 data Day4 deriving (Generic)

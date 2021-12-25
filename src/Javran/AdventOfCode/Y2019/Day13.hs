@@ -15,7 +15,6 @@ import Control.Monad.State.Strict
 import qualified Data.Array.IO as AIO
 import qualified Data.Map.Strict as M
 import Data.Word
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.ColorfulTerminal
 import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.Y2019.IntCode
@@ -26,41 +25,41 @@ showGame :: OutputMethod -> GameState -> IO ()
 showGame om GameState {gsScreen, gsScore} = case om of
   Left _ -> pure ()
   Right termDetail -> do
-      let (runTermOut, render) = case termDetail of
-            BasicTerm rto ->
+    let (runTermOut, render) = case termDetail of
+          BasicTerm rto ->
+            ( rto
+            , \v ->
+                termText $ case v of
+                  0 -> "  "
+                  1 -> "##"
+                  2 -> "[]"
+                  3 -> "--"
+                  4 -> "()"
+                  _ -> error $ "invalid value" <> show v
+            )
+          ColorTerm
+            ColorfulTerminal
+              { setForeground = withFg
+              , runTermOut = rto
+              } ->
               ( rto
               , \v ->
-                  termText $ case v of
-                    0 -> "  "
-                    1 -> "##"
-                    2 -> "[]"
-                    3 -> "--"
-                    4 -> "()"
+                  case v of
+                    0 -> termText "  "
+                    1 -> withFg White $ termText "██"
+                    2 -> withFg Cyan $ termText "░░"
+                    3 -> withFg Magenta $ termText "━━"
+                    4 -> withFg Yellow $ termText "◖◗"
                     _ -> error $ "invalid value" <> show v
               )
-            ColorTerm
-              ColorfulTerminal
-                { setForeground = withFg
-                , runTermOut = rto
-                } ->
-                ( rto
-                , \v ->
-                    case v of
-                      0 -> termText "  "
-                      1 -> withFg White $ termText "██"
-                      2 -> withFg Cyan $ termText "░░"
-                      3 -> withFg Magenta $ termText "━━"
-                      4 -> withFg Yellow $ termText "◖◗"
-                      _ -> error $ "invalid value" <> show v
-                )
-      threadDelay (1000 * 20)
-      ((minX, minY), (maxX, maxY)) <- AIO.getBounds gsScreen
-      forM_ [minY .. maxY :: Int] $ \y -> do
-        let getTile x = AIO.readArray gsScreen (x, y)
-        ts <- mapM (fmap render . getTile) [minX .. maxX]
-        runTermOut (mconcat ts <> termText "\n")
-      putStrLn $
-        "Current score: " <> maybe "?" show gsScore
+    threadDelay (1000 * 20)
+    ((minX, minY), (maxX, maxY)) <- AIO.getBounds gsScreen
+    forM_ [minY .. maxY :: Int] $ \y -> do
+      let getTile x = AIO.readArray gsScreen (x, y)
+      ts <- mapM (fmap render . getTile) [minX .. maxX]
+      runTermOut (mconcat ts <> termText "\n")
+    putStrLn $
+      "Current score: " <> maybe "?" show gsScore
 
 data GameState = GameState
   { gsScreen :: AIO.IOUArray (Int, Int) Word8

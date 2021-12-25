@@ -64,24 +64,17 @@ where
 import Control.Applicative
 import Control.Monad
 import Data.Bifunctor
-import Data.Bool
 import Data.Char
-import Data.Either
-import Data.Function
-import Data.Function.Memoize (memoFix)
 import qualified Data.IntMap.Strict as IM
 import qualified Data.IntSet as IS
 import Data.List
 import Data.List.Split hiding (sepBy)
 import qualified Data.Map.Strict as M
-import Data.Maybe
 import Data.Monoid
-import Data.Ord
 import Data.Semigroup
 import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Vector as V
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.Y2019.IntCode
 import Text.ParserCombinators.ReadP hiding (count, many)

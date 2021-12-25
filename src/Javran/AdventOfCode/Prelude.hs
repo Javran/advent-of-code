@@ -21,17 +21,30 @@ module Javran.AdventOfCode.Prelude
   , -- infrastructures
     module Javran.AdventOfCode.Infra
   , module Petbox
+  , module Data.Tuple
+  , module Data.Maybe
+  , module Data.Bool
+  , module Data.Either
+  , module GHC.Generics
+  , module Data.Function
+  , module Data.Ord
   )
 where
 
 import Data.Bifunctor
 import Data.Bool
 import Data.Char
+import Data.Either
+import Data.Function
 import Data.Ix (inRange)
 import Data.List
 import Data.List.Split
+import Data.Maybe
 import Data.Monoid
+import Data.Ord
 import Data.Semigroup
+import Data.Tuple
+import GHC.Generics (Generic)
 import Javran.AdventOfCode.Infra
   ( Solution (..)
   , SolutionContext (..)

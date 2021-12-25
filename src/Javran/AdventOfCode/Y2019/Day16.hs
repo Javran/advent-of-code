@@ -12,7 +12,6 @@ import Control.Monad
 import Control.Monad.ST
 import qualified Data.Vector.Unboxed as VU
 import qualified Data.Vector.Unboxed.Mutable as VUM
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 
 data Day16 deriving (Generic)

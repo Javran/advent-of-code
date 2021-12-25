@@ -13,9 +13,7 @@ import Control.Monad
 import qualified Control.Monad.State as State
 import Data.Function.Memoize (memoFix)
 import qualified Data.Map.Strict as M
-import Data.Maybe
 import qualified Data.Set as S
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP
 

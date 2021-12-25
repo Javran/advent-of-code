@@ -9,9 +9,7 @@ where
 
 import Control.Monad
 import Data.List
-import Data.Maybe
 import Data.Word
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP
 
