@@ -12,7 +12,6 @@ where
 import Control.Lens hiding (universe)
 import Control.Monad
 import Control.Monad.Writer.CPS
-import Data.Bifunctor
 import Data.Char
 import Data.List
 import Data.List.Split hiding (sepBy)

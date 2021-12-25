@@ -63,7 +63,6 @@ where
 
 import Control.Applicative
 import Control.Monad
-import Data.Bifunctor
 import Data.Char
 import qualified Data.IntMap.Strict as IM
 import qualified Data.IntSet as IS

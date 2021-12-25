@@ -18,6 +18,7 @@ module Javran.AdventOfCode.Prelude
   , minMaxFromPair
   , MinMax2D (..)
   , minMax2D
+  , nextCharP
   , -- infrastructures
     module Javran.AdventOfCode.Infra
   , module Petbox
@@ -28,6 +29,7 @@ module Javran.AdventOfCode.Prelude
   , module GHC.Generics
   , module Data.Function
   , module Data.Ord
+  , module Data.Bifunctor
   )
 where
 
@@ -54,6 +56,7 @@ import Javran.AdventOfCode.Infra
   , decimal1P
   )
 import Petbox
+import qualified Text.ParserCombinators.ReadP
 
 universe :: (Enum a, Bounded a) => [a]
 universe = [minBound .. maxBound]
@@ -102,3 +105,6 @@ newtype MinMax2D u v = MinMax2D {getMinMax2D :: ((u, u), (v, v))}
 
 minMax2D :: (u, v) -> MinMax2D u v
 minMax2D (u, v) = MinMax2D ((u, u), (v, v))
+
+nextCharP :: Text.ParserCombinators.ReadP.ReadP Char
+nextCharP = Text.ParserCombinators.ReadP.get

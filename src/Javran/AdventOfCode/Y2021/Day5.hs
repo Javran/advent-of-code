@@ -9,7 +9,6 @@ module Javran.AdventOfCode.Y2021.Day5
   )
 where
 
-import Data.Bifunctor
 import qualified Data.Map.Strict as M
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (many)

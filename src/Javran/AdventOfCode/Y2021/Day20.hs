@@ -10,7 +10,6 @@ module Javran.AdventOfCode.Y2021.Day20
 where
 
 import Control.Monad
-import Data.Bifunctor
 import Data.List
 import Data.List.Split hiding (sepBy)
 import qualified Data.Set as S

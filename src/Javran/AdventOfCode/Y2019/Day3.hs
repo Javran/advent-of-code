@@ -11,7 +11,6 @@ where
 
 import Control.Monad
 import Control.Monad.State.Strict
-import Data.Bifunctor
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import Javran.AdventOfCode.Prelude

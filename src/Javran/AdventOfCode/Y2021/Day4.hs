@@ -7,7 +7,6 @@ module Javran.AdventOfCode.Y2021.Day4
 where
 
 import Control.Monad.State.Strict
-import Data.Bifunctor
 import qualified Data.IntSet as IS
 import Data.List
 import Javran.AdventOfCode.Prelude

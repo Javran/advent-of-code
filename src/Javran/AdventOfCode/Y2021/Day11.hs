@@ -9,7 +9,6 @@ module Javran.AdventOfCode.Y2021.Day11
 where
 
 import Control.Monad
-import Data.Bifunctor
 import Data.List
 import qualified Data.Map.Merge.Strict as M
 import qualified Data.Map.Strict as M

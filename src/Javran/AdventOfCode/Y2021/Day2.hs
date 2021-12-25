@@ -8,7 +8,6 @@ module Javran.AdventOfCode.Y2021.Day2
 where
 
 import Control.Monad.State.Strict
-import Data.Bifunctor
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP
 

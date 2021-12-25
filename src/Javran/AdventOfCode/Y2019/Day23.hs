@@ -12,7 +12,6 @@ import Control.Concurrent
 import Control.Monad
 import Control.Monad.Loops
 import Control.Monad.RWS.CPS
-import Data.Bifunctor
 import Data.Monoid
 import qualified Data.Sequence as Seq
 import qualified Data.Vector as V

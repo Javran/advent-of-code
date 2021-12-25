@@ -9,7 +9,6 @@ where
 
 import Control.Monad
 import Control.Monad.State.Strict
-import Data.Bifunctor
 import Data.Bits
 import qualified Data.IntMap.Strict as IM
 import Data.Monoid

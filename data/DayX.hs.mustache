@@ -27,7 +27,6 @@ where
 
 import Control.Applicative
 import Control.Monad
-import Data.Bifunctor
 import Data.Char
 import Data.Function
 import Data.Function.Memoize (memoFix)
@@ -43,7 +42,7 @@ import qualified Data.Text as T
 import qualified Data.Vector as V
 import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
-import Text.ParserCombinators.ReadP hiding (count, many)
+import Text.ParserCombinators.ReadP hiding (count, many, get)
 
 data Day{{day}} deriving (Generic)
 

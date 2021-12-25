@@ -11,7 +11,6 @@ module Javran.AdventOfCode.Y2021.Day19
 where
 
 import Control.Monad
-import Data.Bifunctor
 import qualified Data.IntMap.Strict as IM
 import qualified Data.IntSet as IS
 import Data.List

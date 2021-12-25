@@ -8,7 +8,6 @@ module Javran.AdventOfCode.Y2020.Day8
 where
 
 import Control.Monad.State
-import Data.Bifunctor
 import qualified Data.IntSet as IS
 import qualified Data.Vector as V
 import Javran.AdventOfCode.Prelude

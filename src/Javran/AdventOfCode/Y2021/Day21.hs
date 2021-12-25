@@ -18,7 +18,6 @@ import Control.Applicative
 import Control.Lens
 import Control.Monad
 import Control.Monad.State.Strict
-import Data.Bifunctor
 import Data.Coerce
 import qualified Data.IntMap.Strict as IM
 import Data.List

@@ -14,7 +14,6 @@ where
 import Control.Monad
 import Control.Monad.State.Strict
 import qualified Data.Array as Arr
-import Data.Bifunctor
 import Data.Char
 import Data.Foldable
 import qualified Data.Map.Strict as M

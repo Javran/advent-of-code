@@ -9,7 +9,6 @@ module Javran.AdventOfCode.Y2020.Day13
 where
 
 import Control.Monad
-import Data.Bifunctor
 import qualified Data.List.Ordered as LOrdered
 import Javran.AdventOfCode.Prelude
 import Math.NumberTheory.Moduli.Chinese

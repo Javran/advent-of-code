@@ -24,7 +24,6 @@ import Control.Lens hiding (op)
 import Control.Monad
 import Control.Monad.State.Strict
 import Control.Monad.Writer.CPS
-import Data.Bifunctor
 import Data.List.Split hiding (sepBy)
 import qualified Data.Text as T
 import GHC.IO.Exception (ExitCode (ExitSuccess))

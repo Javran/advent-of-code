@@ -9,7 +9,6 @@ module Javran.AdventOfCode.Y2020.Day4
 where
 
 import Control.Monad
-import Data.Bifunctor
 import Data.Char
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S

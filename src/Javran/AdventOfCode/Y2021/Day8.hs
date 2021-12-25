@@ -10,7 +10,6 @@ module Javran.AdventOfCode.Y2021.Day8
   )
 where
 
-import Data.Bifunctor
 import qualified Data.IntMap.Strict as IM
 import Data.List
 import Data.List.Split hiding (sepBy)

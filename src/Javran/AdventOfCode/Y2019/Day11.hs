@@ -13,7 +13,6 @@ where
 
 import Control.Monad
 import Control.Monad.State.Strict
-import Data.Bifunctor
 import Data.List.Split hiding (sepBy)
 import qualified Data.Map.Strict as M
 import qualified Data.Vector.Unboxed as VU
