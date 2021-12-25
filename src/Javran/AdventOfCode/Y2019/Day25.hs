@@ -81,11 +81,21 @@ presetCommands =
   , "north" -- at Security Checkpoint
   ]
 
+takeAllOutputs :: IO (Result a) -> IO ([Int], IO (Result a))
+takeAllOutputs prog = takeAllAux [] prog
+  where
+    takeAllAux accRev p = do
+      result <- p
+      case result of
+        SentOutput o k ->
+          takeAllAux (o:accRev) k
+        _ -> pure (reverse accRev, pure result)
+
 instance Solution Day25 where
   solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     code <- parseCodeOrDie <$> getInputS
-    let prog = startProgramFromFoldable code
+    let prog = void <$> startProgramFromFoldable code
     fix
       (\loop curP curPresetCmds -> do
          result <- curP
@@ -101,10 +111,9 @@ instance Solution Day25 where
                  pure (pCmd, cs')
              ([], k) <- communicate (fmap ord cmd <> [10]) 0 (pure result)
              loop k nextPresetCmds
-           SentOutput v k -> do
-             if v <= 255
-               then putStr [chr v]
-               else putStrLn $ "output value: " <> show v
-             loop k curPresetCmds)
+           SentOutput {} -> do
+             (outs, k') <- takeAllOutputs (pure result)
+             putStr (fmap chr outs)
+             loop k' curPresetCmds)
       prog
       presetCommands
