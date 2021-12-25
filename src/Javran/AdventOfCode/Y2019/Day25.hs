@@ -47,6 +47,18 @@ import Text.ParserCombinators.ReadP hiding (count, get, many)
 
 data Day25 deriving (Generic)
 
+everyItems :: [String]
+everyItems =
+  [ "cake"
+  , "fuel cell"
+  , "easter egg"
+  , "ornament"
+  , "hologram"
+  , "dark matter"
+  , "klein bottle"
+  , "hypercube"
+  ]
+
 presetCommands :: [String]
 presetCommands =
   [ "north"
@@ -80,6 +92,20 @@ presetCommands =
   , "take hypercube"
   , "north" -- at Security Checkpoint
   ]
+    <> dropEverything
+    <> tryAllCombinations
+  where
+    dropEverything = ["drop " <> x | x <- everyItems]
+
+    allCombinations = filterM (const [False, True]) everyItems
+
+    tryComb :: [String] -> [String]
+    tryComb items =
+      ["take " <> item | item <- items] <> ["west"]
+        <> ["drop " <> item | item <- items]
+    tryAllCombinations = do
+      comb <- allCombinations
+      tryComb comb
 
 takeAllOutputs :: IO (Result a) -> IO ([Int], IO (Result a))
 takeAllOutputs prog = takeAllAux [] prog
@@ -88,7 +114,7 @@ takeAllOutputs prog = takeAllAux [] prog
       result <- p
       case result of
         SentOutput o k ->
-          takeAllAux (o:accRev) k
+          takeAllAux (o : accRev) k
         _ -> pure (reverse accRev, pure result)
 
 instance Solution Day25 where
@@ -96,24 +122,26 @@ instance Solution Day25 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     code <- parseCodeOrDie <$> getInputS
     let prog = void <$> startProgramFromFoldable code
-    fix
-      (\loop curP curPresetCmds -> do
-         result <- curP
-         case result of
-           Done _ -> pure ()
-           NeedInput {} -> do
-             (cmd, nextPresetCmds) <- case curPresetCmds of
-               [] -> do
-                 xs <- getLine
-                 pure (xs, [])
-               (pCmd : cs') -> do
-                 putStrLn $ "Enter preset command: " <> pCmd
-                 pure (pCmd, cs')
-             ([], k) <- communicate (fmap ord cmd <> [10]) 0 (pure result)
-             loop k nextPresetCmds
-           SentOutput {} -> do
-             (outs, k') <- takeAllOutputs (pure result)
-             putStr (fmap chr outs)
-             loop k' curPresetCmds)
-      prog
-      presetCommands
+        shouldRunProgram = True
+    when shouldRunProgram do
+      fix
+        (\loop curP curPresetCmds -> do
+           result <- curP
+           case result of
+             Done _ -> pure ()
+             NeedInput {} -> do
+               (cmd, nextPresetCmds) <- case curPresetCmds of
+                 [] -> do
+                   xs <- getLine
+                   pure (xs, [])
+                 (pCmd : cs') -> do
+                   putStrLn $ "Enter preset command: " <> pCmd
+                   pure (pCmd, cs')
+               ([], k) <- communicate (fmap ord cmd <> [10]) 0 (pure result)
+               loop k nextPresetCmds
+             SentOutput {} -> do
+               (outs, k') <- takeAllOutputs (pure result)
+               putStr (fmap chr outs)
+               loop k' curPresetCmds)
+        prog
+        presetCommands
