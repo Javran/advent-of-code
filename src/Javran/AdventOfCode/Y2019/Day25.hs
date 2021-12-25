@@ -47,8 +47,8 @@ import Text.ParserCombinators.ReadP hiding (count, get, many)
 
 data Day25 deriving (Generic)
 
-everyItems :: [String]
-everyItems =
+allItems :: [String]
+allItems =
   [ "cake"
   , "fuel cell"
   , "easter egg"
@@ -95,9 +95,9 @@ presetCommands =
     <> dropEverything
     <> tryAllCombinations
   where
-    dropEverything = ["drop " <> x | x <- everyItems]
+    dropEverything = ["drop " <> x | x <- allItems]
 
-    allCombinations = filterM (const [False, True]) everyItems
+    allCombinations = filterM (const [False, True]) allItems
 
     tryComb :: [String] -> [String]
     tryComb items =
