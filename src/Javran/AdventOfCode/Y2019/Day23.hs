@@ -59,12 +59,12 @@ type PacketSent = (Int, PacketRecv)
 
 type MsgQueue = Seq.Seq PacketRecv
 
-data Computer = Computer
-  { cpCont :: IO (Maybe PacketSent, Computer)
+newtype Computer = Computer
+  { runComputer :: IO (Maybe PacketSent, Computer)
   }
 
 mkComputer :: [Int] -> Int -> MVar MsgQueue -> Computer
-mkComputer code netAddr recv = Computer {cpCont}
+mkComputer code netAddr recv = Computer cpInit
   where
     noOp :: Computer
     noOp = Computer (pure (Nothing, noOp))
@@ -92,14 +92,14 @@ mkComputer code netAddr recv = Computer {cpCont}
           ([recipient, x, y], k1) <- communicate [] 3 (pure result)
           pure (Just (recipient, (x, y)), Computer $ resume k1)
 
-    cpCont :: IO (Maybe PacketSent, Computer)
-    cpCont = do
+    cpInit :: IO (Maybe PacketSent, Computer)
+    cpInit = do
       ([], prog) <- communicate [netAddr] 0 (startProgramFromFoldable code)
       pure (Nothing, Computer $ resume (void <$> prog))
 
 stepNetwork :: V.Vector (MVar MsgQueue) -> [Computer] -> IO (Maybe Int, [Computer])
 stepNetwork recvs computers = do
-  results <- forM computers \(Computer c) -> c
+  results <- mapM runComputer computers
   let (outgoings', computers') = unzip results
       outs :: [PacketSent]
       outs = catMaybes outgoings'
