@@ -111,16 +111,6 @@ presetCommands =
       comb <- allCombinations
       tryComb comb
 
-takeAllOutputs :: IO (Result a) -> IO ([Int], IO (Result a))
-takeAllOutputs prog = takeAllAux [] prog
-  where
-    takeAllAux accRev p = do
-      result <- p
-      case result of
-        SentOutput o k ->
-          takeAllAux (o : accRev) k
-        _ -> pure (reverse accRev, pure result)
-
 {-
   TODO:
 
@@ -136,15 +126,15 @@ instance Solution Day25 where
   solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     code <- parseCodeOrDie <$> getInputS
-    let prog = void <$> startProgramFromFoldable code
+    let prog = asciiRun $ startProgramFromFoldable code
         shouldRunProgram = True
     when shouldRunProgram do
       fix
         (\loop curP curPresetCmds -> do
            result <- curP
            case result of
-             Done _ -> pure ()
-             NeedInput {} -> do
+             AsciiDone -> pure ()
+             AsciiNeedCommand k -> do
                (cmd, nextPresetCmds) <- case curPresetCmds of
                  [] -> do
                    xs <- getLine
@@ -152,16 +142,14 @@ instance Solution Day25 where
                  (pCmd : cs') -> do
                    putStrLn $ "Enter preset command: " <> pCmd
                    pure (pCmd, cs')
-               ([], k) <- communicate (fmap ord cmd <> [10]) 0 (pure result)
-               loop k nextPresetCmds
-             SentOutput {} -> do
-               (outs, k') <- takeAllOutputs (pure result)
-               let r = debugConsumeAllWithReadP responseP (fmap chr outs)
+               loop (k cmd) nextPresetCmds
+             AsciiOutput outs k -> do
+               let r = debugConsumeAllWithReadP responseP outs
                case r of
                  Right v -> print v
                  Left msg -> do
                    putStrLn $ "warning: parse failure, reason: " <> msg
-                   putStr (fmap chr outs)
-               loop k' curPresetCmds)
+                   putStr outs
+               loop k curPresetCmds)
         prog
         presetCommands
