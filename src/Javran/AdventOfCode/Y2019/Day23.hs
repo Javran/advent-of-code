@@ -1,56 +1,29 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# OPTIONS_GHC -Wno-deprecations #-}
-{-# OPTIONS_GHC -Wno-typed-holes #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
 
 module Javran.AdventOfCode.Y2019.Day23
   (
   )
 where
 
-{- HLINT ignore -}
-
-import Control.Applicative
 import Control.Concurrent
 import Control.Monad
 import Control.Monad.RWS.CPS
 import Data.Bifunctor
-import Data.Bool
-import Data.Char
-import Data.Either
-import Data.Function
-import Data.Function.Memoize (memoFix)
-import qualified Data.IntMap.Strict as IM
-import qualified Data.IntSet as IS
-import Data.List
-import Data.List.Split hiding (sepBy)
-import qualified Data.Map.Strict as M
 import Data.Maybe
 import Data.Monoid
-import Data.Ord
-import Data.Semigroup
 import qualified Data.Sequence as Seq
-import qualified Data.Set as S
-import qualified Data.Text as T
 import qualified Data.Vector as V
 import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.Y2019.IntCode
-import Text.ParserCombinators.ReadP hiding (count, many)
 
 data Day23 deriving (Generic)
 
@@ -90,10 +63,6 @@ mkComputer code netAddr recv = Computer cpInit
           case mMsg of
             Nothing -> do
               ([], k2) <- communicate [-1] 0 (pure result)
-              {-
-                TODO: idle cond is not quite right: we might discover that
-                this be sending packets when resumed.
-               -}
               pure ((Nothing, True), Computer $ resume k2)
             Just (x, y) -> do
               ([], k2) <- communicate [x, y] 0 (pure result)
@@ -113,71 +82,105 @@ type Net =
     (V.Vector (MVar MsgQueue))
     ()
     ( -- computer states
-      [Computer]
+      [(Computer, Bool)]
     , ( -- the message NAT is holding
         Data.Monoid.Last PacketRecv
-      , -- whether the network is idle in last step
-        Bool
+      , -- the Y-value of the message NAT sent to address 0 last time.
+        Maybe Int
       )
     )
     IO
 
-stepNet :: Net (Maybe Int)
-stepNet = do
+data Part = Part1 | Part2
+
+stepNet :: Part -> Net (Maybe Int)
+stepNet part = do
   recvs <- ask
-  computers <- gets fst
+  (computers, lastFailedRecvFlags) <- unzip <$> gets fst
   results <- liftIO $ mapM runComputer computers
   let (stepResults, computers') = unzip results
-      (outgoings', failedRecvAttempts) = unzip stepResults
-      isFullNetworkIdle = and failedRecvAttempts -- TODO: not quite right
+      (outgoings', failedRecvs) = unzip stepResults
       outs :: [PacketSent]
       outs = catMaybes outgoings'
-  modify (first (const computers'))
+      isFullNetworkIdle = and $ zipWith (&&) lastFailedRecvFlags failedRecvs
+  modify (first (const (zip computers' failedRecvs)))
   unknownsPre <- forM outs \(recipient, p) -> do
     if recipient < V.length recvs
-      then Nothing <$ (liftIO $ modifyMVar_ (recvs V.! recipient) (\q -> pure $ q Seq.|> p))
+      then Nothing <$ liftIO (modifyMVar_ (recvs V.! recipient) (\q -> pure $ q Seq.|> p))
       else do
         if recipient == 255
-          then Nothing <$ modify ((second . first) (<> Data.Monoid.Last (Just p)))
+          then
+            Nothing
+              <$ modify ((second . first) (<> Data.Monoid.Last (Just p)))
           else liftIO $ do
             putStrLn $ "Warning: Unknown recipient: " <> show recipient
             putStrLn $ "Packet: " <> show p
             pure (Just (recipient, p))
   let _unknowns = catMaybes unknownsPre
-  isFullNetworkIdle' <- gets (snd . snd)
-  liftIO $ print (isFullNetworkIdle, null outs)
-  when isFullNetworkIdle do
-    Data.Monoid.Last m <- gets (fst . snd)
-    case m of
-      Nothing ->
-        pure ()
-      -- error "Network idle but NAT haven't received any message."
-      Just p ->
-        liftIO $ modifyMVar_ (V.head recvs) (\q -> pure $ q Seq.|> p)
-    modify ((second . second) (const isFullNetworkIdle))
-
+  yLastSent <- gets (snd . snd)
+  yIsTwiceInARow <-
+    if isFullNetworkIdle
+      then do
+        Data.Monoid.Last m <- gets (fst . snd)
+        case m of
+          Nothing ->
+            error "Network is idle but NAT haven't received any message."
+          Just p@(_x, y) -> do
+            liftIO $
+              modifyMVar_ (V.head recvs) (\q -> pure $ q Seq.|> p)
+            modify ((second . second) (const (Just y)))
+            pure (y <$ guard (Just y == yLastSent))
+      else pure Nothing
   Data.Monoid.Last mToNat <- gets (fst . snd)
-  pure $ do
-    (_x, y) <- mToNat
-    pure y
+  let natGetsMsg :: Maybe Int
+      natGetsMsg = do
+        (_x, y) <- mToNat
+        pure y
+  pure $ case part of
+    Part1 -> natGetsMsg
+    Part2 -> yIsTwiceInARow
 
 instance Solution Day23 where
-  solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     code <- parseCodeOrDie <$> getInputS
     let computerCount = 50
     -- create messages queues
     (recvs :: V.Vector (MVar MsgQueue)) <-
       V.fromListN computerCount
-        <$> replicateM computerCount (newMVar (Seq.empty))
+        <$> replicateM computerCount (newMVar Seq.empty)
     let initComputers = zipWith (mkComputer code) [0 ..] (V.toList recvs)
-    (a, _s, ()) <-
+        initSt =
+          ( zip initComputers (repeat False)
+          , (Data.Monoid.Last Nothing, Nothing)
+          )
+        runTillJust action = fix \loop ->
+          action >>= \case
+            Nothing -> loop
+            Just v -> pure v
+    (p1Ans, s1, ()) <-
       runRWST
-        (fix \cont -> do
-           result <- stepNet
-           case result of
-             Nothing -> cont
-             Just v -> pure v)
+        (runTillJust (stepNet Part1))
         recvs
-        (initComputers, (Data.Monoid.Last Nothing, False))
-    answerShow a
+        initSt
+    answerShow p1Ans
+    {-
+      Mind the ambiguity what part 2 is asking about:
+
+      "the first Y value delivered by the NAT to the computer at address 0 twice in a row?"
+
+      Could mean:
+
+      1. find the first occurrence that the NAT sends message to address 0 twice in a row,
+        and get its Y value as the answer.
+
+      2. find the first reoccurrence of the same Y value in a row that NAT sends to address 0.
+
+      Apparently part 2 was asking for 2., careless writeup.
+
+     -}
+    (p2Ans, _, ()) <-
+      runRWST
+        (runTillJust (stepNet Part2))
+        recvs
+        s1
+    answerShow p2Ans
