@@ -58,6 +58,7 @@ library:
     - semirings
     - z3
     - raw-strings-qq
+    - monad-loops
   ghc-options:
     - -Wall
     - -O2

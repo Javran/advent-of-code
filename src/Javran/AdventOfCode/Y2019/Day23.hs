@@ -1,11 +1,6 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Javran.AdventOfCode.Y2019.Day23
@@ -24,6 +19,7 @@ import qualified Data.Vector as V
 import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.Y2019.IntCode
+import Control.Monad.Loops
 
 data Day23 deriving (Generic)
 
@@ -153,13 +149,9 @@ instance Solution Day23 where
           ( zip initComputers (repeat False)
           , (Data.Monoid.Last Nothing, Nothing)
           )
-        runTillJust action = fix \loop ->
-          action >>= \case
-            Nothing -> loop
-            Just v -> pure v
     (p1Ans, s1, ()) <-
       runRWST
-        (runTillJust (stepNet Part1))
+        (untilJust (stepNet Part1))
         recvs
         initSt
     answerShow p1Ans
@@ -180,7 +172,7 @@ instance Solution Day23 where
      -}
     (p2Ans, _, ()) <-
       runRWST
-        (runTillJust (stepNet Part2))
+        (untilJust (stepNet Part2))
         recvs
         s1
     answerShow p2Ans

@@ -137,6 +137,7 @@ library
     , memoize
     , microstache
     , mod
+    , monad-loops
     , mtl
     , once
     , parser-combinators
