@@ -16,7 +16,9 @@ import Control.Monad
 import qualified Data.Map.Strict as M
 import qualified Data.PSQueue as PQ
 import qualified Data.Set as S
+import Debug.Trace
 import Javran.AdventOfCode.Prelude
+import System.IO.Unsafe (unsafePerformIO)
 
 data Day23 deriving (Generic)
 
@@ -164,6 +166,30 @@ _pprWorldState ws = do
 targetWorld :: Int -> WorldState
 targetWorld roomSize = fmap (moveTargets roomSize) [A .. D]
 
+manhattan (a, b) (c, d) = abs (a - c) + abs (b - d)
+
+{-
+  Measure the distance between current location
+  to the bottom of the correct room.
+ -}
+homingDist :: Int -> AmpType -> Coord -> Int
+homingDist roomSize ampType coord@(r, c) =
+  if r == 1 || c == rightCol
+    then manhattan coord home
+    else (r -1) + manhattan (1, c) home
+  where
+    home = (roomSize + 1, rightCol)
+    rightCol = case ampType of
+      A -> 3
+      B -> 5
+      C -> 7
+      D -> 9
+
+homingPriority' :: Int -> WorldState -> Int
+homingPriority' roomSize ws = sum $ zipWith go ws [A .. D]
+  where
+    go cs ampType = sum $ fmap (homingDist roomSize ampType) $ S.toList cs
+
 {-
   Measures how close we are relative to a solution,
   the actual value doesn't matter, but the closer we are to the solution,
@@ -221,6 +247,16 @@ type SearchPrio =
   , Int -- energy
   )
 
+{-
+  TODO: prune "deadlock" cases like this:
+
+ #############
+ #..!B!C!.!.A#
+ ###A#D#B#D###
+   #.#.#C#.#
+   #########
+
+ -}
 bfs :: MapInfo -> PQ.PSQ WorldState SearchPrio -> S.Set WorldState -> Int
 bfs mi@MapInfo {miRoomSize} q0 discovered = case PQ.minView q0 of
   Nothing -> error "queue exhausted"
