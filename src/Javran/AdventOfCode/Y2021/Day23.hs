@@ -168,6 +168,13 @@ targetWorld roomSize = fmap (moveTargets roomSize) [A .. D]
 
 manhattan (a, b) (c, d) = abs (a - c) + abs (b - d)
 
+homeColumn :: AmpType -> Int
+homeColumn = \case
+  A -> 3
+  B -> 5
+  C -> 7
+  D -> 9
+
 {-
   Measure the distance between current location
   to the bottom of the correct room.
@@ -179,11 +186,7 @@ homingDist roomSize ampType coord@(r, c) =
     else (r -1) + manhattan (1, c) home
   where
     home = (roomSize + 1, rightCol)
-    rightCol = case ampType of
-      A -> 3
-      B -> 5
-      C -> 7
-      D -> 9
+    rightCol = homeColumn ampType
 
 homingPriority' :: Int -> WorldState -> Int
 homingPriority' roomSize ws = sum $ zipWith go ws [A .. D]
@@ -213,21 +216,32 @@ findNextMoves MapInfo {miRoomSize, miGraph} ampType initCoord wsPre =
     blockings = S.unions ws
     findNextMovesAux q0 discovered = case PQ.minView q0 of
       Nothing -> []
-      Just (coord PQ.:-> energy, q1) ->
+      Just (coord@(r, c) PQ.:-> energy, q1) ->
         [ (coord, ws & ix (fromEnum ampType) %~ S.insert coord, energy)
         | S.notMember coord can'tStops
         ]
           <> let nexts = do
                    Just coords' <- [miGraph M.!? coord]
-                   coord'@(r', _) <- S.toList coords'
-                   when (isInHallway coord && 2 <= r' && r' <= 5) do
-                     let myMoveTargets = moveTargets miRoomSize ampType
-                     guard $ S.member coord' myMoveTargets
+                   coord'@(r', c') <- S.toList coords'
+                   let myMoveTargets = moveTargets miRoomSize ampType
+                       myHomeCol = homeColumn ampType
+                       targetRoomIsClear =
+                         {- a clear room is only occupied by the same ampType, open space allowed.
+                          -}
+                         all
+                           (\targetCoord -> case ampLocs M.!? targetCoord of
+                              Nothing -> True
+                              Just ampType' -> ampType' == ampType)
+                           myMoveTargets
+                   when (isInHallway coord && 2 <= r' && r' <= miRoomSize + 1) do
+                     -- when moving down from hallway.
+                     guard $ c' == myHomeCol
                      -- also room must be clear
-                     forM_ myMoveTargets \tgtCoord ->
-                       guard $ case ampLocs M.!? tgtCoord of
-                         Nothing -> True
-                         Just ampType' -> ampType' == ampType
+                     guard targetRoomIsClear
+                   when (r > 1 && c == myHomeCol && targetRoomIsClear) do
+                     -- if we are already in target room and that room is clear
+                     -- it won't do us much good moving up again
+                     guard (r' > r)
                    guard $ S.notMember coord' blockings
                    guard $ S.notMember coord' discovered
                    pure coord'
