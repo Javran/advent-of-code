@@ -18,6 +18,8 @@ where
   - pick up all items that we need
   - and finally head to Security Checkpoint
 
+  TODO: this module still need some cleanup.
+
  -}
 
 import Control.Applicative
