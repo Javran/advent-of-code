@@ -1,22 +1,6 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE BlockArguments #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE PatternGuards #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# OPTIONS_GHC -Wno-deprecations #-}
-{-# OPTIONS_GHC -Wno-typed-holes #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -fdefer-typed-holes #-}
 
 module Javran.AdventOfCode.Y2019.Day25.Cracker
   ( runCracker
@@ -27,34 +11,16 @@ where
   Cracker assumes that the droid is at Security Checkpoint and
   have all items necessary for cracking and attempts to crack the keypad code.
  -}
-{- HLINT ignore -}
 
-import Control.Applicative
 import Control.Monad
-import Control.Monad.Combinators
 import Control.Monad.State.Strict
 import Data.Char
-import Data.Function
-import Data.Function.Memoize (memoFix)
-import qualified Data.IntMap.Strict as IM
-import qualified Data.IntSet as IS
 import Data.List
-import Data.List.Split hiding (sepBy)
-import qualified Data.Map.Strict as M
-import Data.Monoid
-import Data.Semigroup
-import qualified Data.Sequence as Seq
 import qualified Data.Set as S
-import qualified Data.Text as T
-import qualified Data.Vector as V
-import Debug.Trace (traceShow)
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.Y2019.Day25.Common
 import Javran.AdventOfCode.Y2019.Day25.Explorer
 import Javran.AdventOfCode.Y2019.Day25.ResponseParser
-import Javran.AdventOfCode.Y2019.IntCode
-import Text.ParserCombinators.ReadP hiding (count, get, many, manyTill)
 
 type Cracker = StateT CrackerState IO
 
@@ -77,14 +43,32 @@ takeOrDropItem isTake item = do
 threeWays :: Ord a => S.Set a -> S.Set a -> (S.Set a, S.Set a, S.Set a)
 threeWays l r = (S.difference l r, S.intersection l r, S.difference r l)
 
+{-
+  Tries to optimize the set to test, this set should evenly spread
+  the search space so that we get some performance similar to that of binary search.
+  But since Set operations are expensive, we don't want to try all
+  possibilities, but just some in the middle.
+ -}
+optimizeAttempt :: S.Set (S.Set String) -> S.Set String
+optimizeAttempt ss = snd $ maximumBy (comparing fst) do
+  let sz = S.size ss
+      spread :: Double
+      spread = 0.4
+      inds :: [Int]
+      inds =
+        [ max 0 (floor $ fromIntegral @_ @Double sz * (0.5 - spread))
+        , min (sz -1) (ceiling $ fromIntegral @_ @Double sz * (0.5 + spread))
+        ]
+  s <- fmap (\i -> S.elemAt i ss) inds
+  let (ls, rs) = (S.filter (s `S.isSubsetOf`) ss, S.filter (`S.isSubsetOf` s) ss)
+  pure (S.size ls * S.size rs, s)
+
 crack :: Dir -> Cracker Int
 crack psfDir = do
   ss <- gets csSearchSpace
-  -- liftIO $ putStrLn $ "Search space size: " <> show (S.size ss)
   when (null ss) $
     error "search space exhausted"
-  let tryInv = S.elemAt (S.size ss `quot` 2) ss
-
+  let tryInv = optimizeAttempt ss
   curInv <- gets csInventory
   let (itemOldOnly, _, itemNewOnly) = threeWays curInv tryInv
   forM_ (S.toList itemOldOnly) \item ->
@@ -101,7 +85,7 @@ crack psfDir = do
       [ RespRoomInfo
           RoomInfo
             { riPressureSensitiveExtra =
-              Just (ParFailure {parFailureShouldBeLighter})
+              Just ParFailure {parFailureShouldBeLighter}
             }
         , _
         ] -> do
@@ -114,7 +98,11 @@ crack psfDir = do
               if parFailureShouldBeLighter
                 then (tryInv `S.isSubsetOf`)
                 else (`S.isSubsetOf` tryInv)
-        modify \cs -> cs {csSearchSpace = S.filter (not . shouldExclude) $ csSearchSpace cs}
+        modify \cs ->
+          cs
+            { csSearchSpace =
+                S.filter (not . shouldExclude) $ csSearchSpace cs
+            }
         crack psfDir
     Just
       [ RespRoomInfo
