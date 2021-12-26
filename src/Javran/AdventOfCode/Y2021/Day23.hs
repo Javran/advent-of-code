@@ -236,7 +236,7 @@ findNextMoves MapInfo {miRoomSize, miGraph} ampType initCoord wsPre =
                               Nothing -> True
                               Just ampType' -> ampType' == ampType)
                            myMoveTargets
-                   when (isInHallway coord && 2 <= r' && r' <= miRoomSize + 1) do
+                   when (isInHallway coord && not (isInHallway coord') ) do
                      -- when moving down from hallway.
                      guard $ c' == myHomeCol
                      -- also room must be clear
@@ -287,7 +287,7 @@ type SearchPrio =
 
  -}
 
-debugBfs = False
+debugBfs = True
 
 bfs :: MapInfo -> PQ.PSQ WorldState SearchPrio -> S.Set WorldState -> Int
 bfs mi@MapInfo {miRoomSize} q0 discovered = case PQ.minView q0 of
@@ -318,13 +318,12 @@ bfs mi@MapInfo {miRoomSize} q0 discovered = case PQ.minView q0 of
               pure (ws', incr)
             q2 = foldr upd q1 nexts
               where
-                upd (ws', incr) curQ =
+                upd (ws', incr) =
                   PQ.alter
                     (\case
                        Nothing -> Just (hp, energy')
                        Just (_, e) -> Just (hp, min e energy'))
                     ws'
-                    curQ
                   where
                     -- hp = ()
                     hp = homingPriority ws' wsTarget
