@@ -1,6 +1,7 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TupleSections #-}
@@ -140,8 +141,8 @@ moveTargets roomSize = \case
   where
     rs = take roomSize [2 ..]
 
-_pprWorldState :: WorldState -> IO ()
-_pprWorldState ws = do
+_pprWorldState :: Int -> WorldState -> IO ()
+_pprWorldState roomSize ws = do
   let ampLocs :: M.Map Coord AmpType
       ampLocs = M.fromList do
         (aTy, cs) <- zip [A .. D] ws
@@ -151,17 +152,18 @@ _pprWorldState ws = do
         [ "#############"
         , "#..!.!.!.!..#"
         , "###.#.#.#.###"
-        , "  #.#.#.#.#  "
-        , "  #.#.#.#.#  "
-        , "  #.#.#.#.#  "
-        , "  #########  "
         ]
+          <> replicate (roomSize - 1) "  #.#.#.#.#  "
+          <> [ "  #########  "
+             ]
   forM_ [0 .. length raw -1] $ \r -> do
     let render c
           | Just ampTy <- ampLocs M.!? (r, c) =
             show ampTy
           | otherwise = [raw !! r !! c]
     putStrLn $ concatMap render [0 .. length (head raw) -1]
+
+-- putStrLn $ "Homing: " <> show (homingPriority' roomSize ws)
 
 targetWorld :: Int -> WorldState
 targetWorld roomSize = fmap (moveTargets roomSize) [A .. D]
@@ -181,9 +183,10 @@ homeColumn = \case
  -}
 homingDist :: Int -> AmpType -> Coord -> Int
 homingDist roomSize ampType coord@(r, c) =
-  if r == 1 || c == rightCol
-    then manhattan coord home
-    else (r -1) + manhattan (1, c) home
+  if
+      | c == rightCol -> manhattan coord home
+      | r == 1 -> 10 * manhattan coord home
+      | otherwise -> 100 * ((r -1) + manhattan (1, c) home)
   where
     home = (roomSize + 1, rightCol)
     rightCol = homeColumn ampType
@@ -242,6 +245,9 @@ findNextMoves MapInfo {miRoomSize, miGraph} ampType initCoord wsPre =
                      -- if we are already in target room and that room is clear
                      -- it won't do us much good moving up again
                      guard (r' > r)
+                   when (not (isInHallway coord) && c /= myHomeCol) do
+                     -- must move up
+                     guard (r' < r)
                    guard $ S.notMember coord' blockings
                    guard $ S.notMember coord' discovered
                    pure coord'
@@ -254,7 +260,8 @@ findNextMoves MapInfo {miRoomSize, miGraph} ampType initCoord wsPre =
                                 Nothing -> Just energy'
                                 Just e -> Just (min e energy'))
                              coord'
-              in findNextMovesAux q2 (S.union discovered (S.fromList nexts))
+                 result = findNextMovesAux q2 (S.union discovered (S.fromList nexts))
+              in result
 
 type SearchPrio =
   ( Down Int
@@ -271,6 +278,9 @@ type SearchPrio =
    #########
 
  -}
+
+debugBfs = False
+
 bfs :: MapInfo -> PQ.PSQ WorldState SearchPrio -> S.Set WorldState -> Int
 bfs mi@MapInfo {miRoomSize} q0 discovered = case PQ.minView q0 of
   Nothing -> error "queue exhausted"
@@ -280,12 +290,17 @@ bfs mi@MapInfo {miRoomSize} q0 discovered = case PQ.minView q0 of
       else
         let nexts = do
               (ampType, coords) <- zip [A .. D] ws
-              coord <- S.toList coords
+              coord@(r, c) <- S.toList coords
               let curMoveTargets = moveTargets miRoomSize ampType
-              (coord', ws', incr) <- findNextMoves mi ampType coord ws
+                  myHomeCol = homeColumn ampType
+              (coord'@(r', c'), ws', incr) <- findNextMoves mi ampType coord ws
               -- if in hallway, must move to a room
               when (isInHallway coord) $
-                guard $ S.member coord' curMoveTargets
+                guard $ c' == myHomeCol
+              when (not (isInHallway coord) && c /= myHomeCol) do
+                -- if in the wrong room, we must move out.
+                -- (moving up one place may be possible, just not very productive)
+                guard $ r' == 1 || c' == myHomeCol
               guard $ S.notMember ws' discovered
               pure (ws', incr)
             q2 = foldr upd q1 nexts
@@ -298,9 +313,24 @@ bfs mi@MapInfo {miRoomSize} q0 discovered = case PQ.minView q0 of
                     ws'
                     curQ
                   where
+                    -- hp = ()
                     hp = homingPriority ws' wsTarget
+                    -- hp = homingPriority' miRoomSize ws'
                     energy' = energy + incr
-         in bfs mi q2 (S.union discovered (S.fromList $ fmap fst nexts))
+            result = bfs mi q2 (S.union discovered (S.fromList $ fmap fst nexts))
+         in if debugBfs
+              then unsafePerformIO do
+                putStrLn "Current"
+                _pprWorldState miRoomSize ws
+                putStrLn "++++ expands start"
+                forM_ nexts \(ws', _) -> do
+                  _pprWorldState miRoomSize ws'
+                putStrLn "---- expands end"
+                putStrLn ""
+
+                _pprWorldState miRoomSize ws
+                pure result
+              else result
   where
     wsTarget = targetWorld miRoomSize
 
@@ -309,7 +339,9 @@ instance Solution Day23 where
   solutionRun _ SolutionContext {getInputS, answerShow, terminal} = do
     xs <- lines <$> getInputS
     let (mi, startState) = parseRawMap xs
-        targetState = targetWorld (miRoomSize mi)
+        -- initHoming = ()
+        initHoming = homingPriority startState (targetWorld (miRoomSize mi))
+    -- initHoming = homingPriority' (miRoomSize mi) startState
     -- TODO: disable this when done.
     when (isJust terminal) do
       answerShow $
@@ -317,5 +349,5 @@ instance Solution Day23 where
           mi
           (PQ.singleton
              startState
-             (homingPriority startState targetState, 0))
+             (initHoming, 0))
           (S.singleton startState)
