@@ -74,18 +74,22 @@ takeOrDropItem isTake item = do
       modify \cs -> cs {csProg = k'}
     _ -> error "unexpected"
 
+threeWays :: Ord a => S.Set a -> S.Set a -> (S.Set a, S.Set a, S.Set a)
+threeWays l r = (S.difference l r, S.intersection l r, S.difference r l)
+
 crack :: Dir -> Cracker Int
 crack psfDir = do
   ss <- gets csSearchSpace
   -- liftIO $ putStrLn $ "Search space size: " <> show (S.size ss)
   when (null ss) $
     error "search space exhausted"
-  let tryInv = S.toList ss !! (S.size ss `quot` 2)
-  -- TODO: this can be smarter
+  let tryInv = S.elemAt (S.size ss `quot` 2) ss
+
   curInv <- gets csInventory
-  forM_ (S.toList curInv) \item ->
+  let (itemOldOnly, _, itemNewOnly) = threeWays curInv tryInv
+  forM_ (S.toList itemOldOnly) \item ->
     takeOrDropItem False item
-  forM_ (S.toList tryInv) \item ->
+  forM_ (S.toList itemNewOnly) \item ->
     takeOrDropItem True item
   modify \cs -> cs {csInventory = tryInv}
   p0 <- gets csProg
