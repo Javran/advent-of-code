@@ -263,6 +263,14 @@ findNextMoves MapInfo {miRoomSize, miGraph} ampType initCoord wsPre =
                  result = findNextMovesAux q2 (S.union discovered (S.fromList nexts))
               in result
 
+{-
+  TODO: Something isn't right:
+  the search doesn't find optimal solution with homing priority being just ().
+  but somehow we managed to do so in this variation that uses a very inaccurate
+  homing estimation .. why?
+
+ -}
+
 type SearchPrio =
   ( Down Int
   , Int -- energy
@@ -294,9 +302,14 @@ bfs mi@MapInfo {miRoomSize} q0 discovered = case PQ.minView q0 of
               let curMoveTargets = moveTargets miRoomSize ampType
                   myHomeCol = homeColumn ampType
               (coord'@(r', c'), ws', incr) <- findNextMoves mi ampType coord ws
+              guard $ coord /= coord'
               -- if in hallway, must move to a room
-              when (isInHallway coord) $
+              when (isInHallway coord) $ do
                 guard $ c' == myHomeCol
+                -- and squeeze it down all the way.
+                guard $
+                  r' == miRoomSize + 1
+                    || S.member (r' + 1, c') (ws' !! fromEnum ampType)
               when (not (isInHallway coord) && c /= myHomeCol) do
                 -- if in the wrong room, we must move out.
                 -- (moving up one place may be possible, just not very productive)
