@@ -146,8 +146,22 @@ runMainWith :: SubCmdContext -> Int -> Int -> [String] -> IO ()
 runMainWith SubCmdContext {cmdHelpPrefix, mTerm, manager} year day args = do
   cmd <- case parseArgs args of
     Left msg -> do
-      hPutStrLn stderr msg
-      die $ cmdHelpPrefix <> "[e|example|l|login|edit-example|write-expect|new]"
+      let p = hPutStrLn stderr
+          mkHelp shortHelp descs = do
+            p $ cmdHelpPrefix <> shortHelp
+            forM_ descs \d ->
+              p $ "  " <> d
+      p msg
+      mkHelp "[l | login]" ["Runs solution with login data."]
+      mkHelp "<e | example> [example name]" ["Runs solution with an example input."]
+      mkHelp "edit-example [example name]" ["Touches an example and opens EDITOR."]
+      mkHelp "write-expect" ["Writes *.expect by running all examples, also updates README.md."]
+      mkHelp
+        "new"
+        [ "Creates new solution file for a problem."
+        , "This command should be idempotent that it won't overwrite pre-existing files."
+        ]
+      exitFailure
     Right v -> pure v
   case cmd of
     CmdNewSolution ->

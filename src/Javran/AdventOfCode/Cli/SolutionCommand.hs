@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 
@@ -72,7 +73,7 @@ parse = \case
  -}
 subCommand :: SubCmdContext -> CommandMode -> IO ()
 subCommand ctxt mode = do
-  let SubCmdContext {cmdHelpPrefix = _unused} = ctxt
+  let SubCmdContext {cmdHelpPrefix} = ctxt
   case mode of
     ModeList _ ->
       {-
@@ -88,4 +89,15 @@ subCommand ctxt mode = do
         Just yearSols ->
           mapM_ (print . (\(_, SomeSolution s) -> solutionIndex s)) (IM.toAscList yearSols)
     ModeYearDay year day xs ->
-      runMainWith ctxt year day xs
+      runMainWith
+        ctxt
+          { cmdHelpPrefix =
+              cmdHelpPrefix
+                <> show year
+                <> " "
+                <> show day
+                <> " "
+          }
+        year
+        day
+        xs
