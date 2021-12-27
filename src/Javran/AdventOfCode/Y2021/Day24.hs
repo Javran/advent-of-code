@@ -159,8 +159,9 @@ matchChunk xs = case xs of
  -}
 mystery :: Int -> (Int, Int, Int) -> Int -> Int
 mystery z (a, b, c) w =
-  let x = bool 0 1 ((z `rem` 26) + b /= w)
-   in (z `quot` a) * (25 * x + 1) + (w + c) * x
+  if z `rem` 26 + b /= w
+    then z `quot` a * 26 + w + c
+    else z `quot` a
 
 genZ3Script :: [(Int, Int, Int)] -> [Int] -> [Int] -> Writer [String] ()
 genZ3Script zs lowDs highDs = do
