@@ -17,6 +17,8 @@ module Javran.AdventOfCode.Prelude
   , MinMax2D (..)
   , minMax2D
   , nextCharP
+  , consumeAllWithReadPDebug
+  , consumeAllWithReadPDebugShow
   , -- infrastructures
     module Javran.AdventOfCode.Infra
   , module Petbox
@@ -56,7 +58,7 @@ import Javran.AdventOfCode.Infra
   , todo
   )
 import Petbox
-import qualified Text.ParserCombinators.ReadP
+import qualified Text.ParserCombinators.ReadP as ReadP
 
 universe :: (Enum a, Bounded a) => [a]
 universe = [minBound .. maxBound]
@@ -100,5 +102,21 @@ newtype MinMax2D u v = MinMax2D {getMinMax2D :: ((u, u), (v, v))}
 minMax2D :: (u, v) -> MinMax2D u v
 minMax2D (u, v) = MinMax2D ((u, u), (v, v))
 
-nextCharP :: Text.ParserCombinators.ReadP.ReadP Char
-nextCharP = Text.ParserCombinators.ReadP.get
+nextCharP :: ReadP.ReadP Char
+nextCharP = ReadP.get
+
+consumeAllWithReadPDebug :: ReadP.ReadP a -> String -> Either String a
+consumeAllWithReadPDebug p xs = case ReadP.readP_to_S (p <* ReadP.eof) xs of
+  [] -> Left "No alternatives."
+  [(v, "")] -> pure v
+  ys@(_ : _) ->
+    Left $
+      "Parsing is ambiguious, " <> show (length ys) <> "alternatives found."
+
+consumeAllWithReadPDebugShow :: Show a => ReadP.ReadP a -> String -> Either String a
+consumeAllWithReadPDebugShow p xs = case ReadP.readP_to_S (p <* ReadP.eof) xs of
+  [] -> Left "No alternatives."
+  [(v, "")] -> pure v
+  ys@(_ : _) ->
+    Left $
+      "Parsing is ambiguious. Alternatives: " <> show ys

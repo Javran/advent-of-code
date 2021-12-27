@@ -3,7 +3,6 @@
 
 module Javran.AdventOfCode.Y2019.Day25.ResponseParser
   ( responsesP
-  , debugConsumeAllWithReadP
   )
 where
 
@@ -97,12 +96,3 @@ responsesP =
        <++ (do
               [] <- look
               pure []))
-
-{-
-  TODO: port to prelude.
- -}
-debugConsumeAllWithReadP :: ReadP a -> String -> Either String a
-debugConsumeAllWithReadP p xs = case readP_to_S (p <* eof) xs of
-  [] -> Left "No alternatives."
-  [(v, "")] -> pure v
-  (_ : _) -> Left "Parsing is ambiguious."
