@@ -287,7 +287,7 @@ type SearchPrio =
 
  -}
 
-debugBfs = True
+debugBfs = False
 
 bfs :: MapInfo -> PQ.PSQ WorldState SearchPrio -> S.Set WorldState -> Int
 bfs mi@MapInfo {miRoomSize} q0 discovered = case PQ.minView q0 of
@@ -332,12 +332,9 @@ bfs mi@MapInfo {miRoomSize} q0 discovered = case PQ.minView q0 of
             result = bfs mi q2 (S.union discovered (S.fromList $ fmap fst nexts))
          in if debugBfs
               then unsafePerformIO do
-                putStrLn "Current"
+                putStrLn "Current:"
                 _pprWorldState miRoomSize ws
-                putStrLn "++++ expands start"
-                forM_ nexts \(ws', _) -> do
-                  _pprWorldState miRoomSize ws'
-                putStrLn "---- expands end"
+                putStrLn $ "Energy: " <> show energy
                 putStrLn ""
 
                 _pprWorldState miRoomSize ws
