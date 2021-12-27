@@ -12,6 +12,8 @@ import Javran.AdventOfCode.Infra
 import Javran.AdventOfCode.TH
 
 {- ORMOLU_DISABLE -}
+import Javran.AdventOfCode.Y2018.Day1 ()
+import Javran.AdventOfCode.Y2018.Day2 ()
 import Javran.AdventOfCode.Y2019.Day1 ()
 import Javran.AdventOfCode.Y2019.Day2 ()
 import Javran.AdventOfCode.Y2019.Day3 ()
