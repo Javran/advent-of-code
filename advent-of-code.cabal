@@ -196,6 +196,7 @@ test-suite hspec
       Javran.AdventOfCode.TestdataSpec
       Javran.AdventOfCode.TestdataTh
       Javran.AdventOfCode.Y2019.Day17Spec
+      Javran.AdventOfCode.Y2021.Day24Spec
   hs-source-dirs:
       test
   ghc-options: -Wall -O2 -threaded -rtsopts -with-rtsopts=-N -main-is Spec

@@ -18,7 +18,8 @@
 {-# LANGUAGE NoMonomorphismRestriction #-}
 
 module Javran.AdventOfCode.Y2021.Day24
-  ( runMystery
+  ( Alu
+  , runMystery
   , mystery
   )
 where
@@ -83,9 +84,9 @@ instrP =
             , 'z' ~> RegZ
             ]
 
-type ALU = (Int, Int, Int, Int)
+type Alu = (Int, Int, Int, Int)
 
-runInstr :: Instr -> State (ALU, [Int]) ()
+runInstr :: Instr -> State (Alu, [Int]) ()
 runInstr = \case
   Inp reg -> do
     inp <- state (\(alu, x : xs) -> (x, (alu, xs)))
@@ -95,9 +96,9 @@ runInstr = \case
   Mul l r ->
     liftOp l r (*)
   Div l r ->
-    liftOp l r (\a b -> if b == 0 then error "crash" else quot a b)
+    liftOp l r (\a b -> if b == 0 then error "crash (div)" else quot a b)
   Mod l r ->
-    liftOp l r (\a b -> if a < 0 || b <= 0 then error "crash" else rem a b)
+    liftOp l r (\a b -> if a < 0 || b <= 0 then error "crash (mod)" else rem a b)
   Eql l r ->
     liftOp l r (\a b -> bool 0 1 (a == b))
   where
@@ -114,7 +115,7 @@ runInstr = \case
       RegY -> _3
       RegZ -> _4
 
-runMystery :: ALU -> (Int, Int, Int) -> Int -> ALU
+runMystery :: Alu -> (Int, Int, Int) -> Int -> Alu
 runMystery alu (a, b, c) inp = alu'
   where
     instrs = MysterySection a b c
