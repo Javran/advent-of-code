@@ -14,3 +14,8 @@ extra-deps:
 - impure-containers-0.5.1
 - git: https://github.com/IagoAbal/haskell-z3.git
   commit: ba5c2907c06a7844a78cf1fb87dae60f9b6ee6df
+- QuickCheck-2.14.2
+- random-1.2.1
+- splitmix-0.1.0.4
+- linear-1.21.8
+- indexed-traversable-0.1.2

@@ -5,7 +5,8 @@
 {-# LANGUAGE NamedFieldPuns #-}
 
 module Javran.AdventOfCode.Y2019.Day17
-  (
+  ( breakIntoRoutines
+  , Move (..)
   )
 where
 
@@ -149,10 +150,6 @@ type AllRoutines =
   , ProgList
   )
 
-{-
-  TODO: we could write a QuickCheck to verify that the rontines we got does exactly what
-  the original one does.
- -}
 breakIntoRoutines :: [] Char -> [Move] -> [] AllRoutines
 breakIntoRoutines progNames xs = breakIntoRoutinesAux progNames [] [Left xs]
 
