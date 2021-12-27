@@ -4,22 +4,15 @@
 {-# LANGUAGE TupleSections #-}
 
 module Javran.AdventOfCode.Y2020.Day13
-  ( chineseRemainder
+  (
   )
 where
 
-import Control.Monad
 import qualified Data.List.Ordered as LOrdered
 import Javran.AdventOfCode.Prelude
-import Math.NumberTheory.Moduli.Chinese
-import Math.NumberTheory.Moduli.Class
+import Javran.AdventOfCode.NumberTheory
 
 data Day13 deriving (Generic)
-
--- Ref: https://github.com/Bodigrim/arithmoi/issues/69
-chineseRemainder :: [SomeMod] -> Maybe SomeMod
-chineseRemainder (x : xs) = foldM chineseSomeMod x xs
-chineseRemainder _ = Just (0 `modulo` 1)
 
 mkMults :: Int -> Int -> [(Int, Int)]
 mkMults p v = fmap (p,) [z, z + p ..]

@@ -14,10 +14,9 @@ import Control.Lens
 import qualified Data.Map.Strict as M
 import Data.Monoid
 import Javran.AdventOfCode.Prelude
-import Javran.AdventOfCode.Y2020.Day13 (chineseRemainder)
+import Javran.AdventOfCode.NumberTheory
 import Linear.Affine
 import Linear.V3
-import Math.NumberTheory.Moduli.Class
 import Text.ParserCombinators.ReadP hiding (count, many)
 
 data Day12 deriving (Generic)

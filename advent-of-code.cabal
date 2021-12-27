@@ -31,6 +31,7 @@ library
       Javran.AdventOfCode.Infra
       Javran.AdventOfCode.Main
       Javran.AdventOfCode.Network
+      Javran.AdventOfCode.NumberTheory
       Javran.AdventOfCode.Prelude
       Javran.AdventOfCode.Solutions
       Javran.AdventOfCode.Testdata
