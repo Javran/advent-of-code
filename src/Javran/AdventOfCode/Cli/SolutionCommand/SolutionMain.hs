@@ -30,6 +30,16 @@ import System.Exit
 import System.FilePath.Posix
 import System.IO
 
+{-
+  TODO:
+
+  - a function to list all examples
+  - function to attach EXAMPLE_EXTRA_XXX section to an example
+  - getInputAndExtraS as part of a solution context,
+    that seperates extra stuff in one go.
+
+ -}
+
 data ExampleName
   = ExName String
   | -- | (only valid for edit) special name for adding examples, should resolve to an empty or non-existing example
