@@ -17,8 +17,6 @@ module Javran.AdventOfCode.Prelude
   , MinMax2D (..)
   , minMax2D
   , nextCharP
-  , consumeAllWithReadPDebug
-  , consumeAllWithReadPDebugShow
   , -- infrastructures
     module Javran.AdventOfCode.Infra
   , module Petbox
@@ -51,11 +49,13 @@ import Javran.AdventOfCode.Infra
   ( Solution (..)
   , SolutionContext (..)
   , consumeAllWithReadP
+  , consumeAllWithReadPDebug
+  , consumeAllWithReadPDebugShow
   , consumeExtraLeadingLines
   , consumeOrDie
   , decimal1P
-  , unreachable
   , todo
+  , unreachable
   )
 import Petbox
 import qualified Text.ParserCombinators.ReadP as ReadP
@@ -104,19 +104,3 @@ minMax2D (u, v) = MinMax2D ((u, u), (v, v))
 
 nextCharP :: ReadP.ReadP Char
 nextCharP = ReadP.get
-
-consumeAllWithReadPDebug :: ReadP.ReadP a -> String -> Either String a
-consumeAllWithReadPDebug p xs = case ReadP.readP_to_S (p <* ReadP.eof) xs of
-  [] -> Left "No alternatives."
-  [(v, "")] -> pure v
-  ys@(_ : _) ->
-    Left $
-      "Parsing is ambiguious, " <> show (length ys) <> "alternatives found."
-
-consumeAllWithReadPDebugShow :: Show a => ReadP.ReadP a -> String -> Either String a
-consumeAllWithReadPDebugShow p xs = case ReadP.readP_to_S (p <* ReadP.eof) xs of
-  [] -> Left "No alternatives."
-  [(v, "")] -> pure v
-  ys@(_ : _) ->
-    Left $
-      "Parsing is ambiguious. Alternatives: " <> show ys
