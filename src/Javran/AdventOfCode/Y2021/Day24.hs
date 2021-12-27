@@ -246,14 +246,12 @@ narrowNth zs findMax i = do
   modify ((if findMax then first else second) (& ix i .~ l'))
 
 instance Solution Day24 where
-  solutionSolved _ = False
-  solutionRun _ SolutionContext {getInputS, answerShow, terminal} = do
+  solutionRun _ SolutionContext {getInputS, answerShow} = do
     xs <- fmap (consumeOrDie instrP) . lines <$> getInputS
     let [] : ys = splitOn [Inp RegW] xs
         zs = fmap (matchChunk . (Inp RegW :)) ys
-        shouldRun =
-          -- TODO: for now too slow to run as tests.
-          isJust terminal
+        shouldRun = True
+    -- TODO: for now this is very slow comparing with other solutions.
     when shouldRun do
       (_, (lowDs, _)) <-
         runStateT
