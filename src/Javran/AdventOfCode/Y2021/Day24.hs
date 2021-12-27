@@ -150,18 +150,43 @@ pattern MysterySection a b c =
 
 matchChunk :: [Instr] -> (Int, Int, Int)
 matchChunk xs = case xs of
-  MysterySection a b c -> (a, b, c)
+  MysterySection a b c
+    | (a == 1 && b >= 10) || (a == 26 && b <= 0) -> (a, b, c)
   _ -> error $ "cannot recognize: " <> show xs
 
 {-
   Try to mimic what this mystery section does,
   QuickCheck to confirm that we have the correct impl.
+
+  There are some interesting patterns from the dataset I'm looking at:
+
+  - a can only be 1 or 26
+  - a == 1 ==> b >= 10
+  - a == 26 ==> b <= 0
+
  -}
 mystery :: Int -> (Int, Int, Int) -> Int -> Int
-mystery z (a, b, c) w =
-  if z `rem` 26 + b /= w
-    then z `quot` a * 26 + w + c
-    else z `quot` a
+mystery z (a, b, c) w = case a of
+  1 ->
+    {-
+      Note that for a == 1, if we want to get a w value
+      that we can go to the branch that doesn't cause z to increase:
+
+      1 <= w <= 9
+      => 1 <= z % 26 + b <= 9
+      => 1 - b <= z % 26 <= 9 - b
+
+      since b >= 10, 9 - b <= -1.
+      there's no way for z % 26 to match this range,
+      so for a == 1, we can cut it to just one branch.
+     -}
+    z * 26 + w + c
+  26 ->
+    let (q, r) = z `quotRem` 26
+     in if r + b == w
+          then q
+          else q * 26 + w + c
+  _ -> errInvalid
 
 genZ3Script :: [(Int, Int, Int)] -> [Int] -> [Int] -> Writer [String] ()
 genZ3Script zs lowDs highDs = do

@@ -6,6 +6,7 @@ module Javran.AdventOfCode.Y2021.Day24Spec
 where
 
 import Control.Monad
+import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.Y2021.Day24
 import Test.Hspec
 import Test.Hspec.QuickCheck
@@ -13,7 +14,7 @@ import Test.QuickCheck
 
 genAlu :: Gen Alu
 genAlu = do
-  w <- chooseInt (1,9)
+  w <- chooseInt (1, 9)
   xs <- replicateM 3 $ chooseInt (0, 9999)
   let [x, y, z] = xs
   pure (w, x, y, z)
@@ -21,7 +22,11 @@ genAlu = do
 genAbc :: Gen (Int, Int, Int)
 genAbc = do
   a <- oneof [pure 1, pure 26]
-  b <- chooseInt (-15, 15)
+  b <-
+    case a of
+      1 -> chooseInt (10, 15)
+      26 -> chooseInt (0, -15)
+      _ -> unreachable
   c <- chooseInt (1, 15)
   pure (a, b, c)
 
