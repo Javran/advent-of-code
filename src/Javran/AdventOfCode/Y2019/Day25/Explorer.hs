@@ -77,22 +77,16 @@ mayTakeItem :: String -> Explorer ()
 mayTakeItem item =
   if isSafeItem item
     then do
-      r0 <- liftIO =<< gets esProg
-      case r0 of
-        AsciiNeedCommand k0 -> do
-          r1 <- liftIO $ k0 $ "take " <> item
-          case r1 of
-            AsciiOutput out k1 -> do
-              modify (\es -> es {esProg = k1})
-              case consumeAllWithReadP responsesP out of
-                Just [RespSimple (SimpRespTakeOrDropItem taking item')]
-                  | taking
-                    , item == item' -> do
-                    modify (\es -> es {esInventory = item : esInventory es})
-                    pure ()
-                r -> error $ "unexpected: " <> show (r, out)
-            _ -> error "unexpected"
-        _ -> error "unexpected"
+      AsciiNeedCommand k0 <- liftIO =<< gets esProg
+      AsciiOutput out k1 <- liftIO $ k0 $ "take " <> item
+      modify (\es -> es {esProg = k1})
+      case consumeAllWithReadP responsesP out of
+        Just [RespSimple (SimpRespTakeOrDropItem taking item')]
+          | taking
+            , item == item' -> do
+            modify (\es -> es {esInventory = item : esInventory es})
+            pure ()
+        r -> error $ "unexpected: " <> show (r, out)
     else pure ()
 
 findPathRev
