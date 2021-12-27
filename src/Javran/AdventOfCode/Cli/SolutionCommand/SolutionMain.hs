@@ -67,7 +67,6 @@ getExampleInputPath year day = \case
   ExAll -> todo
   where
     subPath = "data" </> "testdata" </> show year </> "day" </> show day
-    todo = error "TODO"
 
 runSolutionWithExampleAndWriteExpect :: forall p sol. Solution sol => p sol -> IO ()
 runSolutionWithExampleAndWriteExpect p = do
@@ -158,7 +157,7 @@ runMainWith SubCmdContext {cmdHelpPrefix, mTerm, manager} year day args = do
       case getSolution year day of
         Just (SomeSolution s) ->
           case cmd of
-            CmdNewSolution -> error "unreachable"
+            CmdNewSolution -> unreachable
             CmdRunLogin -> void $ runSolutionWithLoginInput s manager True mTerm
             CmdRunExample e -> do
               projectHome <- getEnv "PROJECT_HOME"

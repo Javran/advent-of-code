@@ -31,6 +31,8 @@ module Javran.AdventOfCode.Infra
   , ExtractSectionCallback
   , mayEditFileWithSpecialSection
   , consumeExtraLeadingLines
+  , unreachable
+  , todo
   )
 where
 
@@ -58,6 +60,12 @@ import System.FilePath.Posix
 import System.IO
 import qualified System.IO.Strict
 import Text.ParserCombinators.ReadP
+
+unreachable :: a
+unreachable = error "unreachable"
+
+todo :: a
+todo = error "todo"
 
 consumeOrDie :: ReadP a -> String -> a
 consumeOrDie p = fromJust . consumeAllWithReadP p

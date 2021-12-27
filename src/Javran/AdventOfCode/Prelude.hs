@@ -10,8 +10,6 @@ module Javran.AdventOfCode.Prelude
   , chToInt
   , udlrOfCoord
   , errInvalid
-  , unreachable
-  , todo
   , universe
   , MinMax (..)
   , minMax
@@ -54,6 +52,8 @@ import Javran.AdventOfCode.Infra
   , consumeExtraLeadingLines
   , consumeOrDie
   , decimal1P
+  , unreachable
+  , todo
   )
 import Petbox
 import qualified Text.ParserCombinators.ReadP
@@ -82,12 +82,6 @@ udlrOfCoord c =
 
 errInvalid :: a
 errInvalid = error "invalid input"
-
-unreachable :: a
-unreachable = error "unreachable"
-
-todo :: a
-todo = error "todo"
 
 newtype MinMax a = MinMax {getMinMax :: (a, a)}
   deriving (Semigroup) via (Min a, Max a)
