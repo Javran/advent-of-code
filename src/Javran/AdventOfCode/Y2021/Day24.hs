@@ -7,6 +7,7 @@
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -14,9 +15,11 @@
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
 
 module Javran.AdventOfCode.Y2021.Day24
-  (
+  ( runMystery
+  , mystery
   )
 where
 
@@ -80,8 +83,50 @@ instrP =
             , 'z' ~> RegZ
             ]
 
-matchChunk :: [Instr] -> (Int, Int, Int)
-matchChunk xs = case xs of
+type ALU = (Int, Int, Int, Int)
+
+runInstr :: Instr -> State (ALU, [Int]) ()
+runInstr = \case
+  Inp reg -> do
+    inp <- state (\(alu, x : xs) -> (x, (alu, xs)))
+    modify (first (_reg reg .~ inp))
+  Add l r ->
+    liftOp l r (+)
+  Mul l r ->
+    liftOp l r (*)
+  Div l r ->
+    liftOp l r (\a b -> if b == 0 then error "crash" else quot a b)
+  Mod l r ->
+    liftOp l r (\a b -> if a < 0 || b <= 0 then error "crash" else rem a b)
+  Eql l r ->
+    liftOp l r (\a b -> bool 0 1 (a == b))
+  where
+    liftOp regL roR op = do
+      valL <- gets ((^. _reg regL) . fst)
+      valR <- case roR of
+        RoLit v -> pure v
+        RoReg regR -> gets ((^. _reg regR) . fst)
+      modify (first (_reg regL .~ op valL valR))
+
+    _reg = \case
+      RegW -> _1
+      RegX -> _2
+      RegY -> _3
+      RegZ -> _4
+
+runMystery :: ALU -> (Int, Int, Int) -> Int -> ALU
+runMystery alu (a, b, c) inp = alu'
+  where
+    instrs = MysterySection a b c
+    (alu', _) = execState (mapM runInstr instrs) (alu, [inp])
+
+{-
+  The pattern is easy to spot that we eventually ended up with
+  this pattern matching to confirm that we only have 3 parameters to
+  worry about.
+ -}
+pattern MysterySection :: Int -> Int -> Int -> [Instr]
+pattern MysterySection a b c =
   [ Inp RegW
     , Mul RegX (RoLit 0)
     , Add RegX (RoReg RegZ)
@@ -100,7 +145,11 @@ matchChunk xs = case xs of
     , Add RegY (RoLit c)
     , Mul RegY (RoReg RegX)
     , Add RegZ (RoReg RegY)
-    ] -> (a, b, c)
+    ]
+
+matchChunk :: [Instr] -> (Int, Int, Int)
+matchChunk xs = case xs of
+  MysterySection a b c -> (a, b, c)
   _ -> error $ "cannot recognize: " <> show xs
 
 {-
@@ -112,13 +161,12 @@ matchChunk xs = case xs of
   Z += (W + c) * X
  -}
 
-_mystery :: Int -> (Int, Int, Int) -> [(Int, Int)]
-_mystery z0 (a, b, c) = do
-  w <- [9, 8 .. 1]
+mystery :: Int -> (Int, Int, Int) -> Int -> Int
+mystery z0 (a, b, c) w = do
   let x0 = (z0 `mod` 26) + b
       x1 = bool 0 1 (x0 /= w)
       z1 = (z0 `div` a) * (25 * x1 + 1) + (w + c) * x1
-  pure (w, z1)
+  z1
 
 genZ3Script :: [(Int, Int, Int)] -> [Int] -> [Int] -> Writer [String] ()
 genZ3Script zs lowDs highDs = do
