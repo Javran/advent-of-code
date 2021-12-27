@@ -5,7 +5,6 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE TypeApplications #-}
 
 module Javran.AdventOfCode.Cli.SolutionCommand.SolutionMain
   ( runMainWith
@@ -31,27 +30,8 @@ import System.Exit
 import System.FilePath.Posix
 import System.IO
 
-{-
-  TODO: better example naming spec:
-
-  - "all": reserved name meant for running all examples, not allowed as name of a specific example.
-
-  - ExNum: if the file name can be parsed as a non-negative number without padding in front,
-    it should.
-
-  - ExString: other things. including numbers that has zeros in front.
-
-  The purpose of separating ExNum from ExString is that that auto-increment can work.
-  (e.g. `edit-example +` scans examples concerning only ExNum alternative and find the first empty
-  or non-existing one to edit).
-
- -}
-
 data ExampleName
-  = -- | if an example name can be parsed as an unsigned int, it must.
-    ExNum Word
-  | -- | otherwise we need a name (must be non-empty)
-    ExName String
+  = ExName String
   | -- | (only valid for edit) special name for adding examples, should resolve to an empty or non-existing example
     ExAdd
   | -- | (only valid for running) special name for running all examples
@@ -67,13 +47,11 @@ data Command
 
 exampleNameToName :: ExampleName -> FilePath
 exampleNameToName = \case
-  ExNum i -> show i
   ExName n -> n
   _ -> error "unsupported"
 
 getExampleInputPath :: Int -> Int -> ExampleName -> FilePath
 getExampleInputPath year day = \case
-  e@ExNum {} -> subPath </> (exampleNameToName e <> ".input.txt")
   e@ExName {} -> subPath </> (exampleNameToName e <> ".input.txt")
   ExAdd -> todo
   ExAll -> todo
@@ -114,9 +92,6 @@ parseExampleName xs
         , ("all", ExAll)
         ] =
     pure v
-  | Just v <-
-      consumeAllWithReadP @Word decimal1P xs =
-    pure $ ExNum v
   | _ : _ <- xs = pure $ ExName xs
   | otherwise = Left $ "Unrecognized: " <> xs
 
