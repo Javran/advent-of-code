@@ -224,8 +224,7 @@ solve params ws =
   evalStateT
     (do
        mapM_ (consider ws) params
-       z <- gets fst
-       guard $ z == 0
+       0 <- gets fst
        gets snd)
     (0, 0)
 
