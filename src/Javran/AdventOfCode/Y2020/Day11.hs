@@ -18,15 +18,6 @@ import qualified Data.Vector as V
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (many)
 
-{-
-
-  TODO: a potentially interesting idea: https://chrispenner.ca/posts/conways-game-of-life
-
-  but the problem here is that we don't know sizes statically
-  (unless we can figure out how to turn Int to type level Nat)
-
- -}
-
 data Day11 deriving (Generic)
 
 type Cell = Maybe Bool
