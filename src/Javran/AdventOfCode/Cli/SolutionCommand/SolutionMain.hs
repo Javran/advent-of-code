@@ -42,8 +42,6 @@ import System.IO
 
 data ExampleName
   = ExName String
-  | -- | (only valid for edit) special name for adding examples, should resolve to an empty or non-existing example
-    ExAdd
   | -- | (only valid for running) special name for running all examples
     ExAll
 
@@ -63,7 +61,6 @@ exampleNameToName = \case
 getExampleInputPath :: Int -> Int -> ExampleName -> FilePath
 getExampleInputPath year day = \case
   e@ExName {} -> subPath </> (exampleNameToName e <> ".input.txt")
-  ExAdd -> todo
   ExAll -> todo
   where
     subPath = "data" </> "testdata" </> show year </> "day" </> show day
@@ -94,13 +91,7 @@ runSolutionWithExampleAndWriteExpect p = do
 parseExampleName :: String -> Either String ExampleName
 parseExampleName xs
   | null xs = Left "empty name"
-  | Just v <-
-      lookup
-        xs
-        [ ("+", ExAdd)
-        , ("all", ExAll)
-        ] =
-    pure v
+  | xs == "all" = Right ExAll
   | _ : _ <- xs = pure $ ExName xs
   | otherwise = Left $ "Unrecognized: " <> xs
 
