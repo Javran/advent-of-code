@@ -77,18 +77,21 @@ type Alu = (Int, Int, Int, Int)
 runInstr :: Instr -> State (Alu, [Int]) ()
 runInstr = \case
   Inp reg -> do
-    inp <- state (\(alu, x : xs) -> (x, (alu, xs)))
+    inp <- state \(alu, x : xs) -> (x, (alu, xs))
     modify (first (_reg reg .~ inp))
   Add l r ->
     liftOp l r (+)
   Mul l r ->
     liftOp l r (*)
   Div l r ->
-    liftOp l r (\a b -> if b == 0 then error "crash (div)" else quot a b)
+    liftOp l r \a b ->
+      if b == 0 then error "crash (div)" else quot a b
   Mod l r ->
-    liftOp l r (\a b -> if a < 0 || b <= 0 then error "crash (mod)" else rem a b)
+    liftOp l r \a b ->
+      if a < 0 || b <= 0 then error "crash (mod)" else rem a b
   Eql l r ->
-    liftOp l r (\a b -> bool 0 1 (a == b))
+    liftOp l r \a b ->
+      bool 0 1 (a == b)
   where
     liftOp regL roR op = do
       valL <- gets ((^. _reg regL) . fst)
@@ -155,16 +158,6 @@ matchChunk xs = case xs of
   - a == 26 ==> b <= 0
   - 1 < c < 15
 
-  So, probably this is what we can do:
-  - if a == 1, there's no way that we can get z-value down,
-    probably just exhaust the search space.
-  - if a == 26, we *must* get some very specific w-value
-    so that `z % 26 + b == w`
-
-  Since there are 7 `a == 1` and 7 `a = 26` cases, we
-  can hopefully get have 9 ^ 7 == 4782969 cases to test,
-  which is probably not much for the computer.
-
  -}
 mystery :: Int -> (Int, Int, Int) -> Int -> Int
 mystery z (a, b, c) w = case a of
@@ -195,44 +188,58 @@ mystery z (a, b, c) w = case a of
           else q * 26 + w + c
   _ -> errInvalid
 
-consider :: (Int, Int, Int) -> StateT (Int, [Int]) [] ()
-consider p@(a, b, _c) = case a of
-  1 -> do
-    z <- gets fst
-    w <- lift [1 .. 9]
-    let z' = mystery z p w
-    modify (bimap (const z') (w :))
-  26 -> do
-    z <- gets fst
-    let w = z `rem` 26 + b
-    guard $ w >= 1 && w <= 9
-    let z' = mystery z p w
-    modify (bimap (const z') (w :))
-  _ -> errInvalid
+{-
+  So, probably this is what we can do:
+  - if a == 1, there's no way that we can get z-value down, so just try it all.
+  - if a == 26, we *must* get some very specific w-value
+    so that `z % 26 + b == w`
 
-solve :: [(Int, Int, Int)] -> [Int]
-solve zs =
+  Since there are 7 `a == 1` and 7 `a = 26` cases, we
+  can hopefully have just 9 ^ 7 == 4782969 cases to test,
+  which is not much for the computer.
+ -}
+consider
+  :: [Int]
+  -> (Int, Int, Int)
+  -> StateT
+       ( Int -- z value
+       , Int -- w
+       )
+       []
+       ()
+consider ws p@(a, b, _c) = do
+  z <- gets fst
+  w <- case a of
+    1 -> lift ws
+    26 -> do
+      let w = z `rem` 26 + b
+      guard $ w >= 1 && w <= 9
+      pure w
+    _ -> errInvalid
+  let z' = mystery z p w
+  modify (bimap (const z') (\acc -> acc * 10 + w))
+
+solve :: [(Int, Int, Int)] -> [Int] -> [Int]
+solve params ws =
   evalStateT
     (do
-       mapM_ consider zs
+       mapM_ (consider ws) params
        z <- gets fst
        guard $ z == 0
-       digitsToInt @Int . reverse <$> gets snd)
-    (0, [])
+       gets snd)
+    (0, 0)
 
 instance Solution Day24 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     xs <- fmap (consumeOrDie instrP) . lines <$> getInputS
     let [] : ys = splitOn [Inp RegW] xs
-        zs = fmap (matchChunk . (Inp RegW :)) ys
-        ans = solve zs
+        params = fmap (matchChunk . (Inp RegW :)) ys
         useZ3 = False
     if useZ3
       then do
-        (part1, part2) <- Z3.solve zs
+        (part1, part2) <- Z3.solve params
         answerShow part1
         answerShow part2
       else do
-        answerShow (last ans)
-        answerShow (head ans)
-
+        answerShow (head $ solve params [9, 8 .. 1])
+        answerShow (head $ solve params [1 .. 9])
