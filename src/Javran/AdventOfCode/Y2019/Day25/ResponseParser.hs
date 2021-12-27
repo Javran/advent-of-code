@@ -105,5 +105,4 @@ debugConsumeAllWithReadP :: ReadP a -> String -> Either String a
 debugConsumeAllWithReadP p xs = case readP_to_S (p <* eof) xs of
   [] -> Left "No alternatives."
   [(v, "")] -> pure v
-  [(_, unconsumed@(_ : _))] -> Left $ "Consumed successfully but with leftover: " <> unconsumed
   (_ : _) -> Left "Parsing is ambiguious."
