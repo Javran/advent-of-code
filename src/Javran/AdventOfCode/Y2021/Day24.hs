@@ -143,7 +143,7 @@ genZ3Script zs lowDs highDs = do
   p "(assert (= z_14 0))"
 
   forM_ (zip [0 :: Int ..] (zip lowDs highDs)) \(i, (dLo, dHi)) -> do
-    p $ printf "(assert (and (<= %d w_%d %d)))" dLo i dHi
+    p $ printf "(assert (<= %d w_%d %d))" dLo i dHi
 
   forM_ (zip [0 :: Int ..] zs) $ \(i, (c, d, j)) -> do
     p $ printf "(assert (= (f z_%d w_%d %d %d %d) z_%d))" i i c d j (i + 1)
