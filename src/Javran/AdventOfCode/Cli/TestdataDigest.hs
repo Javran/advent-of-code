@@ -17,7 +17,6 @@ import Data.Text.Encoding
 import Data.Word
 import qualified Filesystem.Path.CurrentOS as FP
 import Javran.AdventOfCode.Infra
-import Javran.AdventOfCode.Prelude
 import Numeric
 import System.Environment
 import System.FilePath.Posix

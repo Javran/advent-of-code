@@ -50,6 +50,7 @@ import qualified Data.Text.IO as T
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.Builder as TLB
 import GHC.Generics
+import GHC.Stack.Types (HasCallStack)
 import Javran.AdventOfCode.Network
 import Network.HTTP.Client (Manager)
 import System.Console.Terminfo
@@ -61,10 +62,10 @@ import System.IO
 import qualified System.IO.Strict
 import Text.ParserCombinators.ReadP
 
-unreachable :: a
+unreachable :: HasCallStack => a
 unreachable = error "unreachable"
 
-todo :: a
+todo :: HasCallStack => a
 todo = error "todo"
 
 consumeOrDie :: ReadP a -> String -> a
