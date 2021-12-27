@@ -1,7 +1,6 @@
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
@@ -17,7 +16,6 @@
 
 module Javran.AdventOfCode.Infra
   ( SubCmdHandlers
-  , dispatchToSubCmds
   , SubCmdContext (..)
   , Solution (..)
   , SolutionContext (..)
@@ -80,18 +78,6 @@ data SubCmdContext = SubCmdContext
   }
 
 type SubCmdHandlers = [(String, SubCmdContext -> IO ())]
-
-dispatchToSubCmds :: SubCmdContext -> SubCmdHandlers -> IO ()
-dispatchToSubCmds ctxt subCmdHandlers = do
-  let SubCmdContext {cmdHelpPrefix} = ctxt
-  getArgs >>= \case
-    subCmd : args
-      | Just handler <- lookup subCmd subCmdHandlers ->
-        withArgs args (handler ctxt {cmdHelpPrefix = cmdHelpPrefix <> subCmd <> " "})
-    _ -> do
-      forM_ subCmdHandlers $ \(sub, _) ->
-        putStrLn $ cmdHelpPrefix <> sub <> " ..."
-      exitFailure
 
 getRawLoginInput :: Manager -> Int -> Int -> IO BSL.ByteString
 getRawLoginInput mgr yyyy dd = do
