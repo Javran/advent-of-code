@@ -14,6 +14,7 @@ where
 import Control.Monad
 import qualified Data.ByteString.Char8 as BSC
 import qualified Data.ByteString.Lazy as BSL
+import Data.String
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import Javran.AdventOfCode.Cli.EditExample
@@ -29,6 +30,8 @@ import System.Environment
 import System.Exit
 import System.FilePath.Posix
 import System.IO
+import Text.Printf
+import qualified Turtle
 
 {-
   TODO:
@@ -52,6 +55,7 @@ data Command
   | CmdWriteExampleExpect
   | CmdNewSolution
   | CmdSubmit Int String
+  | CmdTest
 
 exampleNameToName :: ExampleName -> FilePath
 exampleNameToName = \case
@@ -115,6 +119,8 @@ parseArgs = \case
           -- TODO: be more rigid on this.
           let [whichRaw, answer] = args
           pure $ CmdSubmit (read whichRaw) answer
+        | cmd == "test" ->
+          CmdTest <$ expectNoExtra args
         | otherwise -> Left $ "Unrecognized: " <> unwords (cmd : args)
   where
     defExample = ExName "example"
@@ -131,7 +137,7 @@ parseArgs = \case
 
   e.g. commands like `<prog> <year> <day> <action> <args>...` are eventually dispatched
 
-  to here with `<action> <args>...` passed as function parameter to here.
+  to here with `<action> <args>...` passed as function parameters.
  -}
 runMainWith :: SubCmdContext -> Int -> Int -> [String] -> IO ()
 runMainWith SubCmdContext {cmdHelpPrefix, mTerm, manager} year day args = do
@@ -147,6 +153,7 @@ runMainWith SubCmdContext {cmdHelpPrefix, mTerm, manager} year day args = do
       mkHelp "<e | example> [example name]" ["Runs solution with an example input."]
       mkHelp "edit-example [example name]" ["Touches an example and opens EDITOR."]
       mkHelp "write-expect" ["Writes *.expect by running all examples, also updates README.md."]
+      mkHelp "test" ["Run `stack test` filtered to this specific solution."]
       mkHelp
         "new"
         [ "Creates new solution file for a problem."
@@ -176,5 +183,11 @@ runMainWith SubCmdContext {cmdHelpPrefix, mTerm, manager} year day args = do
               mySession <- getEnv "ADVENT_OF_CODE_SESSION"
               results <- submitAnswer manager (BSC.pack mySession) year day part (BSC.pack answer)
               T.putStrLn . T.unwords . T.words $ mconcat results
+            CmdTest -> do
+              projectHome <- getEnv "PROJECT_HOME"
+              let filterArg :: String
+                  filterArg = printf "--match=/Y%d/Day%d/" year day
+              Turtle.cd (fromString projectHome)
+              exitWith =<< Turtle.proc "stack" ["test", "--ta=" <> T.pack filterArg] ""
         Nothing ->
           die "No solution available, only `new` command is accepted."
