@@ -92,7 +92,4 @@ responsesP =
   manyTill
     ((string "\n\n\n" *> (RespRoomInfo <$> roomInfoP))
        <|> (RespSimple <$> simpleResponseP))
-    (string "Command?\n"
-       <++ (do
-              [] <- look
-              pure []))
+    (void (string "Command?\n") <++ eof)
