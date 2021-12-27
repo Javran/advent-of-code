@@ -154,20 +154,13 @@ matchChunk xs = case xs of
   _ -> error $ "cannot recognize: " <> show xs
 
 {-
-  W = input
-  X = Z % 26 + b
-  Z /= a
-  X = !(X == W)
-  Z *= 25 * X + 1
-  Z += (W + c) * X
+  Try to mimic what this mystery section does,
+  QuickCheck to confirm that we have the correct impl.
  -}
-
 mystery :: Int -> (Int, Int, Int) -> Int -> Int
-mystery z0 (a, b, c) w = do
-  let x0 = (z0 `mod` 26) + b
-      x1 = bool 0 1 (x0 /= w)
-      z1 = (z0 `div` a) * (25 * x1 + 1) + (w + c) * x1
-  z1
+mystery z (a, b, c) w =
+  let x = bool 0 1 ((z `rem` 26) + b /= w)
+   in (z `quot` a) * (25 * x + 1) + (w + c) * x
 
 genZ3Script :: [(Int, Int, Int)] -> [Int] -> [Int] -> Writer [String] ()
 genZ3Script zs lowDs highDs = do
