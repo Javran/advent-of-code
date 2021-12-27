@@ -20,6 +20,18 @@ module Javran.AdventOfCode.Y2019.IntCode
   )
 where
 
+{-
+  Feature-complete IntCode interpreter.
+
+  Test coverage for all opcodes:
+
+  - Y2019 Day2
+  - Y2019 Day5
+  - Y2019 Day7
+  - Y2019 Day9
+
+ -}
+
 import Control.Monad.RWS.Strict
 import Control.Monad.State.Strict
 import qualified Data.DList as DL
