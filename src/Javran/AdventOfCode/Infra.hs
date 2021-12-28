@@ -70,7 +70,7 @@ unreachable = error "unreachable"
 todo :: HasCallStack => a
 todo = error "todo"
 
-consumeOrDie :: ReadP a -> String -> a
+consumeOrDie :: HasCallStack => ReadP a -> String -> a
 consumeOrDie p = fromJust . consumeAllWithReadP p
 
 consumeAllWithReadP :: ReadP a -> String -> Maybe a

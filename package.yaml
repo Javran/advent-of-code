@@ -59,6 +59,8 @@ library:
     - z3
     - raw-strings-qq
     - monad-loops
+    - monoidal-containers
+    - newtype
   ghc-options:
     - -Wall
     - -O2

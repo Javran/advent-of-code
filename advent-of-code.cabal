@@ -38,6 +38,8 @@ library
       Javran.AdventOfCode.TH
       Javran.AdventOfCode.Y2018.Day1
       Javran.AdventOfCode.Y2018.Day2
+      Javran.AdventOfCode.Y2018.Day3
+      Javran.AdventOfCode.Y2018.Day4
       Javran.AdventOfCode.Y2019.Day1
       Javran.AdventOfCode.Y2019.Day10
       Javran.AdventOfCode.Y2019.Day11
@@ -149,7 +151,9 @@ library
     , microstache
     , mod
     , monad-loops
+    , monoidal-containers
     , mtl
+    , newtype
     , once
     , parser-combinators
     , petbox
