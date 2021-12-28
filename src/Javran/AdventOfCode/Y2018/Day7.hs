@@ -14,7 +14,6 @@ module Javran.AdventOfCode.Y2018.Day7
   )
 where
 
-
 import Control.Monad
 import Control.Monad.State.Strict
 import Control.Monad.Writer.CPS
@@ -48,21 +47,24 @@ topologicalSort graph inDegs q0 = case PQ.minView q0 of
         (inDegs', enqueues) = runWriter (foldM upd inDegs nextNodes)
           where
             upd m node' =
-              M.alterF
-                (\case
-                   Nothing -> pure Nothing
-                   Just v ->
-                     if v == 1
-                       then Nothing <$ tell (Endo $ PQ.insert node' node')
-                       else pure $ Just (v -1))
-                node'
-                m
+              decrInDegs (\_ -> tell (Endo $ PQ.insert node' node')) node' m
         q2 = appEndo enqueues q1
      in node : topologicalSort graph inDegs' q2
 
 type Graph = M.Map Char ([] Char)
 
 type InDegs = M.Map Char Int -- invariant: value always > 0.
+
+decrInDegs :: Applicative f => (Char -> f ()) -> Char -> InDegs -> f InDegs
+decrInDegs onDel w =
+  M.alterF
+    (\case
+       Nothing -> pure Nothing
+       Just v ->
+         if v == 1
+           then Nothing <$ onDel w
+           else pure $ Just (v -1))
+    w
 
 data WorkState = WorkState
   { wsTime :: Int
