@@ -1,4 +1,3 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -6,43 +5,25 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE PatternGuards #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# OPTIONS_GHC -Wno-deprecations #-}
-{-# OPTIONS_GHC -Wno-typed-holes #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -fdefer-typed-holes #-}
 
 module Javran.AdventOfCode.Y2018.Day7
   (
   )
 where
 
-{- HLINT ignore -}
 
-import Control.Applicative
 import Control.Monad
+import Control.Monad.State.Strict
 import Control.Monad.Writer.CPS
 import Data.Char
-import Data.Function
-import Data.Function.Memoize (memoFix)
-import qualified Data.IntMap.Strict as IM
-import qualified Data.IntSet as IS
 import Data.List
-import Data.List.Split hiding (sepBy)
+import qualified Data.List.Ordered as LOrd
 import qualified Data.Map.Strict as M
-import Data.Monoid
 import qualified Data.PSQueue as PQ
-import Data.Semigroup
 import qualified Data.Set as S
-import qualified Data.Text as T
-import qualified Data.Vector as V
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (count, get, many)
 
@@ -83,13 +64,69 @@ type Graph = M.Map Char ([] Char)
 
 type InDegs = M.Map Char Int -- invariant: value always > 0.
 
+data WorkState = WorkState
+  { wsTime :: Int
+  , wsProcessing :: [(Int, Char)]
+  , wsInDegs :: InDegs
+  , wsTodos :: S.Set Char
+  }
+  deriving (Show)
+
+tick :: Graph -> Int -> (Char -> Int) -> State WorkState Int
+tick g capacity requiredTime = do
+  curTime <- gets wsTime
+  do
+    ps <- gets wsProcessing
+    let (done, ps') = span ((<= curTime) . fst) ps
+    modify \ws -> ws {wsProcessing = ps'}
+    modify \ws@WorkState {wsTodos, wsInDegs} ->
+      ws
+        { wsTodos =
+            S.difference wsTodos (S.fromList (fmap snd done))
+        , wsInDegs =
+            let upd work curInDegs =
+                  foldr
+                    (M.alter
+                       (\case
+                          Nothing -> Nothing
+                          Just v -> if v == 1 then Nothing else Just (v -1)))
+                    curInDegs
+                    nexts
+                  where
+                    nexts = fromMaybe [] (g M.!? work)
+             in foldr upd wsInDegs (fmap snd done)
+        }
+  allDone <- gets \WorkState {wsProcessing, wsTodos} -> null wsProcessing && null wsTodos
+  if allDone
+    then pure curTime
+    else do
+      -- see if we can schedule new work.
+      fullness <- gets (length . wsProcessing)
+      curWork <- gets (fmap snd . wsProcessing)
+      let extraAtMost = capacity - fullness
+      availableWorks <- gets \WorkState {wsTodos, wsInDegs} ->
+        S.toAscList $ S.filter (\w -> (w `M.notMember` wsInDegs) && w `notElem` curWork) wsTodos
+      let willSchedule =
+            sortBy (comparing fst) $
+              fmap (\ch -> (curTime + requiredTime ch, ch)) $ take extraAtMost availableWorks
+      modify \ws ->
+        ws
+          { wsProcessing = LOrd.unionBy (comparing fst) (wsProcessing ws) willSchedule
+          }
+      newTime <- gets (fst . head . wsProcessing)
+      modify \ws -> ws {wsTime = newTime}
+      tick g capacity requiredTime
+
 instance Solution Day7 where
-  solutionSolved _ = False
-  solutionRun _ SolutionContext {getInputS, answerS} = do
-    xs <- fmap (consumeOrDie stepDepP) . lines <$> getInputS
+  solutionRun _ SolutionContext {getInputS, answerS, answerShow} = do
+    (extraOps, rawInput) <- consumeExtraLeadingLines <$> getInputS
+    let xs = fmap (consumeOrDie stepDepP) . lines $ rawInput
     let graph = M.fromListWith (<>) do
           (sFrom, sTo) <- xs
           pure (sFrom, [sTo])
+        allWorks = S.fromList do
+          (sFrom, sTo) <- xs
+          [sFrom, sTo]
         inDegs = M.fromListWith (+) do
           (_sFrom, sTo) <- xs
           pure (sTo, 1 :: Int)
@@ -101,3 +138,18 @@ instance Solution Day7 where
                  Just _ -> [])
               $ M.keys graph
     answerS (topologicalSort graph inDegs initQ)
+    let (workers, requiredTimeIncr) = case extraOps of
+          Nothing -> (5, 60)
+          Just ys ->
+            let [w, r] = fmap (read @Int) ys
+             in (w, r)
+        requiredTime ch = ord ch - ord 'A' + 1 + requiredTimeIncr
+    answerShow $
+      evalState
+        (tick graph workers requiredTime)
+        WorkState
+          { wsTime = 0
+          , wsProcessing = []
+          , wsInDegs = inDegs
+          , wsTodos = allWorks
+          }
