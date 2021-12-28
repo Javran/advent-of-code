@@ -27,6 +27,7 @@ where
 
 import Control.Applicative
 import Control.Monad
+import Control.Monad.Writer.CPS
 import Data.Char
 import Data.Function
 import Data.Function.Memoize (memoFix)
@@ -56,29 +57,31 @@ stepDepP =
       <*> (string " must be finished before step "
              *> nextCharP <* string " can begin.")
 
-topologicalSort graph inDegrees q0 = case PQ.minView q0 of
+topologicalSort :: Graph -> InDegs -> PQ.PSQ Char Char -> [Char]
+topologicalSort graph inDegs q0 = case PQ.minView q0 of
   Nothing -> []
-  Just (_ PQ.:-> (inDeg, node), q1) ->
-    if inDeg > 0
-      then []
-      else
-        let nextNodes = do
-              Just ns <- pure (graph M.!? node)
-              S.toList ns
-            inDegrees' = foldr upd inDegrees nextNodes
-              where
-                upd node' =
-                  M.alter
-                    (\case
-                       Nothing -> Nothing
-                       Just v -> if v == 1 then Nothing else Just (v -1))
-                    node'
-            q2 = foldr upd q1 nextNodes
-              where
-                upd node' = case inDegrees' M.!? node' of
-                  Nothing -> PQ.insert node' (0, node')
-                  Just _ -> id
-         in node : topologicalSort graph inDegrees' q2
+  Just (_ PQ.:-> node, q1) ->
+    let nextNodes = do
+          Just ns <- pure (graph M.!? node)
+          ns
+        (inDegs', enqueues) = runWriter (foldM upd inDegs nextNodes)
+          where
+            upd m node' =
+              M.alterF
+                (\case
+                   Nothing -> pure Nothing
+                   Just v ->
+                     if v == 1
+                       then Nothing <$ tell (Endo $ PQ.insert node' node')
+                       else pure $ Just (v -1))
+                node'
+                m
+        q2 = appEndo enqueues q1
+     in node : topologicalSort graph inDegs' q2
+
+type Graph = M.Map Char ([] Char)
+
+type InDegs = M.Map Char Int -- invariant: value always > 0.
 
 instance Solution Day7 where
   solutionSolved _ = False
@@ -86,15 +89,15 @@ instance Solution Day7 where
     xs <- fmap (consumeOrDie stepDepP) . lines <$> getInputS
     let graph = M.fromListWith (<>) do
           (sFrom, sTo) <- xs
-          pure (sFrom, S.singleton sTo)
-        inDegrees = M.fromListWith (+) do
-          (sFrom, sTo) <- xs
+          pure (sFrom, [sTo])
+        inDegs = M.fromListWith (+) do
+          (_sFrom, sTo) <- xs
           pure (sTo, 1 :: Int)
-        initNodes =
-          filter
-            (\n -> case inDegrees M.!? n of
-               Nothing -> True
-               Just _ -> False)
-            $ M.keys graph
-    mapM_ print (M.toList graph)
-    answerS (topologicalSort graph inDegrees $ PQ.fromList $ fmap (\n -> n PQ.:-> (0, n)) initNodes)
+        initQ =
+          PQ.fromList $
+            concatMap
+              (\n -> case inDegs M.!? n of
+                 Nothing -> [n PQ.:-> n]
+                 Just _ -> [])
+              $ M.keys graph
+    answerS (topologicalSort graph inDegs initQ)
