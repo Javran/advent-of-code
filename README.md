@@ -108,5 +108,8 @@ some of them are originated from problem descriptions from [Advent of Code](http
   + [X] [Day 2](src/Javran/AdventOfCode/Y2018/Day2.hs)
   + [X] [Day 3](src/Javran/AdventOfCode/Y2018/Day3.hs)
   + [X] [Day 4](src/Javran/AdventOfCode/Y2018/Day4.hs)
+  + [X] [Day 5](src/Javran/AdventOfCode/Y2018/Day5.hs)
+  + [X] [Day 6](src/Javran/AdventOfCode/Y2018/Day6.hs)
+  + [ ] [Day 7](src/Javran/AdventOfCode/Y2018/Day7.hs)
 
 [//]: # (PROGRESS_AUTOGEN_END)
