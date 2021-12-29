@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE TypeApplications #-}
 
@@ -12,34 +13,41 @@ where
 
 import Control.Monad
 import Control.Monad.State.Strict
+import Data.Functor.Base (TreeF (NodeF))
+import Data.Functor.Foldable
+import Data.Monoid
+import Data.Tree
 import Javran.AdventOfCode.Prelude
 
 data Day8 deriving (Generic)
 
-data Node = Node
-  { nChildren :: [Node]
-  , nMeta :: [Int]
-  }
-  deriving (Show)
+type N = Tree [Int]
 
-parseNode :: State [Int] Node
+parseNode :: State [Int] N
 parseNode = do
   xs <- state (splitAt 2)
   let [n, m] = xs
-  nChildren <- replicateM n parseNode
-  nMeta <- state (splitAt m)
-  pure Node {nChildren, nMeta}
+  subForest <- replicateM n parseNode
+  rootLabel <- state (splitAt m)
+  pure Node {rootLabel, subForest}
 
-metaSum :: Node -> Int
-metaSum Node {nChildren, nMeta} = sum (fmap metaSum nChildren) + sum nMeta
+metaSum :: N -> Int
+metaSum = cata \case
+  NodeF meta rs -> sum meta + sum rs
 
-nodeValue :: Node -> Int
-nodeValue Node {nChildren, nMeta} = case nChildren of
-  [] -> sum nMeta
-  _ : _ ->
-    let sz = length nChildren
-        inds = concatMap (\i -> [i-1 | i > 0 && i <= sz]) nMeta
-    in sum $ fmap (nodeValue . (nChildren !!)) inds
+nodeValue :: N -> Int
+nodeValue = cata \case
+  NodeF meta rs -> case rs of
+    [] -> sum meta
+    _ : _ ->
+      let sz = length rs
+       in getSum $
+            foldMap
+              (\i ->
+                 if i > 0 && i <= sz
+                   then Sum $ rs !! (i -1)
+                   else 0)
+              meta
 
 instance Solution Day8 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
