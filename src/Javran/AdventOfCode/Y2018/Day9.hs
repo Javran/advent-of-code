@@ -43,15 +43,15 @@ playGame playerCount lastMarble =
           next1 <- getNext next0
           lift do
             new <- newSTRef Node {nLabel = marble, nPrev = next0, nNext = next1}
-            modifySTRef next0 (\n -> n {nNext = new})
-            modifySTRef next1 (\n -> n {nPrev = new})
+            modifySTRef' next0 (\n -> n {nNext = new})
+            modifySTRef' next1 (\n -> n {nPrev = new})
             pure new
         scoreMarble marble who cur = do
           p7 <- getPrev7 cur
           (v, newCur) <- lift do
             Node {nPrev = p7Prev, nNext = p7Next, nLabel = v} <- readSTRef p7
-            modifySTRef p7Prev (\n -> n {nNext = p7Next})
-            modifySTRef p7Next (\n -> n {nPrev = p7Prev})
+            modifySTRef' p7Prev (\n -> n {nNext = p7Next})
+            modifySTRef' p7Next (\n -> n {nPrev = p7Prev})
             pure (v, p7Next)
           modify (IM.adjust (+ (marble + v)) who)
           pure newCur
