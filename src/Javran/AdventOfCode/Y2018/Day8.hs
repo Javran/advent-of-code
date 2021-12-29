@@ -1,7 +1,5 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE TypeApplications #-}
@@ -25,8 +23,7 @@ type N = Tree [Int]
 
 parseNode :: State [Int] N
 parseNode = do
-  xs <- state (splitAt 2)
-  let [n, m] = xs
+  ~[n, m] <- state (splitAt 2)
   subForest <- replicateM n parseNode
   rootLabel <- state (splitAt m)
   pure Node {rootLabel, subForest}
