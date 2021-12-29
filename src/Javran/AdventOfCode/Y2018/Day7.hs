@@ -1,12 +1,7 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
 
 module Javran.AdventOfCode.Y2018.Day7
@@ -42,31 +37,29 @@ topologicalSort :: Graph -> InDegs -> PQ.PSQ Char Char -> [Char]
 topologicalSort graph inDegs q0 = case PQ.minView q0 of
   Nothing -> []
   Just (_ PQ.:-> node, q1) ->
-    let (inDegs', enqueues) = decreaseInDegsNextOf graph node inDegs
-        q2 = foldr (\n' -> PQ.insert n' n') q1 enqueues
+    let (inDegs', enqueues) = runWriter $ decreaseInDegsNextOf graph node inDegs
+        q2 = foldr (\n' -> PQ.insert n' n') q1 (DL.toList enqueues)
      in node : topologicalSort graph inDegs' q2
 
 type Graph = M.Map Char ([] Char)
 
 type InDegs = M.Map Char Int -- invariant: value always > 0.
 
-decreaseInDegsNextOf :: Graph -> Char -> InDegs -> (InDegs, [] Char)
+decreaseInDegsNextOf :: Graph -> Char -> InDegs -> Writer (DL.DList Char) InDegs
 decreaseInDegsNextOf g n inDegs =
-  second DL.toList $
-    runWriter
-      (foldM
-         (\m n' ->
-            M.alterF
-              (\case
-                 Nothing -> pure Nothing
-                 Just v ->
-                   if v == 1
-                     then Nothing <$ tell (DL.singleton n')
-                     else pure $ Just (v -1))
-              n'
-              m)
-         inDegs
-         nexts)
+  foldM
+    (\m n' ->
+       M.alterF
+         (\case
+            Nothing -> pure Nothing
+            Just v ->
+              if v == 1
+                then Nothing <$ tell (DL.singleton n')
+                else pure $ Just (v -1))
+         n'
+         m)
+    inDegs
+    nexts
   where
     nexts = fromMaybe [] (g M.!? n)
 
@@ -91,17 +84,23 @@ tick g capacity requiredTime = do
     ps <- gets wsProcessing
     let (done, ps') = span ((<= curTime) . fst) ps
     modify \ws@WorkState {wsInDegs, wsTodos} ->
-      -- completed work are discharged from InDegs, which in turns discovers new work to do.
+      -- completed work are discharged from InDegs,
+      -- which in turn discovers new work to do.
       let inDegs' :: InDegs
-          newWorks :: [] Char
-          (inDegs', newWorks) =
-            runWriter (foldM (\curInDegs w -> writer (decreaseInDegsNextOf g w curInDegs)) wsInDegs (fmap snd done))
+          doneWorks = fmap snd done
+          newWorks :: DL.DList Char
+          (inDegs', newWorks) = runWriter do
+            foldM (flip $ decreaseInDegsNextOf g) wsInDegs doneWorks
        in ws
             { wsProcessing = ps'
             , wsInDegs = inDegs'
-            , wsTodos = S.union (S.difference wsTodos (S.fromList (fmap snd done))) (S.fromList newWorks)
+            , wsTodos =
+                S.union
+                  (wsTodos S.\\ S.fromList doneWorks)
+                  (S.fromList $ DL.toList newWorks)
             }
-  allDone <- gets \WorkState {wsProcessing, wsTodos} -> null wsProcessing && null wsTodos
+  allDone <- gets \WorkState {wsProcessing, wsTodos} ->
+    null wsProcessing && null wsTodos
   if allDone
     then pure curTime
     else do
@@ -113,7 +112,8 @@ tick g capacity requiredTime = do
         S.toAscList (wsTodos S.\\ S.fromList curWork)
       let willSchedule =
             sortBy (comparing fst) $
-              fmap (\ch -> (curTime + requiredTime ch, ch)) $ take extraAtMost availableWorks
+              fmap (\ch -> (curTime + requiredTime ch, ch)) $
+                take extraAtMost availableWorks
       modify \ws@WorkState {wsProcessing} ->
         ws
           { wsProcessing =
@@ -159,7 +159,8 @@ instance Solution Day7 where
           , wsTodos =
               {-
                 Since there's no edge from last work to anywhere,
-                we'll have to add the last work into this if we decide to add all works
+                the last work won't show up as a key of the graph.
+                We'll have to add the last work into this if we decide to add all works
                 in one go.
                 However, if we just keep those immediate available and
                 add more works as their in-degrees go to zero, we won't have this issue.
