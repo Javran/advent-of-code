@@ -18,6 +18,7 @@ import Control.Monad
 import Control.Monad.State.Strict
 import Control.Monad.Writer.CPS
 import Data.Char
+import qualified Data.DList as DL
 import Data.List
 import qualified Data.List.Ordered as LOrd
 import qualified Data.Map.Strict as M
@@ -41,19 +42,33 @@ topologicalSort :: Graph -> InDegs -> PQ.PSQ Char Char -> [Char]
 topologicalSort graph inDegs q0 = case PQ.minView q0 of
   Nothing -> []
   Just (_ PQ.:-> node, q1) ->
-    let nextNodes = do
-          Just ns <- pure (graph M.!? node)
-          ns
-        (inDegs', enqueues) = runWriter (foldM upd inDegs nextNodes)
-          where
-            upd m node' =
-              decrInDegs (\_ -> tell (Endo $ PQ.insert node' node')) node' m
-        q2 = appEndo enqueues q1
+    let (inDegs', enqueues) = decreaseInDegsNextOf graph node inDegs
+        q2 = foldr (\n' -> PQ.insert n' n') q1 enqueues
      in node : topologicalSort graph inDegs' q2
 
 type Graph = M.Map Char ([] Char)
 
 type InDegs = M.Map Char Int -- invariant: value always > 0.
+
+decreaseInDegsNextOf :: Graph -> Char -> InDegs -> (InDegs, [] Char)
+decreaseInDegsNextOf g n inDegs =
+  second DL.toList $
+    runWriter
+      (foldM
+         (\m n' ->
+            M.alterF
+              (\case
+                 Nothing -> pure Nothing
+                 Just v ->
+                   if v == 1
+                     then Nothing <$ tell (DL.singleton n')
+                     else pure $ Just (v -1))
+              n'
+              m)
+         inDegs
+         nexts)
+  where
+    nexts = fromMaybe [] (g M.!? n)
 
 decrInDegs :: Applicative f => (Char -> f ()) -> Char -> InDegs -> f InDegs
 decrInDegs onDel w =
