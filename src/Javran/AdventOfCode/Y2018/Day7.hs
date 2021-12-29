@@ -70,22 +70,17 @@ decreaseInDegsNextOf g n inDegs =
   where
     nexts = fromMaybe [] (g M.!? n)
 
-decrInDegs :: Applicative f => (Char -> f ()) -> Char -> InDegs -> f InDegs
-decrInDegs onDel w =
-  M.alterF
-    (\case
-       Nothing -> pure Nothing
-       Just v ->
-         if v == 1
-           then Nothing <$ onDel w
-           else pure $ Just (v -1))
-    w
-
 data WorkState = WorkState
-  { wsTime :: Int
-  , wsProcessing :: [(Int, Char)]
-  , wsInDegs :: InDegs
-  , wsTodos :: S.Set Char
+  { -- | current time
+    wsTime :: Int
+  , -- | expected finish time and work, sorted by fst.
+    wsProcessing :: [(Int, Char)]
+  , -- | current in-degrees
+    wsInDegs :: InDegs
+  , -- | pending works.
+    -- only those immediately available are in here.
+    -- (including those in processing)
+    wsTodos :: S.Set Char
   }
   deriving (Show)
 
@@ -95,42 +90,37 @@ tick g capacity requiredTime = do
   do
     ps <- gets wsProcessing
     let (done, ps') = span ((<= curTime) . fst) ps
-    modify \ws -> ws {wsProcessing = ps'}
-    modify \ws@WorkState {wsTodos, wsInDegs} ->
-      ws
-        { wsTodos =
-            S.difference wsTodos (S.fromList (fmap snd done))
-        , wsInDegs =
-            let upd work curInDegs =
-                  foldr
-                    (M.alter
-                       (\case
-                          Nothing -> Nothing
-                          Just v -> if v == 1 then Nothing else Just (v -1)))
-                    curInDegs
-                    nexts
-                  where
-                    nexts = fromMaybe [] (g M.!? work)
-             in foldr upd wsInDegs (fmap snd done)
-        }
+    modify \ws@WorkState {wsInDegs, wsTodos} ->
+      -- completed work are discharged from InDegs, which in turns discovers new work to do.
+      let inDegs' :: InDegs
+          newWorks :: [] Char
+          (inDegs', newWorks) =
+            runWriter (foldM (\curInDegs w -> writer (decreaseInDegsNextOf g w curInDegs)) wsInDegs (fmap snd done))
+       in ws
+            { wsProcessing = ps'
+            , wsInDegs = inDegs'
+            , wsTodos = S.union (S.difference wsTodos (S.fromList (fmap snd done))) (S.fromList newWorks)
+            }
   allDone <- gets \WorkState {wsProcessing, wsTodos} -> null wsProcessing && null wsTodos
   if allDone
     then pure curTime
     else do
       -- see if we can schedule new work.
       fullness <- gets (length . wsProcessing)
-      curWork <- gets (fmap snd . wsProcessing)
       let extraAtMost = capacity - fullness
-      availableWorks <- gets \WorkState {wsTodos, wsInDegs} ->
-        S.toAscList $ S.filter (\w -> (w `M.notMember` wsInDegs) && w `notElem` curWork) wsTodos
+      curWork <- gets (fmap snd . wsProcessing)
+      availableWorks <- gets \WorkState {wsTodos} ->
+        S.toAscList (wsTodos S.\\ S.fromList curWork)
       let willSchedule =
             sortBy (comparing fst) $
               fmap (\ch -> (curTime + requiredTime ch, ch)) $ take extraAtMost availableWorks
-      modify \ws ->
+      modify \ws@WorkState {wsProcessing} ->
         ws
-          { wsProcessing = LOrd.unionBy (comparing fst) (wsProcessing ws) willSchedule
+          { wsProcessing =
+              LOrd.unionBy (comparing fst) wsProcessing willSchedule
           }
       newTime <- gets (fst . head . wsProcessing)
+      -- skip to next moment that we can clear some processing.
       modify \ws -> ws {wsTime = newTime}
       tick g capacity requiredTime
 
@@ -141,19 +131,17 @@ instance Solution Day7 where
     let graph = M.fromListWith (<>) do
           (sFrom, sTo) <- xs
           pure (sFrom, [sTo])
-        allWorks = S.fromList do
-          (sFrom, sTo) <- xs
-          [sFrom, sTo]
         inDegs = M.fromListWith (+) do
           (_sFrom, sTo) <- xs
           pure (sTo, 1 :: Int)
+        initZeroDegNodes =
+          mapMaybe
+            (\n -> case inDegs M.!? n of
+               Nothing -> Just n
+               Just _ -> Nothing)
+            $ M.keys graph
         initQ =
-          PQ.fromList $
-            concatMap
-              (\n -> case inDegs M.!? n of
-                 Nothing -> [n PQ.:-> n]
-                 Just _ -> [])
-              $ M.keys graph
+          PQ.fromList $ fmap (\n -> n PQ.:-> n) initZeroDegNodes
     answerS (topologicalSort graph inDegs initQ)
     let (workers, requiredTimeIncr) = case extraOps of
           Nothing -> (5, 60)
@@ -168,5 +156,13 @@ instance Solution Day7 where
           { wsTime = 0
           , wsProcessing = []
           , wsInDegs = inDegs
-          , wsTodos = allWorks
+          , wsTodos =
+              {-
+                Since there's no edge from last work to anywhere,
+                we'll have to add the last work into this if we decide to add all works
+                in one go.
+                However, if we just keep those immediate available and
+                add more works as their in-degrees go to zero, we won't have this issue.
+               -}
+              S.fromList initZeroDegNodes
           }
