@@ -68,20 +68,50 @@ stepPt n (pos, vel) = (pos .+^ (vel ^* n), vel)
 getRange :: [Pt] -> MinMax2D Int Int
 getRange = fromJust . foldMap (\(P (V2 x y), _vel) -> Just $ minMax2D (x, y))
 
+getArea :: [Pt] -> Int
+getArea pts = (maxX - minX + 1) * (maxY - minY + 1)
+  where
+    MinMax2D ((minX, maxX), (minY, maxY)) = getRange pts
+
+{-
+  This one is solved in some manual manner: it makes sense that
+  we just need to find some time around a specific time t when
+  the bounding rectangle of all points is the smallest.
+
+  TODO:
+  for actually solving this by algorithm, I plan to
+  do an initial estimate of t, then
+  we can probably utilize https://en.wikipedia.org/wiki/Ternary_search
+  to find the peak.
+
+ -}
+
 instance Solution Day10 where
   solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     xs <- fmap (consumeOrDie ptP) . lines <$> getInputS
-    {-
-      This is solved by manually tuning the value range below,
-      to get this to solve by algorithm, I'd imagine you need
-      one that finds a peak, probably https://en.wikipedia.org/wiki/Ternary_search
-     -}
+    let giantSteps =
+          {-
+            Take some giant steps (in this case, 1000 at a time) to find a
+            potential range, we expect this area to go all the way down
+            then up again, so we are looking for a window [a,b,c], where
+            a >= b but b <= c, and we can use (a,c) as our initial range.
+
+            This also implies that one has to be careful when picking the
+            step length to not overshot.
+           -}
+          fmap (\n -> (n, getArea $ fmap (stepPt n) xs)) [0, 1000 ..]
+        [(lowN, _), _, (highN, _)] : _ =
+          dropWhile (\[_, (_, u), (_, v)] -> u > v) $ divvy 3 1 giantSteps
+
+    print (lowN, highN)
     forM_ [10345] $ \n -> do
       print n
       let pts = fmap (stepPt n) xs
           ptsSet = S.fromList (fmap fst pts)
           MinMax2D rng@((minX, maxX), (minY, maxY)) = getRange pts
-      forM_ [minY .. maxY] \y -> do
-        let render x = if S.member (P (V2 x y)) ptsSet then "██" else "  "
-        putStrLn $ concatMap render [minX .. maxX] <> "|"
+          display = False
+      when display do
+        forM_ [minY .. maxY] \y -> do
+          let render x = if S.member (P (V2 x y)) ptsSet then "█" else " "
+          putStrLn $ concatMap render [minX .. maxX] <> "|"
