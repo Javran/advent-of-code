@@ -228,8 +228,8 @@ findNextMoves :: MapInfo -> AmpType -> Coord -> WorldState -> [(Coord, WorldStat
 findNextMoves MapInfo {miRoomSize, miGraph} ampType initCoord wsPre =
   findNextMovesAux (PQ.singleton initCoord 0) (S.singleton initCoord)
   where
-    ampLocs :: M.Map Coord AmpType
-    ampLocs = M.fromList do
+    ampLocs :: [(Coord, AmpType)]
+    ampLocs = do
       (aTy, cs) <- zip [A .. D] ws
       coord <- cs
       pure (coord, aTy)
@@ -254,7 +254,7 @@ findNextMoves MapInfo {miRoomSize, miGraph} ampType initCoord wsPre =
                            open space allowed.
                           -}
                          all
-                           (\targetCoord -> case ampLocs M.!? targetCoord of
+                           (\targetCoord -> case lookup targetCoord ampLocs of
                               Nothing -> True
                               Just ampType' -> ampType' == ampType)
                            myMoveTargets
@@ -280,14 +280,17 @@ findNextMoves MapInfo {miRoomSize, miGraph} ampType initCoord wsPre =
                          energy' = energy + moveCost ampType
               in findNextMovesAux q2 (foldr S.insert discovered nexts)
 
+{-
+  https://en.wikipedia.org/wiki/A*_search_algorithm
+ -}
 aStar :: MapInfo -> PQ.PSQ WorldState (Arg Int Int) -> M.Map WorldState Int -> Int
-aStar mi@MapInfo {miRoomSize} q0 gScore = case PQ.minView q0 of
+aStar mi@MapInfo {miRoomSize} q0 gScores = case PQ.minView q0 of
   Nothing -> error "queue exhausted"
   Just (ws PQ.:-> (Arg fScore energy), q1) ->
     if fScore == energy
       then energy
       else
-        let gScoreCur = gScore M.! ws
+        let gScore = gScores M.! ws
             nexts = do
               (ampType, coords) <- zip [A .. D] ws
               coord@(_r, c) <- coords
@@ -305,24 +308,24 @@ aStar mi@MapInfo {miRoomSize} q0 gScore = case PQ.minView q0 of
                 -- if in the wrong room, we must move out.
                 -- (moving up one place may be possible, just not very productive)
                 guard $ r' == 1 || c' == myHomeCol
-              let tentativeGScore = gScoreCur + incr
-              guard $ case gScore M.!? ws' of
+              let gScore' = gScore + incr
+                  fScore' = gScore' + homingEnergy miRoomSize ws'
+                  energy' = energy + incr
+              guard $ case gScores M.!? ws' of
                 Nothing -> True
-                Just v -> tentativeGScore < v -- TODO: write this to gScore
-              let fScoreNext = tentativeGScore + homingEnergy miRoomSize ws'
-              let energy' = energy + incr
-              pure (ws', tentativeGScore, fScoreNext, energy')
+                Just v -> gScore' < v
+              pure (ws', gScore', Arg fScore' energy')
             q2 = foldr upd q1 nexts
               where
-                upd (ws', _tentativeGScore, fScoreNext, energy') =
-                  PQ.insert ws' (Arg fScoreNext energy')
-            gScore' =
+                upd (ws', _tentativeGScore, prio') =
+                  PQ.insert ws' prio'
+            gScores' =
               foldr
-                (\(ws', tentativeGScore, _fScoreNext, _energy') ->
+                (\(ws', tentativeGScore, _prio') ->
                    M.insert ws' tentativeGScore)
-                gScore
+                gScores
                 nexts
-         in aStar mi q2 gScore'
+         in aStar mi q2 gScores'
 
 solveFromRawMap :: [String] -> Int
 solveFromRawMap rawMap =
