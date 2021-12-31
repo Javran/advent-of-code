@@ -1,24 +1,14 @@
-resolver: lts-16.31
+resolver: lts-18.20
 packages:
 - .
 
-allow-newer: true
-
 extra-deps:
-- memoize-0.8.1
-- arithmoi-0.12.0.1
-- recursion-schemes-5.2
 - git: https://github.com/Javran/petbox.git
   commit: 8e921c41862dbe37ae8d957e88cea7961362e303
-- data-fix-0.3.2
-- PSQueue-1.1.0.1
 - git: https://github.com/IagoAbal/haskell-z3.git
   commit: ba5c2907c06a7844a78cf1fb87dae60f9b6ee6df
-- QuickCheck-2.14.2
-- random-1.2.1
-- splitmix-0.1.0.4
-- linear-1.21.8
-- indexed-traversable-0.1.2
+- PSQueue-1.1.0.1
+- memoize-1.1.1
 - monoidal-containers-0.6.2.0
-- witherable-0.4
-- indexed-traversable-instances-0.1
+- arithmoi-0.12.0.1
+- QuickCheck-2.14.2
