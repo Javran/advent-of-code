@@ -43,16 +43,15 @@ type Rules = M.Map [Bool] Bool
 
 verifyRules :: Rules -> Either String Rules
 verifyRules rules = do
-  let lhsStr ~~> rhsStr = do
-        let lhs = consumeOrDie (many1 boolP) lhsStr
-            rhs = consumeOrDie boolP rhsStr
-            expectedRhs = Just True == rules M.!? lhs
-        when (expectedRhs /= rhs) do
-          Left $ "Unexpected rule: " <> show lhs <> " => " <> show rhs
-  "....." ~~> "."
-  "#####" ~~> "."
-  "....#" ~~> "."
-  "#...." ~~> "."
+  let enforce rawRule = do
+        let (lhs, expectedRhs) = consumeOrDie ruleP rawRule
+            actualRhs = Just True == rules M.!? lhs
+        when (expectedRhs /= actualRhs) do
+          Left $ "Unexpected rule for " <> show lhs
+  enforce "..... => ."
+  enforce "##### => ."
+  enforce "....# => ."
+  enforce "#.... => ."
   pure rules
 
 {-
@@ -101,9 +100,7 @@ step rules w = case IS.minView w of
           -}
 
           let locView = fmap (`IS.member` w) [loc -2 .. loc + 2]
-              after = Just True == (rules M.!? locView)
-          guard after
-          pure loc
+          loc <$ guard (Just True == (rules M.!? locView))
 
 {-
   A rebased world always have the minimal location being 0,
