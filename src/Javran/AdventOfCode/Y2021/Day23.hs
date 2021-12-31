@@ -149,8 +149,8 @@ moveTargets roomSize = \case
   where
     rs = take roomSize [2 ..]
 
-_pprWorldState :: Int -> WorldState -> IO ()
-_pprWorldState roomSize ws = do
+_pprWorldState :: Int -> WorldState -> String -> IO ()
+_pprWorldState roomSize ws pad = do
   let ampLocs :: M.Map Coord AmpType
       ampLocs = M.fromList do
         (aTy, cs) <- zip [A .. D] ws
@@ -169,7 +169,7 @@ _pprWorldState roomSize ws = do
           | Just ampTy <- ampLocs M.!? (r, c) =
             show ampTy
           | otherwise = [raw !! r !! c]
-    putStrLn $ concatMap render [0 .. length (head raw) -1]
+    putStrLn $ pad <> concatMap render [0 .. length (head raw) -1]
 
 manhattan :: Coord -> Coord -> Int
 manhattan (a, b) (c, d) = abs (a - c) + abs (b - d)
@@ -256,7 +256,9 @@ findNextMoves MapInfo {miRoomSize, miGraph} ampType initCoord wsPre =
                    let myMoveTargets = moveTargets miRoomSize ampType
                        myHomeCol = homeColumn ampType
                        targetRoomIsClear =
-                         {- a clear room is only occupied by the same ampType, open space allowed.
+                         {-
+                           a clear room is only occupied by the same ampType,
+                           open space allowed.
                           -}
                          all
                            (\targetCoord -> case ampLocs M.!? targetCoord of
@@ -290,20 +292,21 @@ findNextMoves MapInfo {miRoomSize, miGraph} ampType initCoord wsPre =
                  result = findNextMovesAux q2 (S.union discovered (S.fromList nexts))
               in result
 
-debugBfs = False
+debug :: Bool
+debug = False
 
+-- aStar :: MapInfo -> PQ.PSQ WorldState (Arg Int Int) -> M.Map WorldState Int -> Int
 aStar mi@MapInfo {miRoomSize} q0 gScore = case PQ.minView q0 of
   Nothing -> error "queue exhausted"
-  Just (ws PQ.:-> (Arg _fScore energy), q1) ->
+  Just (ws PQ.:-> (Arg fScore energy), q1) ->
     if homingEnergy miRoomSize ws == 0
       then energy
       else
         let gScoreCur = gScore M.! ws
             nexts = do
               (ampType, coords) <- zip [A .. D] ws
-              coord@(r, c) <- S.toList coords
-              let curMoveTargets = moveTargets miRoomSize ampType
-                  myHomeCol = homeColumn ampType
+              coord@(_r, c) <- S.toList coords
+              let myHomeCol = homeColumn ampType
               (coord'@(r', c'), ws', incr) <- findNextMoves mi ampType coord ws
               guard $ coord /= coord'
               -- if in hallway, must move to a room
@@ -330,18 +333,22 @@ aStar mi@MapInfo {miRoomSize} q0 gScore = case PQ.minView q0 of
                   PQ.insert ws' (Arg fScoreNext energy')
             gScore' =
               foldr
-                (\(ws', tentativeGScore, _fScoreNext, _energy') -> M.insert ws' tentativeGScore)
+                (\(ws', tentativeGScore, _fScoreNext, _energy') ->
+                   M.insert ws' tentativeGScore)
                 gScore
                 nexts
             result = aStar mi q2 gScore'
-         in if debugBfs
+         in if debug
               then unsafePerformIO do
                 putStrLn "Current:"
-                _pprWorldState miRoomSize ws
-                putStrLn $ "Energy: " <> show energy
+                _pprWorldState miRoomSize ws ""
+                putStrLn $ "(Energy, fScore): " <> show (energy, fScore)
+                putStrLn ">>>> Expansion"
+                forM_ nexts \(ws', _, fScore', energy') -> do
+                  _pprWorldState miRoomSize ws' "  "
+                  putStrLn $ "  (Energy, fScore): " <> show (energy', fScore')
+                putStrLn "<<<< Expansion"
                 putStrLn ""
-
-                _pprWorldState miRoomSize ws
                 pure result
               else result
 
@@ -364,11 +371,7 @@ instance Solution Day23 where
     case extraOps of
       Nothing -> do
         -- running login input.
-        {-
-          TODO: part 1 is solved by hand. however
-          my current implemention is not giving the optimal answer.
-         -}
-        answerShow @Int 12521
+        answerShow $! solveFromRawMap rawMap
         let rawMap2 =
               let (xs, ys) = splitAt 3 rawMap
                in xs
@@ -376,6 +379,7 @@ instance Solution Day23 where
                        , "  #D#B#A#C#"
                        ]
                     <> ys
-        answerShow (solveFromRawMap rawMap2)
+        answerShow $! solveFromRawMap rawMap2
       Just _ ->
-        answerShow $ solveFromRawMap rawMap
+        -- test input runs as-is.
+        answerShow $! solveFromRawMap rawMap
