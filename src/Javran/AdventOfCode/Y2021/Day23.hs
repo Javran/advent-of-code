@@ -316,7 +316,7 @@ findNextMoves MapInfo {miRoomSize, miGraph} ampType initCoord wsPre =
  -}
 
 type SearchPrio =
-  ( Down Int
+  ( Int -- Down Int
   , Int -- energy
   )
 
@@ -333,14 +333,14 @@ type SearchPrio =
 
 debugBfs = False
 
-bfs :: MapInfo -> PQ.PSQ WorldState SearchPrio -> S.Set WorldState -> Int
-bfs mi@MapInfo {miRoomSize} q0 discovered = case PQ.minView q0 of
+bfs mi@MapInfo {miRoomSize} q0 gScore = case PQ.minView q0 of
   Nothing -> error "queue exhausted"
-  Just (ws PQ.:-> (_hp, energy), q1) ->
+  Just (ws PQ.:-> (_fScore, energy), q1) ->
     if ws == wsTarget
       then energy
       else
-        let nexts = do
+        let gScoreCur = gScore M.! ws
+            nexts = do
               (ampType, coords) <- zip [A .. D] ws
               coord@(r, c) <- S.toList coords
               let curMoveTargets = moveTargets miRoomSize ampType
@@ -358,22 +358,27 @@ bfs mi@MapInfo {miRoomSize} q0 discovered = case PQ.minView q0 of
                 -- if in the wrong room, we must move out.
                 -- (moving up one place may be possible, just not very productive)
                 guard $ r' == 1 || c' == myHomeCol
-              guard $ S.notMember ws' discovered
-              pure (ws', incr)
+              let tentativeGScore = gScoreCur + incr
+              guard $ case gScore M.!? ws' of
+                Nothing -> True
+                Just v -> tentativeGScore < v -- TODO: write this to gScore
+              let fScoreNext = tentativeGScore + homingEnergy miRoomSize ws'
+              let energy' = energy + incr
+              pure (ws', tentativeGScore, fScoreNext, energy')
             q2 = foldr upd q1 nexts
               where
-                upd (ws', incr) =
+                upd (ws', _tentativeGScore, fScoreNext, energy') =
                   PQ.alter
                     (\case
-                       Nothing -> Just (hp, energy')
-                       Just (_, e) -> Just (hp, min e energy'))
+                       Nothing -> Just (fScoreNext, energy')
+                       Just (_, e) -> Just (fScoreNext, min e energy'))
                     ws'
-                  where
-                    -- hp = ()
-                    hp = homingPriority ws' wsTarget
-                    -- hp = homingPriority' miRoomSize ws'
-                    energy' = energy + incr
-            result = bfs mi q2 (S.union discovered (S.fromList $ fmap fst nexts))
+            gScore' =
+              foldr
+                (\(ws', tentativeGScore, _fScoreNext, _energy') -> M.insert ws' tentativeGScore)
+                gScore
+                nexts
+            result = bfs mi q2 gScore'
          in if debugBfs
               then unsafePerformIO do
                 putStrLn "Current:"
@@ -387,6 +392,8 @@ bfs mi@MapInfo {miRoomSize} q0 discovered = case PQ.minView q0 of
   where
     wsTarget = targetWorld miRoomSize
 
+-- aStarSearch
+
 solveFromRawMap :: [String] -> Int
 solveFromRawMap rawMap =
   bfs
@@ -394,12 +401,13 @@ solveFromRawMap rawMap =
     (PQ.singleton
        startState
        (initHoming, 0))
-    (S.singleton startState)
+    (M.singleton startState 0)
   where
     (mi, startState) = parseRawMap rawMap
     -- initHoming = ()
     -- initHoming = homingPriority' (miRoomSize mi) startState
-    initHoming = homingPriority startState (targetWorld (miRoomSize mi))
+    -- initHoming = homingPriority startState (targetWorld (miRoomSize mi))
+    initHoming = homingEnergy (miRoomSize mi) startState
 
 instance Solution Day23 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
@@ -423,5 +431,6 @@ instance Solution Day23 where
         -- weirdly enough, my solution does find the right answer for part 2...
         answerShow (solveFromRawMap rawMap2)
       Just _ -> do
+        -- print (homingDist2 (miRoomSize mi) startState)
         -- running test examples, for those we just run them as they are.
         answerShow $ solveFromRawMap rawMap
