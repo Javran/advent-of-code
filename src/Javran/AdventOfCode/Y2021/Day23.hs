@@ -171,11 +171,7 @@ _pprWorldState roomSize ws = do
           | otherwise = [raw !! r !! c]
     putStrLn $ concatMap render [0 .. length (head raw) -1]
 
--- putStrLn $ "Homing: " <> show (homingPriority' roomSize ws)
-
-targetWorld :: Int -> WorldState
-targetWorld roomSize = fmap (moveTargets roomSize) [A .. D]
-
+manhattan :: Coord -> Coord -> Int
 manhattan (a, b) (c, d) = abs (a - c) + abs (b - d)
 
 homeColumn :: AmpType -> Int
@@ -184,20 +180,6 @@ homeColumn = \case
   B -> 5
   C -> 7
   D -> 9
-
-{-
-  Measure the distance between current location
-  to the bottom of the correct room.
- -}
-homingDist :: Int -> AmpType -> Coord -> Int
-homingDist roomSize ampType coord@(r, c) =
-  if
-      | c == rightCol -> manhattan coord home
-      | r == 1 -> 10 * manhattan coord home
-      | otherwise -> 100 * ((r -1) + manhattan (1, c) home)
-  where
-    home = (roomSize + 1, rightCol)
-    rightCol = homeColumn ampType
 
 {-
   For amp outside, it's the distance to top of the correct room,
@@ -228,26 +210,26 @@ ampHomingDists roomSize ampType cs = sum (fmap snd tracedDists) + alreadyHomeInc
       where
         cnt = length stillOutside
 
-homingDist2 :: Int -> WorldState -> Int
-homingDist2 roomSize ws =
-  sum $ zipWith (\ampType cs -> ampHomingDists roomSize ampType (S.toList cs)) [A .. D] ws
+{-
 
+  Computes an underestimation of energy cost from current state to goal state.
+
+  This estimation is done by moving all amps to their target locations,
+  through open spaces assuming there is nothing in between them.
+
+  It should be the case that:
+  - homingEnergy ws == 0 <==> ws is goal state
+  - homingEnergy ws >= 0
+
+ -}
 homingEnergy :: Int -> WorldState -> Int
 homingEnergy roomSize ws =
-  sum $ zipWith (\ampType cs -> moveCost ampType * ampHomingDists roomSize ampType (S.toList cs)) [A .. D] ws
-
-homingPriority' :: Int -> WorldState -> Int
-homingPriority' roomSize ws = sum $ zipWith go ws [A .. D]
-  where
-    go cs ampType = sum $ fmap (homingDist roomSize ampType) $ S.toList cs
-
-{-
-  Measures how close we are relative to a solution,
-  the actual value doesn't matter, but the closer we are to the solution,
-  this value becomes smaller.
- -}
-homingPriority :: WorldState -> WorldState -> Down Int
-homingPriority ws wsTarget = Down (sum $ fmap S.size $ zipWith S.intersection wsTarget ws)
+  sum $
+    zipWith
+      (\ampType cs ->
+         moveCost ampType * ampHomingDists roomSize ampType (S.toList cs))
+      [A .. D]
+      ws
 
 findNextMoves :: MapInfo -> AmpType -> Coord -> WorldState -> [(Coord, WorldState, Int)]
 findNextMoves MapInfo {miRoomSize, miGraph} ampType initCoord wsPre =
@@ -308,36 +290,12 @@ findNextMoves MapInfo {miRoomSize, miGraph} ampType initCoord wsPre =
                  result = findNextMovesAux q2 (S.union discovered (S.fromList nexts))
               in result
 
-{-
-  TODO: Something isn't right:
-  the search doesn't find optimal solution with homing priority being just ().
-  but somehow we managed to do so in this variation that uses a very inaccurate
-  homing estimation .. why?
-
- -}
-
-type SearchPrio =
-  ( Int -- Down Int
-  , Int -- energy
-  )
-
-{-
-  TODO: prune "deadlock" cases like this:
-
- #############
- #..!B!C!.!.A#
- ###A#D#B#D###
-   #.#.#C#.#
-   #########
-
- -}
-
 debugBfs = False
 
-bfs mi@MapInfo {miRoomSize} q0 gScore = case PQ.minView q0 of
+aStar mi@MapInfo {miRoomSize} q0 gScore = case PQ.minView q0 of
   Nothing -> error "queue exhausted"
   Just (ws PQ.:-> (Arg _fScore energy), q1) ->
-    if ws == wsTarget
+    if homingEnergy miRoomSize ws == 0
       then energy
       else
         let gScoreCur = gScore M.! ws
@@ -375,7 +333,7 @@ bfs mi@MapInfo {miRoomSize} q0 gScore = case PQ.minView q0 of
                 (\(ws', tentativeGScore, _fScoreNext, _energy') -> M.insert ws' tentativeGScore)
                 gScore
                 nexts
-            result = bfs mi q2 gScore'
+            result = aStar mi q2 gScore'
          in if debugBfs
               then unsafePerformIO do
                 putStrLn "Current:"
@@ -386,14 +344,10 @@ bfs mi@MapInfo {miRoomSize} q0 gScore = case PQ.minView q0 of
                 _pprWorldState miRoomSize ws
                 pure result
               else result
-  where
-    wsTarget = targetWorld miRoomSize
-
--- aStarSearch
 
 solveFromRawMap :: [String] -> Int
 solveFromRawMap rawMap =
-  bfs
+  aStar
     mi
     (PQ.singleton
        startState
@@ -401,9 +355,6 @@ solveFromRawMap rawMap =
     (M.singleton startState 0)
   where
     (mi, startState) = parseRawMap rawMap
-    -- initHoming = ()
-    -- initHoming = homingPriority' (miRoomSize mi) startState
-    -- initHoming = homingPriority startState (targetWorld (miRoomSize mi))
     initHoming = homingEnergy (miRoomSize mi) startState
 
 instance Solution Day23 where
@@ -425,9 +376,6 @@ instance Solution Day23 where
                        , "  #D#B#A#C#"
                        ]
                     <> ys
-        -- weirdly enough, my solution does find the right answer for part 2...
         answerShow (solveFromRawMap rawMap2)
-      Just _ -> do
-        -- print (homingDist2 (miRoomSize mi) startState)
-        -- running test examples, for those we just run them as they are.
+      Just _ ->
         answerShow $ solveFromRawMap rawMap
