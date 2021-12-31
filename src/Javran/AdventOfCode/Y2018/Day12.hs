@@ -63,6 +63,15 @@ ruleP = do
 _pprBools :: [Bool] -> String
 _pprBools = fmap (bool '.' '#')
 
+_pprWorld :: World -> String
+_pprWorld w = case IS.minView w of
+  Nothing -> ""
+  Just (minLoc, _) ->
+    let maxLoc = IS.findMax w
+     in do
+          l <- [minLoc .. maxLoc]
+          pure $ bool '.' '#' (IS.member l w)
+
 type Rules = M.Map [Bool] Bool
 
 {-
@@ -116,6 +125,14 @@ step rules w = case IS.minView w of
           guard after
           pure loc
 
+{-
+  Normalizes the minimal location so that it is always 0.
+ -}
+rebase :: World -> (Int, World)
+rebase w = case IS.minView w of
+  Nothing -> (0, w)
+  Just (minLoc, _) -> (minLoc, IS.map (subtract minLoc) w)
+
 instance Solution Day12 where
   solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
@@ -127,7 +144,11 @@ instance Solution Day12 where
         rules =
           M.fromListWith (error "rule conflict") $
             fmap (consumeOrDie ruleP) rulesRaw
-        progression = iterate (step rules) initSt
+        progression = fmap rebase $ iterate (step rules) initSt
+        zs =
+          dropWhile (uncurry ((/=) `on` snd)) $ zip progression (tail progression)
 
-    answerShow (sum $ IS.toList $ progression !! 20)
-    mapM_ (print . IS.size) $ progression
+    do
+      let (offset, w) = progression !! 20
+      answerShow (offset * IS.size w + (sum $ IS.toList w))
+    print $ take 1 zs
