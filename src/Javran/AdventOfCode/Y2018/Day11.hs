@@ -1,50 +1,19 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE PatternGuards #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# OPTIONS_GHC -Wno-deprecations #-}
-{-# OPTIONS_GHC -Wno-typed-holes #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -fdefer-typed-holes #-}
 
 module Javran.AdventOfCode.Y2018.Day11
   (
   )
 where
 
-{- HLINT ignore -}
-
-import Control.Applicative
 import Control.Monad
 import qualified Data.Array.ST as Arr
 import qualified Data.Array.Unboxed as UArr
-import Data.Char
-import Data.Function
-import Data.Function.Memoize (memoFix)
-import qualified Data.IntMap.Strict as IM
-import qualified Data.IntSet as IS
 import Data.List
-import Data.List.Split hiding (sepBy)
-import qualified Data.Map.Strict as M
-import Data.Monoid
-import Data.Semigroup
-import qualified Data.Set as S
-import qualified Data.Text as T
-import qualified Data.Vector as V
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
-import Text.ParserCombinators.ReadP hiding (count, get, many)
 
 data Day11 deriving (Generic)
 
@@ -67,8 +36,41 @@ powerLevel serial (x, y) = p3 - 5
 
   then sum of a[m], a[m+1] .. a[n] is just s[n] - s[m-1].
 
-  I guess for doing part 2 in an efficient manner, we can try to
-  generalize this idea to 2D.
+  For doing part 2 in an efficient manner, we can
+  generalize this idea to 2D:
+
+  For a[i,j] where both dimensions are 1-based:
+
+  0 --- + --- + -> x
+  |  A  |  B  |
+  + --- v --- +
+  |  C  |  D  |
+  + --- + --- u
+  |
+  v
+  y
+
+  where u is the bottom-right corner of a[x1,y1],
+    v the top-left corner of a[x0,y0],
+
+  let s[i,j] be the 2D accumulated sum:
+
+  s[i,j] = 0 (i == 0 or j == 0)
+  s[i,j] = sum of a[1,1], a[1,2], ... a[i,j]
+
+  we can compute sum of area (x0,y0) ~ (x1,y1) as:
+
+  sum(a[x0, y0] .. a[x1,y1])
+  => D
+  => (A+B+C+D) - (A+C) - (A+B) + A
+  => s[x1,y1] - s[x0-1,y1] - s[x1,y0-1] + s[x0-1,y0-1]
+
+  And the exact same algebra gives us a way to compute s as well:
+
+  (A+B+C+D) - (A+C) - (A+B) + A = D
+  ==> (A+B+C+D) = D + (A+C) + (A+B) - A
+  ==> s[x,y] = a[x,y] + s[x-1,y] + s[x,y-1] - s[x-1,y-1]
+
  -}
 
 computeAccumulated :: (Coord -> Int) -> UArr.UArray (Int, Int) Int
@@ -83,8 +85,7 @@ computeAccumulated getVal = Arr.runSTUArray do
   pure arr
 
 instance Solution Day11 where
-  solutionSolved _ = False
-  solutionRun _ SolutionContext {getInputS, answerShow} = do
+  solutionRun _ SolutionContext {getInputS, answerS} = do
     n <- read @Int <$> getInputS
     let accd = computeAccumulated (powerLevel n)
         querySum (x0, y0) (x1, y1) =
@@ -92,10 +93,21 @@ instance Solution Day11 where
             - accd UArr.! (x0 -1, y1)
             - accd UArr.! (x1, y0 -1)
             + accd UArr.! (x0 -1, y0 -1)
-        ans = maximumBy (comparing snd) do
-          x <- [1 .. 300 - 3 + 1]
-          y <- [1 .. 300 -3 + 1]
-          let topLeft = (x, y)
-              totalPower = querySum (x,y) (x+2, y+2)
-          pure (topLeft, totalPower)
-    print ans
+
+    do
+      let ((ansX, ansY), _) = maximumBy (comparing snd) do
+            x <- [1 .. 300 - 3 + 1]
+            y <- [1 .. 300 - 3 + 1]
+            let topLeft = (x, y)
+                totalPower = querySum (x, y) (x + 2, y + 2)
+            pure (topLeft, totalPower)
+      answerS $ show ansX <> "," <> show ansY
+    do
+      let (((ansX, ansY), size), _) = maximumBy (comparing snd) do
+            x <- [1 .. 300]
+            y <- [1 .. 300]
+            sz <- takeWhile (\sz -> x + sz - 1 <= 300 && y + sz -1 <= 300) [1 ..]
+            let topLeft = (x, y)
+                totalPower = querySum (x, y) (x + sz -1, y + sz -1)
+            pure ((topLeft, sz), totalPower)
+      answerS $ show ansX <> "," <> show ansY <> "," <> show size
