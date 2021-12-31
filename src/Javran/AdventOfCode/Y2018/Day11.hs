@@ -99,15 +99,21 @@ instance Solution Day11 where
             x <- [1 .. 300 - 3 + 1]
             y <- [1 .. 300 - 3 + 1]
             let topLeft = (x, y)
-                totalPower = querySum (x, y) (x + 2, y + 2)
+                totalPower = querySum topLeft (x + 2, y + 2)
             pure (topLeft, totalPower)
       answerS $ show ansX <> "," <> show ansY
     do
       let (((ansX, ansY), size), _) = maximumBy (comparing snd) do
             x <- [1 .. 300]
             y <- [1 .. 300]
-            sz <- takeWhile (\sz -> x + sz - 1 <= 300 && y + sz -1 <= 300) [1 ..]
+            (sz, bottomRight) <-
+              unfoldr
+                (\sz -> do
+                   let br@(x', y') = (x + sz -1, y + sz -1)
+                   guard $ x' <= 300 && y' <= 300
+                   pure ((sz, br), sz+1))
+                1
             let topLeft = (x, y)
-                totalPower = querySum (x, y) (x + sz -1, y + sz -1)
+                totalPower = querySum topLeft bottomRight
             pure ((topLeft, sz), totalPower)
       answerS $ show ansX <> "," <> show ansY <> "," <> show size
