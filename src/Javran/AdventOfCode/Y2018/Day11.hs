@@ -27,6 +27,8 @@ where
 
 import Control.Applicative
 import Control.Monad
+import qualified Data.Array.ST as Arr
+import qualified Data.Array.Unboxed as UArr
 import Data.Char
 import Data.Function
 import Data.Function.Memoize (memoFix)
@@ -69,17 +71,31 @@ powerLevel serial (x, y) = p3 - 5
   generalize this idea to 2D.
  -}
 
+computeAccumulated :: (Coord -> Int) -> UArr.UArray (Int, Int) Int
+computeAccumulated getVal = Arr.runSTUArray do
+  let sz = 300
+  arr <- Arr.newArray ((0, 0), (sz, sz)) (0 :: Int)
+  forM_ [1 .. sz] \x ->
+    forM_ [1 .. sz] \y -> do
+      let v = getVal (x, y)
+      ~[v0, v1, v2] <- mapM (Arr.readArray arr) [(x -1, y), (x, y -1), (x -1, y -1)]
+      Arr.writeArray arr (x, y) $! v + v0 + v1 - v2
+  pure arr
+
 instance Solution Day11 where
   solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     n <- read @Int <$> getInputS
-    let ans = maximumBy (comparing snd) do
+    let accd = computeAccumulated (powerLevel n)
+        querySum (x0, y0) (x1, y1) =
+          accd UArr.! (x1, y1)
+            - accd UArr.! (x0 -1, y1)
+            - accd UArr.! (x1, y0 -1)
+            + accd UArr.! (x0 -1, y0 -1)
+        ans = maximumBy (comparing snd) do
           x <- [1 .. 300 - 3 + 1]
           y <- [1 .. 300 -3 + 1]
           let topLeft = (x, y)
-              totalPower = sum do
-                x' <- [x .. x + 2]
-                y' <- [y .. y + 2]
-                pure $ powerLevel n (x', y')
-          pure ((x,y), totalPower)
+              totalPower = querySum (x,y) (x+2, y+2)
+          pure (topLeft, totalPower)
     print ans
