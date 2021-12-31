@@ -132,12 +132,15 @@ moveCost = \case
   C -> 100
   D -> 1000
 
-moveTargets :: Int -> AmpType -> S.Set Coord
-moveTargets roomSize = \case
-  A -> S.fromList $ fmap (,3) rs
-  B -> S.fromList $ fmap (,5) rs
-  C -> S.fromList $ fmap (,7) rs
-  D -> S.fromList $ fmap (,9) rs
+homeColumn :: AmpType -> Int
+homeColumn = \case
+  A -> 3
+  B -> 5
+  C -> 7
+  D -> 9
+
+moveTargets :: Int -> AmpType -> [Coord]
+moveTargets roomSize ampType = fmap (,homeColumn ampType) rs
   where
     rs = take roomSize [2 ..]
 
@@ -165,13 +168,6 @@ _pprWorldState roomSize ws pad = do
 
 manhattan :: Coord -> Coord -> Int
 manhattan (a, b) (c, d) = abs (a - c) + abs (b - d)
-
-homeColumn :: AmpType -> Int
-homeColumn = \case
-  A -> 3
-  B -> 5
-  C -> 7
-  D -> 9
 
 {-
   For amp outside, it's the distance to top of the correct room,
@@ -212,7 +208,7 @@ ampHomingDists roomSize ampType cs =
   Computes an underestimation of energy cost from current state to goal state.
 
   This estimation is done by moving all amps to their target locations,
-  through open spaces assuming there is nothing in between them.
+  through open spaces assuming there is nothing in-between target location and the amp.
 
   It should be the case that:
   - homingEnergy ws == 0 <==> ws is goal state
@@ -239,8 +235,8 @@ findNextMoves MapInfo {miRoomSize, miGraph} ampType initCoord wsPre =
       pure (coord, aTy)
 
     ws = wsPre & ix (fromEnum ampType) %~ delete initCoord
-    blockings :: S.Set Coord
-    blockings = S.fromList $ concat ws
+    blockings :: [Coord]
+    blockings = concat ws
     findNextMovesAux q0 discovered = case PQ.minView q0 of
       Nothing -> []
       Just (coord@(r, c) PQ.:-> energy, q1) ->
@@ -274,20 +270,15 @@ findNextMoves MapInfo {miRoomSize, miGraph} ampType initCoord wsPre =
                    when (not (isInHallway coord) && c /= myHomeCol) do
                      -- must move up
                      guard (r' < r)
-                   guard $ S.notMember coord' blockings
+                   guard $ coord' `notElem` blockings
                    guard $ S.notMember coord' discovered
                    pure coord'
                  q2 = foldr upd q1 nexts
                    where
-                     upd coord' =
-                       let energy' = energy + moveCost ampType
-                        in PQ.alter
-                             (\case
-                                Nothing -> Just energy'
-                                Just e -> Just (min e energy'))
-                             coord'
-                 result = findNextMovesAux q2 (S.union discovered (S.fromList nexts))
-              in result
+                     upd coord' = PQ.insert coord' energy'
+                       where
+                         energy' = energy + moveCost ampType
+              in findNextMovesAux q2 (foldr S.insert discovered nexts)
 
 aStar :: MapInfo -> PQ.PSQ WorldState (Arg Int Int) -> M.Map WorldState Int -> Int
 aStar mi@MapInfo {miRoomSize} q0 gScore = case PQ.minView q0 of
