@@ -73,6 +73,14 @@ type Rules = M.Map [Bool] Bool
   which should make the simulation scale a bit,
   then we can try to determine if there's an attractor.
 
+  Update: it doesn't appear to be an attractor,
+  as the min and max of World expands indefinitely.
+
+  However, I notice for both example input and login input,
+  the # of active elements in the World eventually goes
+  to a fix amount and never change,
+  so we can probably utilize this property somehow.
+
  -}
 
 type World = IS.IntSet
@@ -113,12 +121,13 @@ instance Solution Day12 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     [[initStRaw], rulesRaw] <- splitOn [""] . lines <$> getInputS
     let parsedSt = consumeOrDie initStateP initStRaw
-        initSt' =
+        initSt =
           IS.fromDistinctAscList $
             catMaybes $ zipWith (\v i -> if v then Just i else Nothing) parsedSt [0 ..]
         rules =
           M.fromListWith (error "rule conflict") $
             fmap (consumeOrDie ruleP) rulesRaw
-        progression' = iterate (step rules) initSt'
+        progression = iterate (step rules) initSt
 
-    answerShow (sum $ IS.toList $ progression' !! 20)
+    answerShow (sum $ IS.toList $ progression !! 20)
+    mapM_ (print . IS.size) $ progression
