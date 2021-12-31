@@ -369,13 +369,7 @@ bfs mi@MapInfo {miRoomSize} q0 gScore = case PQ.minView q0 of
             q2 = foldr upd q1 nexts
               where
                 upd (ws', _tentativeGScore, fScoreNext, energy') =
-                  PQ.alter
-                    (\case
-                       Nothing -> Just (Arg fScoreNext energy')
-                       Just v ->
-                         let v' = Arg fScoreNext energy'
-                          in Just (min v v'))
-                    ws'
+                  PQ.insert ws' (Arg fScoreNext energy')
             gScore' =
               foldr
                 (\(ws', tentativeGScore, _fScoreNext, _energy') -> M.insert ws' tentativeGScore)
