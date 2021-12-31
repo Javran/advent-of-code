@@ -20,6 +20,7 @@ where
 
 import Control.Lens hiding (universe)
 import Control.Monad
+import Data.List
 import qualified Data.Map.Strict as M
 import qualified Data.PSQueue as PQ
 import qualified Data.Set as S
@@ -196,6 +197,43 @@ homingDist roomSize ampType coord@(r, c) =
   where
     home = (roomSize + 1, rightCol)
     rightCol = homeColumn ampType
+
+{-
+  For amp outside, it's the distance to top of the correct room,
+  for amp inside, 0.
+ -}
+ampHomingDist :: AmpType -> Coord -> Int
+ampHomingDist ampType coord@(r, c) =
+  if
+      | r == 1 -> manhattan coord homeTop
+      | c == rightCol -> 0
+      | otherwise -> ((r -1) + manhattan (1, c) homeTop)
+  where
+    homeTop = (2, rightCol)
+    rightCol = homeColumn ampType
+
+ampHomingDists :: Int -> AmpType -> [Coord] -> Int
+ampHomingDists roomSize ampType cs = sum (fmap snd tracedDists) + alreadyHomeIncr + stillOutsideIncr
+  where
+    tracedDists = fmap (\c -> (c, ampHomingDist ampType c)) cs
+    (alreadyHome, stillOutside) = partition ((== 0) . snd) tracedDists
+    alreadyHomeSortedRowsDesc = sortBy (comparing Down) $ fmap (\((r, _c), _) -> r) alreadyHome
+    {-
+      room row range: [2 .. roomSize-1]
+      compute how many more most to "pack" those already home to bottom.
+     -}
+    alreadyHomeIncr = sum $ zipWith (-) [roomSize + 1, roomSize ..] alreadyHomeSortedRowsDesc
+    stillOutsideIncr = cnt * (cnt -1) `quot` 2
+      where
+        cnt = length stillOutside
+
+homingDist2 :: Int -> WorldState -> Int
+homingDist2 roomSize ws =
+  sum $ zipWith (\ampType cs -> ampHomingDists roomSize ampType (S.toList cs)) [A .. D] ws
+
+homingEnergy :: Int -> WorldState -> Int
+homingEnergy roomSize ws =
+  sum $ zipWith (\ampType cs -> moveCost ampType * ampHomingDists roomSize ampType (S.toList cs)) [A .. D] ws
 
 homingPriority' :: Int -> WorldState -> Int
 homingPriority' roomSize ws = sum $ zipWith go ws [A .. D]
