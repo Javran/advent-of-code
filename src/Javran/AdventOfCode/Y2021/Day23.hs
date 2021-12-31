@@ -23,11 +23,11 @@ import Control.Monad
 import Data.List
 import qualified Data.Map.Strict as M
 import qualified Data.PSQueue as PQ
+import Data.Semigroup
 import qualified Data.Set as S
 import Debug.Trace
 import Javran.AdventOfCode.Prelude
 import System.IO.Unsafe (unsafePerformIO)
-import Data.Semigroup
 
 data Day23 deriving (Generic)
 
@@ -334,7 +334,7 @@ type SearchPrio =
 
 debugBfs = False
 
-bfs mi@MapInfo {miRoomSize} q0 gScore fScore = case PQ.minView q0 of
+bfs mi@MapInfo {miRoomSize} q0 gScore = case PQ.minView q0 of
   Nothing -> error "queue exhausted"
   Just (ws PQ.:-> (Arg _fScore energy), q1) ->
     if ws == wsTarget
@@ -372,20 +372,16 @@ bfs mi@MapInfo {miRoomSize} q0 gScore fScore = case PQ.minView q0 of
                   PQ.alter
                     (\case
                        Nothing -> Just (Arg fScoreNext energy')
-                       Just (Arg _ e) -> Just (Arg fScoreNext $ min e energy'))
+                       Just v ->
+                         let v' = Arg fScoreNext energy'
+                          in Just (min v v'))
                     ws'
             gScore' =
               foldr
                 (\(ws', tentativeGScore, _fScoreNext, _energy') -> M.insert ws' tentativeGScore)
                 gScore
                 nexts
-            fScore' =
-                            foldr
-                (\(ws', _tentativeGScore, fScoreNext, _energy') -> M.insert ws' fScoreNext)
-                fScore
-                nexts
-
-            result = bfs mi q2 gScore' fScore'
+            result = bfs mi q2 gScore'
          in if debugBfs
               then unsafePerformIO do
                 putStrLn "Current:"
@@ -409,7 +405,6 @@ solveFromRawMap rawMap =
        startState
        (Arg initHoming 0))
     (M.singleton startState 0)
-    (M.singleton startState initHoming)
   where
     (mi, startState) = parseRawMap rawMap
     -- initHoming = ()
