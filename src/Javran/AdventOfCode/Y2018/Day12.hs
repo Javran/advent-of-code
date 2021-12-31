@@ -114,7 +114,7 @@ type RebasedWorld = (Int, World)
 rebase :: World -> RebasedWorld
 rebase w = case IS.minView w of
   Nothing -> (0, w)
-  Just (minLoc, _) -> (minLoc, IS.map (subtract minLoc) w)
+  Just (minLoc, _) -> (minLoc, IS.mapMonotonic (subtract minLoc) w)
 
 rWorldSum :: RebasedWorld -> Int
 rWorldSum (offset, w) = offset * IS.size w + sum (IS.toList w)
