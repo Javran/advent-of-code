@@ -40,6 +40,7 @@ import Data.Semigroup
 import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Vector as V
+import Debug.Trace
 import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (count, get, many)
@@ -64,21 +65,60 @@ _pprBools = fmap (bool '.' '#')
 
 type Rules = M.Map [Bool] Bool
 
-step :: Rules -> [Bool] -> [Bool]
-step rules st = fmap (fromMaybe False . (rules M.!?)) $ divvy 5 1 (fff <> st <> fff)
-  where
-    fff = replicate 3 False
+{-
+  TODO: for part 2, obviously simulation won't cut it,
+  so I suspect there's an attractor.
+
+  First step, let's use a sparse rep of the state,
+  which should make the simulation scale a bit,
+  then we can try to determine if there's an attractor.
+
+ -}
+
+type World = IS.IntSet
+
+step :: Rules -> World -> World
+step rules w = case IS.minView w of
+  Nothing -> w
+  Just (minLoc, _) ->
+    let maxLoc = IS.findMax w
+     in IS.fromDistinctAscList do
+          loc <- [minLoc -1 .. maxLoc + 1]
+          {-
+            we technically need to examine `minLoc - 2` and `maxLoc + 2`,
+            in case the following is part of the rule:
+
+            ....# => #
+            #.... => #
+
+            however, for both example and my login, we have the following
+            as part of the rule:
+
+            ....# => .
+            #.... => .
+
+            meaning we can cut padding to just 3.
+
+            TODO: verify this assumption about the rule.
+
+          -}
+
+          let locView = fmap (`IS.member` w) [loc -2 .. loc + 2]
+              after = fromMaybe False $ rules M.!? locView
+          guard after
+          pure loc
 
 instance Solution Day12 where
   solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     [[initStRaw], rulesRaw] <- splitOn [""] . lines <$> getInputS
-    let initSt = consumeOrDie initStateP initStRaw
+    let parsedSt = consumeOrDie initStateP initStRaw
+        initSt' =
+          IS.fromDistinctAscList $
+            catMaybes $ zipWith (\v i -> if v then Just i else Nothing) parsedSt [0 ..]
         rules =
           M.fromListWith (error "rule conflict") $
             fmap (consumeOrDie ruleP) rulesRaw
-        progression = iterate (step rules) initSt
+        progression' = iterate (step rules) initSt'
 
-    do
-      let ans = sum $ catMaybes $ zipWith (\v i -> if v then Just i else Nothing) (progression !! 20) [-20 :: Int ..]
-      answerShow ans
+    answerShow (sum $ IS.toList $ progression' !! 20)
