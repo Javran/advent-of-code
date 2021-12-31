@@ -69,7 +69,7 @@ data AmpType = A | B | C | D deriving (Eq, Ord, Enum, Show, Read, Bounded)
 
 type Coord = (Int, Int)
 
-type CoordSet = S.Set Coord
+type CoordSet = [Coord] -- must be sorted and unique list
 
 data MapInfo = MapInfo
   { miGraph :: M.Map Coord CoordSet
@@ -93,7 +93,7 @@ parseRawMap raw =
     wsE = do
       unless (S.fromList (universe @AmpType) == M.keysSet ampLocs) do
         Left "unexpected amp keys"
-      unless (all ((== miRoomSize) . S.size) ampLocs) do
+      unless (all ((== miRoomSize) . length) ampLocs) do
         Left "amp and room count mismatch"
       pure $ fmap snd (M.toAscList ampLocs)
     ampLocs :: M.Map AmpType CoordSet
@@ -104,7 +104,7 @@ parseRawMap raw =
       coord <- S.toList openCells
       coord' <- udlrOfCoord coord
       guard $ S.member coord' openCells
-      pure (coord, S.singleton coord')
+      pure (coord, [coord'])
     (graphPre, ampLocsPre) = unzip do
       (r, rs) <- zip [0 ..] raw
       (c, x) <- zip [0 ..] rs
@@ -113,7 +113,7 @@ parseRawMap raw =
           mAmp = case reads @AmpType [x] of
             [(ampTy, "")] -> Just ampTy
             _ -> Nothing
-      pure (coord, (\amp -> M.singleton amp (S.singleton coord)) <$> mAmp)
+      pure (coord, (\amp -> M.singleton amp [coord]) <$> mAmp)
 
 {-
   The space immediately outside any room,
@@ -146,7 +146,7 @@ _pprWorldState roomSize ws pad = do
   let ampLocs :: M.Map Coord AmpType
       ampLocs = M.fromList do
         (aTy, cs) <- zip [A .. D] ws
-        coord <- S.toList cs
+        coord <- cs
         pure (coord, aTy)
       raw =
         [ "#############"
@@ -224,7 +224,7 @@ homingEnergy roomSize ws =
   sum $
     zipWith
       (\ampType cs ->
-         moveCost ampType * ampHomingDists roomSize ampType (S.toList cs))
+         moveCost ampType * ampHomingDists roomSize ampType cs)
       [A .. D]
       ws
 
@@ -235,21 +235,21 @@ findNextMoves MapInfo {miRoomSize, miGraph} ampType initCoord wsPre =
     ampLocs :: M.Map Coord AmpType
     ampLocs = M.fromList do
       (aTy, cs) <- zip [A .. D] ws
-      coord <- S.toList cs
+      coord <- cs
       pure (coord, aTy)
 
-    ws = wsPre & ix (fromEnum ampType) %~ S.delete initCoord
+    ws = wsPre & ix (fromEnum ampType) %~ delete initCoord
     blockings :: S.Set Coord
-    blockings = S.unions ws
+    blockings = S.fromList $ concat ws
     findNextMovesAux q0 discovered = case PQ.minView q0 of
       Nothing -> []
       Just (coord@(r, c) PQ.:-> energy, q1) ->
-        [ (coord, ws & ix (fromEnum ampType) %~ S.insert coord, energy)
+        [ (coord, ws & ix (fromEnum ampType) %~ insert coord, energy)
         | not (isCan'tStopCoord coord)
         ]
           <> let nexts = do
                    Just coords' <- [miGraph M.!? coord]
-                   coord'@(r', c') <- S.toList coords'
+                   coord'@(r', c') <- coords'
                    let myMoveTargets = moveTargets miRoomSize ampType
                        myHomeCol = homeColumn ampType
                        targetRoomIsClear =
@@ -299,7 +299,7 @@ aStar mi@MapInfo {miRoomSize} q0 gScore = case PQ.minView q0 of
         let gScoreCur = gScore M.! ws
             nexts = do
               (ampType, coords) <- zip [A .. D] ws
-              coord@(_r, c) <- S.toList coords
+              coord@(_r, c) <- coords
               let myHomeCol = homeColumn ampType
               (coord'@(r', c'), ws', incr) <- findNextMoves mi ampType coord ws
               guard $ coord /= coord'
@@ -309,7 +309,7 @@ aStar mi@MapInfo {miRoomSize} q0 gScore = case PQ.minView q0 of
                 -- and squeeze it down all the way.
                 guard $
                   r' == miRoomSize + 1
-                    || S.member (r' + 1, c') (ws' !! fromEnum ampType)
+                    || (r' + 1, c') `elem` (ws' !! fromEnum ampType)
               when (not (isInHallway coord) && c /= myHomeCol) do
                 -- if in the wrong room, we must move out.
                 -- (moving up one place may be possible, just not very productive)
