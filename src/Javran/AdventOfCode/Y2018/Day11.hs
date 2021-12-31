@@ -29,7 +29,8 @@ powerLevel serial (x, y) = p3 - 5
     p3 = (p2 `quot` 100) `rem` 10
 
 {-
-  There's a trick that allows us to do some preprocessing
+  See: https://en.wikipedia.org/wiki/Prefix_sum
+  Prefix sum allows us to do some preprocessing
   and then get sum of consecutive regions for a 1D array:
 
   let s[0] = 0, s[i] = sum of a[1], a[2], .. a[i] (a is 1-based array).
