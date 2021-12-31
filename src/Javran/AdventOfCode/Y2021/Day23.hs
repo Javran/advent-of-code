@@ -6,17 +6,11 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
-{-# OPTIONS_GHC -Wno-deprecations #-}
-{-# OPTIONS_GHC -Wno-typed-holes #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -fdefer-typed-holes #-}
 
 module Javran.AdventOfCode.Y2021.Day23
   (
   )
 where
-
-{- HLINT ignore -}
 
 import Control.Lens hiding (universe)
 import Control.Monad
@@ -25,9 +19,7 @@ import qualified Data.Map.Strict as M
 import qualified Data.PSQueue as PQ
 import Data.Semigroup
 import qualified Data.Set as S
-import Debug.Trace
 import Javran.AdventOfCode.Prelude
-import System.IO.Unsafe (unsafePerformIO)
 
 data Day23 deriving (Generic)
 
@@ -127,8 +119,8 @@ parseRawMap raw =
   The space immediately outside any room,
   This is consistent across maps so that we can hard-code.
  -}
-can'tStops :: CoordSet
-can'tStops = S.fromList [(1, 3), (1, 5), (1, 7), (1, 9)]
+isCan'tStopCoord :: Coord -> Bool
+isCan'tStopCoord (r, c) = r == 1 && c `elem` [3, 5, 7, 9]
 
 isInHallway :: Coord -> Bool
 isInHallway (r, _) = r == 1
@@ -196,11 +188,16 @@ ampHomingDist ampType coord@(r, c) =
     rightCol = homeColumn ampType
 
 ampHomingDists :: Int -> AmpType -> [Coord] -> Int
-ampHomingDists roomSize ampType cs = sum (fmap snd tracedDists) + alreadyHomeIncr + stillOutsideIncr
+ampHomingDists roomSize ampType cs =
+  sum (fmap snd tracedDists)
+    + alreadyHomeIncr
+    + stillOutsideIncr
   where
     tracedDists = fmap (\c -> (c, ampHomingDist ampType c)) cs
     (alreadyHome, stillOutside) = partition ((== 0) . snd) tracedDists
-    alreadyHomeSortedRowsDesc = sortBy (comparing Down) $ fmap (\((r, _c), _) -> r) alreadyHome
+    alreadyHomeSortedRowsDesc =
+      sortOn Down $
+        fmap (\((r, _c), _) -> r) alreadyHome
     {-
       room row range: [2 .. roomSize-1]
       compute how many more most to "pack" those already home to bottom.
@@ -248,7 +245,7 @@ findNextMoves MapInfo {miRoomSize, miGraph} ampType initCoord wsPre =
       Nothing -> []
       Just (coord@(r, c) PQ.:-> energy, q1) ->
         [ (coord, ws & ix (fromEnum ampType) %~ S.insert coord, energy)
-        | S.notMember coord can'tStops
+        | not (isCan'tStopCoord coord)
         ]
           <> let nexts = do
                    Just coords' <- [miGraph M.!? coord]
@@ -292,14 +289,11 @@ findNextMoves MapInfo {miRoomSize, miGraph} ampType initCoord wsPre =
                  result = findNextMovesAux q2 (S.union discovered (S.fromList nexts))
               in result
 
-debug :: Bool
-debug = False
-
--- aStar :: MapInfo -> PQ.PSQ WorldState (Arg Int Int) -> M.Map WorldState Int -> Int
+aStar :: MapInfo -> PQ.PSQ WorldState (Arg Int Int) -> M.Map WorldState Int -> Int
 aStar mi@MapInfo {miRoomSize} q0 gScore = case PQ.minView q0 of
   Nothing -> error "queue exhausted"
   Just (ws PQ.:-> (Arg fScore energy), q1) ->
-    if homingEnergy miRoomSize ws == 0
+    if fScore == energy
       then energy
       else
         let gScoreCur = gScore M.! ws
@@ -337,20 +331,7 @@ aStar mi@MapInfo {miRoomSize} q0 gScore = case PQ.minView q0 of
                    M.insert ws' tentativeGScore)
                 gScore
                 nexts
-            result = aStar mi q2 gScore'
-         in if debug
-              then unsafePerformIO do
-                putStrLn "Current:"
-                _pprWorldState miRoomSize ws ""
-                putStrLn $ "(Energy, fScore): " <> show (energy, fScore)
-                putStrLn ">>>> Expansion"
-                forM_ nexts \(ws', _, fScore', energy') -> do
-                  _pprWorldState miRoomSize ws' "  "
-                  putStrLn $ "  (Energy, fScore): " <> show (energy', fScore')
-                putStrLn "<<<< Expansion"
-                putStrLn ""
-                pure result
-              else result
+         in aStar mi q2 gScore'
 
 solveFromRawMap :: [String] -> Int
 solveFromRawMap rawMap =
