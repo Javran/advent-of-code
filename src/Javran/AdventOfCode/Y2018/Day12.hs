@@ -30,9 +30,6 @@ ruleP = do
   rhs <- boolP
   pure (lhs, rhs)
 
-_pprBools :: [Bool] -> String
-_pprBools = fmap (bool '.' '#')
-
 _pprWorld :: World -> String
 _pprWorld w = case IS.minView w of
   Nothing -> ""
@@ -44,22 +41,38 @@ _pprWorld w = case IS.minView w of
 
 type Rules = M.Map [Bool] Bool
 
+verifyRules :: Rules -> Either String Rules
+verifyRules rules = do
+  let lhsStr ~~> rhsStr = do
+        let lhs = consumeOrDie (many1 boolP) lhsStr
+            rhs = consumeOrDie boolP rhsStr
+            expectedRhs = Just True == rules M.!? lhs
+        when (expectedRhs /= rhs) do
+          Left $ "Unexpected rule: " <> show lhs <> " => " <> show rhs
+  "....." ~~> "."
+  "#####" ~~> "."
+  "....#" ~~> "."
+  "#...." ~~> "."
+  pure rules
+
 {-
-  TODO: for part 2, obviously simulation won't cut it,
-  so I suspect there's an attractor.
+  For part 2, obviously simulation won't cut it,
+  so I suspected there was an attractor.
 
-  First step, let's use a sparse rep of the state,
-  which should make the simulation scale a bit,
-  then we can try to determine if there's an attractor.
+  And indeed there is, with a catch: eventually
+  the relative location between points are fixed,
+  but the pattern as a whole moves in one direction indefinitely.
+  Therefore in fact we not only have an attractor, but also
+  it is simply a fixpoint with a constant "drift".
 
-  Update: it doesn't appear to be an attractor,
-  as the min and max of World expands indefinitely.
+  In order to find this fixpoint, we just need to change our view
+  of the World, literally:
 
-  However, I notice for both example input and login input,
-  the # of active elements in the World eventually goes
-  to a fix amount and never change,
-  so we can probably utilize this property somehow.
+  we change the representation from World to RebasedWorld = (offset, World),
+  so that the resulting world's minimum location is always 0.
 
+  This allows us to focus on the resulting World and see that indeed relative
+  locations won't change beyond fixpoint generation.
  -}
 
 type World = IS.IntSet
@@ -85,9 +98,6 @@ step rules w = case IS.minView w of
             #.... => .
 
             meaning we can cut padding to just 3.
-
-            TODO: verify this assumption about the rule.
-
           -}
 
           let locView = fmap (`IS.member` w) [loc -2 .. loc + 2]
@@ -119,9 +129,12 @@ instance Solution Day12 where
         initSt =
           IS.fromDistinctAscList $
             catMaybes $ zipWith (\v i -> if v then Just i else Nothing) parsedSt [0 ..]
-        rules =
+        rulesIn =
           M.fromListWith (error "rule conflict") $
             fmap (consumeOrDie ruleP) rulesRaw
+        rules = case verifyRules rulesIn of
+          Right v -> v
+          Left msg -> error $ "Failed to verify rule: " <> msg
         progression :: [(Int, RebasedWorld)]
         progression = fmap (second rebase) $ zip [0 ..] $ iterate (step rules) initSt
 
