@@ -115,6 +115,6 @@ some of them are originated from problem descriptions from [Advent of Code](http
   + [X] [Day 9](src/Javran/AdventOfCode/Y2018/Day9.hs)
   + [X] [Day 10](src/Javran/AdventOfCode/Y2018/Day10.hs)
   + [X] [Day 11](src/Javran/AdventOfCode/Y2018/Day11.hs)
-  + [ ] [Day 12](src/Javran/AdventOfCode/Y2018/Day12.hs)
+  + [X] [Day 12](src/Javran/AdventOfCode/Y2018/Day12.hs)
 
 [//]: # (PROGRESS_AUTOGEN_END)

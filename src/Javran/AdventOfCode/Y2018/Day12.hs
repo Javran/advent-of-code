@@ -1,47 +1,17 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE PatternGuards #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# OPTIONS_GHC -Wno-deprecations #-}
-{-# OPTIONS_GHC -Wno-typed-holes #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -fdefer-typed-holes #-}
 
 module Javran.AdventOfCode.Y2018.Day12
   (
   )
 where
 
-{- HLINT ignore -}
-
-import Control.Applicative
 import Control.Monad
-import Data.Char
 import Data.Function
-import Data.Function.Memoize (memoFix)
-import qualified Data.IntMap.Strict as IM
 import qualified Data.IntSet as IS
-import Data.List
 import Data.List.Split hiding (sepBy)
 import qualified Data.Map.Strict as M
-import Data.Monoid
-import Data.Semigroup
-import qualified Data.Set as S
-import qualified Data.Text as T
-import qualified Data.Vector as V
-import Debug.Trace
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (count, get, many)
 
@@ -121,20 +91,28 @@ step rules w = case IS.minView w of
           -}
 
           let locView = fmap (`IS.member` w) [loc -2 .. loc + 2]
-              after = fromMaybe False $ rules M.!? locView
+              after = Just True == (rules M.!? locView)
           guard after
           pure loc
 
 {-
+  A rebased world always have the minimal location being 0,
+  the offset is tracked as a seperated Int.
+ -}
+type RebasedWorld = (Int, World)
+
+{-
   Normalizes the minimal location so that it is always 0.
  -}
-rebase :: World -> (Int, World)
+rebase :: World -> RebasedWorld
 rebase w = case IS.minView w of
   Nothing -> (0, w)
   Just (minLoc, _) -> (minLoc, IS.map (subtract minLoc) w)
 
+rWorldSum :: RebasedWorld -> Int
+rWorldSum (offset, w) = offset * IS.size w + sum (IS.toList w)
+
 instance Solution Day12 where
-  solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     [[initStRaw], rulesRaw] <- splitOn [""] . lines <$> getInputS
     let parsedSt = consumeOrDie initStateP initStRaw
@@ -144,11 +122,25 @@ instance Solution Day12 where
         rules =
           M.fromListWith (error "rule conflict") $
             fmap (consumeOrDie ruleP) rulesRaw
-        progression = fmap rebase $ iterate (step rules) initSt
-        zs =
-          dropWhile (uncurry ((/=) `on` snd)) $ zip progression (tail progression)
+        progression :: [(Int, RebasedWorld)]
+        progression = fmap (second rebase) $ zip [0 ..] $ iterate (step rules) initSt
 
     do
-      let (offset, w) = progression !! 20
-      answerShow (offset * IS.size w + (sum $ IS.toList w))
-    print $ take 1 zs
+      let (_, w) = progression !! 20
+      answerShow $ rWorldSum w
+    do
+      let ((startGen, (minLocBefore, w)), (_, (minLocAfter, _))) : _ =
+            dropWhile (uncurry ((/=) `on` (snd . snd))) $ zip progression (tail progression)
+          incr = minLocAfter - minLocBefore
+          slowSolve targetGen =
+            -- we should get the exact same result as fastSolve beyond fixpoint.
+            rWorldSum $ snd $ progression !! targetGen
+          fastSolve targetGen = rWorldSum (minLocBefore + incr * (targetGen - startGen), w)
+          verify = False
+      {-
+        Starting from generation startGen,
+        we have a fixpoint that "drifts" by (minLocAfter - minLocBefore) everytime.
+       -}
+      when verify $
+        print (all (\n -> fastSolve n == slowSolve n) (take 20 [startGen ..]))
+      answerShow $ fastSolve 50000000000
