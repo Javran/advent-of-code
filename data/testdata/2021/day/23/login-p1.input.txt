@@ -1,0 +1,7 @@
+# EXAMPLE_EXTRA_BEGIN
+# EXAMPLE_EXTRA_END
+#############
+#...........#
+###A#D#B#D###
+  #B#C#A#C#
+  #########
