@@ -1,9 +1,9 @@
 # EXAMPLE_EXTRA_BEGIN
 # EXAMPLE_EXTRA_END
 #############
-#..!.!.!.!..#
-###A#D#B#D###
-  #D#C#B#A#
-  #D#B#A#C#
-  #B#C#A#C#
+#AA.......AD#
+###B#.#C#.###
+  #D#B#C#.#
+  #D#B#C#.#
+  #A#B#C#D#
   #########
