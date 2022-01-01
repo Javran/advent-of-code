@@ -27,6 +27,7 @@ where
 
 import Control.Applicative
 import Control.Monad
+import Control.Monad.State.Strict
 import Data.Char
 import Data.Function
 import Data.Function.Memoize (memoFix)
@@ -40,6 +41,7 @@ import Data.Semigroup
 import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Vector as V
+import Debug.Trace
 import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (count, get, many)
@@ -100,21 +102,23 @@ tickCart
       let f : csTurnOpt = oldTurnOpt
        in CartState {csLoc, csDir = f oldDir, csTurnOpt}
     | Just curveType <- atCurve =
-      let csDir = case curveType of
-            False ->
-              -- '\'
-              case oldDir of
-                U -> L
-                D -> R
-                L -> D
-                R -> U
-            True ->
-              -- '/'
-              case oldDir of
-                U -> R
-                D -> L
-                L -> U
-                R -> D
+      let csDir =
+            -- TODO: need some clarification here as this is indeed very confusing.
+            case curveType of
+              False ->
+                -- '\'
+                case oldDir of
+                  U -> L
+                  D -> R
+                  L -> U
+                  R -> D
+              True ->
+                -- '/'
+                case oldDir of
+                  U -> R
+                  D -> L
+                  L -> D
+                  R -> U
        in CartState {csLoc, csTurnOpt = oldTurnOpt, csDir}
     | otherwise = csOld {csLoc}
     where
@@ -123,7 +127,11 @@ tickCart
       atIntersect = case miGraph M.! csLoc of
         [_, _, _, _] -> True
         _ -> False
-      csLoc = applyDir oldDir oldLoc
+      csLoc = case miGraph M.!? newLoc of
+        Just _ -> newLoc
+        Nothing -> error $ "Failed: " <> show (oldLoc, oldDir)
+        where
+          newLoc = applyDir oldDir oldLoc
 
 parseSym :: Char -> Maybe Sym
 parseSym = \case
@@ -216,8 +224,35 @@ parseFromRaw raw = MapInfo {miGraph, miCurves, miCarts}
       Just s <- pure $ parseSym ch
       pure ((x, y), s)
 
+simulate :: MapInfo -> StateT (M.Map Coord CartState) (Either Coord) ()
+simulate mi = do
+  carts <- gets (sortOn (\((x, y), _) -> (y, x)) . M.toList)
+  forM_ carts $ \(cartLoc, cartState) -> do
+    modify (M.delete cartLoc)
+    let cartState'@CartState {csLoc = newLoc} = tickCart mi cartState
+    v <- gets (M.!? newLoc)
+    case v of
+      Just _ -> lift $ Left newLoc
+      Nothing ->
+        modify (M.insert newLoc cartState')
+
 instance Solution Day13 where
   solutionSolved _ = False
-  solutionRun _ SolutionContext {getInputS, answerShow} = do
+  solutionRun _ SolutionContext {getInputS, answerS} = do
     xs <- lines <$> getInputS
-    print $ parseFromRaw xs
+    let mi = parseFromRaw xs
+        initSt =
+          M.fromList
+            (fmap
+               (\(coord, dir) ->
+                  ( coord
+                  , CartState
+                      { csLoc = coord
+                      , csDir = dir
+                      , csTurnOpt = cycle [turnLeft, id, turnRight]
+                      }
+                  ))
+               (miCarts mi))
+    do
+      let Left (x, y) = evalStateT (forever (simulate mi)) initSt
+      answerS $ show x <> "," <> show y
