@@ -27,7 +27,6 @@ where
 
 import Control.Applicative
 import Control.Monad
-import Control.Monad.Trans.Cont
 import Control.Monad.State.Strict
 import Data.Char
 import Data.Function
@@ -42,6 +41,7 @@ import Data.Semigroup
 import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Vector as V
+import Data.Void
 import Debug.Trace
 import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
@@ -225,7 +225,14 @@ parseFromRaw raw = MapInfo {miGraph, miCurves, miCarts}
       Just s <- pure $ parseSym ch
       pure ((x, y), s)
 
-tick :: Bool -> MapInfo -> StateT (M.Map Coord CartState) (Either Coord) ()
+type CartSim = StateT (M.Map Coord CartState) (Either Coord)
+
+{-
+  TODO: it might be possible that we recover from an error and continue
+  by using continuation, but I haven't find a way to do that yet.
+  (just need to investigate a bit, it might be too complicated to actually do it).
+ -}
+tick :: Bool -> MapInfo -> CartSim ()
 tick stopOnConflict mi = do
   carts <- gets (sortOn (\((x, y), _) -> (y, x)) . M.toList)
   forM_ carts $ \(cartLoc, cartState) -> do
@@ -246,28 +253,33 @@ tick stopOnConflict mi = do
     ~[(c, _)] <- gets M.toList
     lift $ Left c
 
+simulate :: Bool -> MapInfo -> (Int, Int)
+simulate stopOnConflict mi =
+  case evalStateT (forever $ tick stopOnConflict mi) initSt of
+    Left r -> r
+    Right v -> absurd v
+  where
+    initSt =
+      M.fromList
+        (fmap
+           (\(coord, dir) ->
+              ( coord
+              , CartState
+                  { csLoc = coord
+                  , csDir = dir
+                  , csTurnOpt = cycle [turnLeft, id, turnRight]
+                  }
+              ))
+           (miCarts mi))
+
 instance Solution Day13 where
   solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerS} = do
     xs <- lines <$> getInputS
     let mi = parseFromRaw xs
-        initSt =
-          M.fromList
-            (fmap
-               (\(coord, dir) ->
-                  ( coord
-                  , CartState
-                      { csLoc = coord
-                      , csDir = dir
-                      , csTurnOpt = cycle [turnLeft, id, turnRight]
-                      }
-                  ))
-               (miCarts mi))
-
     do
-      let Left (x, y) = evalStateT (forever (tick True mi)) initSt
+      let (x, y) = simulate True mi
       answerS $ show x <> "," <> show y
     do
-      {- TODO: p2 example -}
-      let Left (x, y) = evalStateT (forever (tick False mi)) initSt
+      let (x, y) = simulate False mi
       answerS $ show x <> "," <> show y
