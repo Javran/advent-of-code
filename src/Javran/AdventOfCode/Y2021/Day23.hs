@@ -56,6 +56,11 @@ data Day23 deriving (Generic)
  -}
 
 {-
+  Side note: attempted to switch to Data.OrdPSQ from "psqueues" package,
+  but the performance is actually worse.
+ -}
+
+{-
   Solving part 1 by hand.
 
   Part 1 is solvable by hand - we just need to realize that

@@ -61,6 +61,7 @@ library:
     - monad-loops
     - monoidal-containers
     - newtype
+    - psqueues
   ghc-options:
     - -Wall
     - -O2
