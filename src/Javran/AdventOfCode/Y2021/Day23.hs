@@ -71,6 +71,25 @@ type Coord = (Int, Int)
 
 type CoordSet = [Coord] -- must be sorted and unique list
 
+useAmpGraph :: Bool
+useAmpGraph = True
+
+{-
+  The factor that the entire room is completely determined
+  by room size allows us to compute the graph on the fly
+  rather than doing lookup on the actual data.
+ -}
+ampGraph :: Int -> Coord -> [Coord]
+ampGraph roomSize (r, c)
+  | r == 1 && (c >= 1 && c <= 11) =
+    [(r, c -1) | c > 1] <> [(r, c + 1) | c < 11]
+      <> [(r + 1, c) | isRoomCol]
+  | r >= 2 && (r <= roomSize + 1) && isRoomCol =
+    (r -1, c) : [(r + 1, c) | r < roomSize + 1]
+  | otherwise = []
+  where
+    isRoomCol = c `elem` [3, 5, 7, 9]
+
 data MapInfo = MapInfo
   { miGraph :: M.Map Coord CoordSet
   , miRoomSize :: Int -- how tall is the room
@@ -237,6 +256,14 @@ findNextMoves MapInfo {miRoomSize, miGraph} ampType initCoord wsPre =
     ws = wsPre & ix (fromEnum ampType) %~ delete initCoord
     blockings :: [Coord]
     blockings = concat ws
+
+    getNextsOf coord =
+      if useAmpGraph
+       then ampGraph miRoomSize coord
+            else do
+                Just coords' <- [miGraph M.!? coord]
+                coords'
+
     findNextMovesAux q0 discovered = case PQ.minView q0 of
       Nothing -> []
       Just (coord@(r, c) PQ.:-> energy, q1) ->
@@ -244,8 +271,7 @@ findNextMoves MapInfo {miRoomSize, miGraph} ampType initCoord wsPre =
         | not (isCan'tStopCoord coord)
         ]
           <> let nexts = do
-                   Just coords' <- [miGraph M.!? coord]
-                   coord'@(r', c') <- coords'
+                   coord'@(r', c') <- getNextsOf coord
                    let myMoveTargets = moveTargets miRoomSize ampType
                        myHomeCol = homeColumn ampType
                        targetRoomIsClear =
