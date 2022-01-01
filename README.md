@@ -1,24 +1,6 @@
-My Advent of Code stuff.
+# Javran's Advent of Code
 
-Environment variables required:
-
-- `PROJECT_HOME`: path to project home
-- `ADVENT_OF_CODE_SESSION`: session value for downloading input files, this can be found in request header using web browsers.
-
-To run solutions:
-
-```sh
-PROJECT_HOME=/path/to/project/home
-ADVENT_OF_CODE_SESSION=<cookie session>
-stack build && stack exec -- run-advent-of-code <year> <day>
-```
-
-## Data sources
-
-Files under `data/download/` directory (intentionally ignored from VCS) are downloaded from [Advent of Code](https://adventofcode.com/).
-
-Files with name `*.input.txt` or `*.expect.txt` under `data/testdata/` directory are manually maintained but
-some of them are originated from problem descriptions from [Advent of Code](https://adventofcode.com/).
+Solutions, scripting, and templates - all in one repo.
 
 ## Progress
 
@@ -65,3 +47,26 @@ some of them are originated from problem descriptions from [Advent of Code](http
 
 
 [//]: # (PROGRESS_AUTOGEN_END)
+
+## Run solutions
+
+Environment variables required:
+
+- `PROJECT_HOME`: path to project home
+- `ADVENT_OF_CODE_SESSION`: session value for downloading input files, this can be found in request header using web browsers.
+
+To run:
+
+```sh
+PROJECT_HOME=/path/to/project/home
+ADVENT_OF_CODE_SESSION=<cookie session>
+stack build && stack exec -- run-advent-of-code <year> <day>
+```
+
+## Data sources
+
+Files under `data/download/` directory (intentionally ignored from VCS) are downloaded from [Advent of Code](https://adventofcode.com/).
+
+Files with name `*.input.txt` or `*.expect.txt` under `data/testdata/` directory are manually maintained but
+some of them are originated from problem descriptions from [Advent of Code](https://adventofcode.com/).
+
