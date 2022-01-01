@@ -273,13 +273,15 @@ simulate stopOnConflict mi =
            (miCarts mi))
 
 instance Solution Day13 where
-  solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerS} = do
-    xs <- lines <$> getInputS
-    let mi = parseFromRaw xs
-    do
+    (extraOps, rawInput) <- consumeExtraLeadingLines <$> getInputS
+    let xs = lines rawInput
+        mi = parseFromRaw xs
+        runPart1 = maybe True ("part1" `elem`) extraOps
+        runPart2 = maybe True ("part2" `elem`) extraOps
+    when runPart1 do
       let (x, y) = simulate True mi
       answerS $ show x <> "," <> show y
-    do
+    when runPart2 do
       let (x, y) = simulate False mi
       answerS $ show x <> "," <> show y
