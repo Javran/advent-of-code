@@ -1,5 +1,8 @@
 {-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TupleSections #-}
 
 module Javran.AdventOfCode.Cli.ProgressReport
   ( ProgressReport
@@ -27,17 +30,23 @@ where
 
 import qualified Control.Foldl as Foldl
 import Control.Monad
+import Control.Monad.Writer.CPS
 import qualified Data.IntMap.Strict as IM
+import Data.List
+import qualified Data.List.NonEmpty as NE
 import qualified Data.List.Ordered as LOrdered
+import Data.List.Split (chunksOf)
+import qualified Data.Map.Strict as M
 import Data.Ord
 import qualified Filesystem.Path.CurrentOS as FP
 import Javran.AdventOfCode.Infra
+import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.Solutions
 import System.Environment
 import System.FilePath.Posix
 import Text.ParserCombinators.ReadP
 import Text.Printf
-import Turtle.Prelude
+import Turtle.Prelude hiding (nl)
 import Turtle.Shell
 
 type ProgressReport =
@@ -48,6 +57,28 @@ type ProgressReport =
       ]
     )
   ]
+
+type ProgressReportTabulated =
+  [ ( Int
+    , NE.NonEmpty [Maybe (Int, Bool)]
+    )
+  ]
+
+tabulateYear :: [(Int, Bool)] -> Maybe (NE.NonEmpty [Maybe (Int, Bool)])
+tabulateYear xs = do
+  (MinMax rng@(xMin, xMax)) <- foldMap (Just . minMax . fst) xs
+  when (xMin < 1 || xMax > 25) do
+    error $ "cannot tabulate: unexpected range: " <> show rng
+  let m = M.fromList xs
+      getCell i = do
+        v <- m M.!? i
+        pure (i, v)
+  NE.nonEmpty $
+    filter (any isJust) $
+      (fmap . fmap) getCell $ chunksOf 5 [1 .. 25]
+
+tabulateReport :: ProgressReport -> ProgressReportTabulated
+tabulateReport = mapMaybe ((\(i, m) -> (i,) <$> m) . second tabulateYear)
 
 computeProgressReport :: IO ProgressReport
 computeProgressReport = do
@@ -94,6 +125,29 @@ renderRawMarkdown = concatMap (uncurry renderYear)
             year
             day
 
+renderTabulatedRawMarkdown :: ProgressReportTabulated -> [String]
+renderTabulatedRawMarkdown prt = snd $ runWriter do
+  let p x = tell [x]
+      nl = p ""
+      renderCell :: Int -> Maybe (Int, Bool) -> String
+      renderCell year = \case
+        Nothing -> ""
+        Just (day, done) ->
+          printf
+            "%s [Day %d](src/Javran/AdventOfCode/Y%d/Day%d.hs)"
+            (bool "☐" "☑" done :: String)
+            day
+            year
+            day
+  forM_ prt $ \(year, xs) -> do
+    p $ "### " <> show year
+    nl
+    p $ intercalate " `<++++++++>` " $ replicate 6 "|"
+    p $ intercalate " :-: " $ replicate 6 "|"
+    forM_ xs \r -> do
+      p $ "| " <> intercalate " | " (fmap (renderCell year) r) <> " |"
+    nl
+
 progressReportCommand :: SubCmdContext -> IO ()
 progressReportCommand _ = do
   xs <- computeProgressReport
@@ -106,8 +160,10 @@ performReadmeProgressSync :: IO ()
 performReadmeProgressSync = do
   projectHome <- getEnv "PROJECT_HOME"
   let fp = projectHome </> "README.md"
-  rendered0 <- renderRawMarkdown <$> computeProgressReport
-  let rendered =
+  pr <- computeProgressReport
+  let prt = tabulateReport pr
+      rendered0 = renderTabulatedRawMarkdown prt
+      rendered =
         -- need padding on both sides, or it would result in some weird renderings.
         "" : rendered0 <> [""]
       extractSecCb =
