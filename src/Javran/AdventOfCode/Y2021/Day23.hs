@@ -11,6 +11,7 @@ module Javran.AdventOfCode.Y2021.Day23
   )
 where
 
+import Control.Applicative
 import Control.Lens hiding (universe)
 import Control.Monad
 import Data.List
@@ -244,6 +245,9 @@ homingEnergy roomSize ws =
       [A .. D]
       ws
 
+impliesM :: Alternative f => Bool -> Bool -> f ()
+p `impliesM` q = guard $ not p || q
+
 findNextMoves :: MapInfo -> AmpType -> Coord -> WorldState -> [(Coord, WorldState, Int)]
 findNextMoves MapInfo {miRoomSize, miGraph} ampType initCoord wsPre =
   findNextMovesAux (PQ.singleton initCoord 0) (S.singleton initCoord)
@@ -255,6 +259,7 @@ findNextMoves MapInfo {miRoomSize, miGraph} ampType initCoord wsPre =
       pure (coord, aTy)
 
     ws = wsPre & ix (fromEnum ampType) %~ delete initCoord
+
     blockings :: [Coord]
     blockings = concat ws
 
@@ -265,6 +270,19 @@ findNextMoves MapInfo {miRoomSize, miGraph} ampType initCoord wsPre =
           Just coords' <- [miGraph M.!? coord]
           coords'
 
+    myMoveTargets = moveTargets miRoomSize ampType
+    myHomeCol = homeColumn ampType
+    targetRoomIsClear =
+      {-
+        a clear room is only occupied by the same ampType,
+        open space allowed.
+       -}
+      all
+        (\targetCoord -> case lookup targetCoord ampLocs of
+           Nothing -> True
+           Just ampType' -> ampType' == ampType)
+        myMoveTargets
+
     findNextMovesAux q0 discovered = case PQ.minView q0 of
       Nothing -> []
       Just (coord@(r, c) PQ.:-> energy, q1) ->
@@ -273,39 +291,29 @@ findNextMoves MapInfo {miRoomSize, miGraph} ampType initCoord wsPre =
         ]
           <> let nexts = do
                    coord'@(r', c') <- getNextsOf coord
-                   let myMoveTargets = moveTargets miRoomSize ampType
-                       myHomeCol = homeColumn ampType
-                       targetRoomIsClear =
-                         {-
-                           a clear room is only occupied by the same ampType,
-                           open space allowed.
-                          -}
-                         all
-                           (\targetCoord -> case lookup targetCoord ampLocs of
-                              Nothing -> True
-                              Just ampType' -> ampType' == ampType)
-                           myMoveTargets
-                   when (isInHallway coord && not (isInHallway coord')) do
-                     -- when moving down from hallway.
-                     guard $ c' == myHomeCol
-                     -- also room must be clear
-                     guard targetRoomIsClear
-                   when (r > 1 && c == myHomeCol && targetRoomIsClear) do
+                   guard $ coord' `notElem` blockings && S.notMember coord' discovered
+                   (isInHallway coord && not (isInHallway coord'))
+                     `impliesM` (
+                                 -- when moving down from hallway.
+                                 c' == myHomeCol
+                                   &&
+                                   -- also room must be clear
+                                   targetRoomIsClear)
+                   (r > 1 && c == myHomeCol && targetRoomIsClear)
+                     `impliesM`
                      -- if we are already in target room and that room is clear
                      -- it won't do us much good moving up again
-                     guard (r' > r)
-                   when (not (isInHallway coord) && c /= myHomeCol) do
+                     (r' > r)
+                   (not (isInHallway coord) && c /= myHomeCol)
+                     `impliesM`
                      -- must move up
-                     guard (r' < r)
-                   guard $ coord' `notElem` blockings
-                   guard $ S.notMember coord' discovered
+                     (r' < r)
                    pure coord'
                  q2 = foldr upd q1 nexts
                    where
-                     upd coord' = PQ.insert coord' energy'
-                       where
-                         energy' = energy + moveCost ampType
-              in findNextMovesAux q2 (foldr S.insert discovered nexts)
+                     upd coord' = PQ.insert coord' $! energy + moveCost ampType
+                 discovered' = foldr S.insert discovered nexts
+              in findNextMovesAux q2 discovered'
 
 {-
   https://en.wikipedia.org/wiki/A*_search_algorithm
@@ -322,19 +330,21 @@ aStar mi@MapInfo {miRoomSize} q0 gScores = case PQ.minView q0 of
               (ampType, coords) <- zip [A .. D] ws
               coord@(_r, c) <- coords
               let myHomeCol = homeColumn ampType
-              (coord'@(r', c'), ws', incr) <- findNextMoves mi ampType coord ws
-              guard $ coord /= coord'
+              ((r', c'), ws', incr) <- findNextMoves mi ampType coord ws
               -- if in hallway, must move to a room
-              when (isInHallway coord) $ do
-                guard $ c' == myHomeCol
-                -- and squeeze it down all the way.
-                guard $
-                  r' == miRoomSize + 1
-                    || (r' + 1, c') `elem` (ws' !! fromEnum ampType)
-              when (not (isInHallway coord) && c /= myHomeCol) do
+              isInHallway coord
+                `impliesM` let targetIsHomeCol = c' == myHomeCol
+                               enforceSqueeze =
+                                 -- and squeeze it down all the way.
+                                 r' == miRoomSize + 1
+                                   || (r' + 1, c') `elem` (ws' !! fromEnum ampType)
+                            in targetIsHomeCol && enforceSqueeze
+
+              (not (isInHallway coord) && c /= myHomeCol)
+                `impliesM`
                 -- if in the wrong room, we must move out.
                 -- (moving up one place may be possible, just not very productive)
-                guard $ r' == 1 || c' == myHomeCol
+                (r' == 1 || c' == myHomeCol)
               let gScore' = gScore + incr
                   fScore' = gScore' + homingEnergy miRoomSize ws'
                   energy' = energy + incr
@@ -344,14 +354,10 @@ aStar mi@MapInfo {miRoomSize} q0 gScores = case PQ.minView q0 of
               pure (ws', gScore', Arg fScore' energy')
             q2 = foldr upd q1 nexts
               where
-                upd (ws', _tentativeGScore, prio') =
-                  PQ.insert ws' prio'
-            gScores' =
-              foldr
-                (\(ws', tentativeGScore, _prio') ->
-                   M.insert ws' tentativeGScore)
-                gScores
-                nexts
+                upd (ws', _, prio') = PQ.insert ws' prio'
+            gScores' = foldr upd gScores nexts
+              where
+                upd (ws', gScore', _) = M.insert ws' gScore'
          in aStar mi q2 gScores'
 
 solveFromRawMap :: [String] -> Int
