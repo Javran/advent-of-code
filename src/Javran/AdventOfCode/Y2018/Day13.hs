@@ -27,6 +27,7 @@ where
 
 import Control.Applicative
 import Control.Monad
+import Control.Monad.Trans.Cont
 import Control.Monad.State.Strict
 import Data.Char
 import Data.Function
@@ -224,20 +225,8 @@ parseFromRaw raw = MapInfo {miGraph, miCurves, miCarts}
       Just s <- pure $ parseSym ch
       pure ((x, y), s)
 
-simulate :: MapInfo -> StateT (M.Map Coord CartState) (Either Coord) ()
-simulate mi = do
-  carts <- gets (sortOn (\((x, y), _) -> (y, x)) . M.toList)
-  forM_ carts $ \(cartLoc, cartState) -> do
-    modify (M.delete cartLoc)
-    let cartState'@CartState {csLoc = newLoc} = tickCart mi cartState
-    v <- gets (M.!? newLoc)
-    case v of
-      Just _ -> lift $ Left newLoc
-      Nothing ->
-        modify (M.insert newLoc cartState')
-
-simulate2 :: MapInfo -> StateT (M.Map Coord CartState) (Either Coord) ()
-simulate2 mi = do
+tick :: Bool -> MapInfo -> StateT (M.Map Coord CartState) (Either Coord) ()
+tick stopOnConflict mi = do
   carts <- gets (sortOn (\((x, y), _) -> (y, x)) . M.toList)
   forM_ carts $ \(cartLoc, cartState) -> do
     exist <- gets (M.member cartLoc)
@@ -247,6 +236,8 @@ simulate2 mi = do
       v <- gets (M.!? newLoc)
       case v of
         Just _ -> do
+          when stopOnConflict do
+            lift $ Left newLoc
           modify (M.delete newLoc)
         Nothing ->
           modify (M.insert newLoc cartState')
@@ -274,9 +265,9 @@ instance Solution Day13 where
                (miCarts mi))
 
     do
-      let Left (x, y) = evalStateT (forever (simulate mi)) initSt
+      let Left (x, y) = evalStateT (forever (tick True mi)) initSt
       answerS $ show x <> "," <> show y
     do
       {- TODO: p2 example -}
-      let Left (x, y) = evalStateT (forever (simulate2 mi)) initSt
+      let Left (x, y) = evalStateT (forever (tick False mi)) initSt
       answerS $ show x <> "," <> show y

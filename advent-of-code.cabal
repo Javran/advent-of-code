@@ -178,6 +178,7 @@ library
     , terminfo
     , text
     , time
+    , transformers
     , turtle
     , unordered-containers
     , vector
