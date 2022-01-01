@@ -119,11 +119,22 @@ parseFromRaw raw = MapInfo {miGraph, miCurves, miCarts}
             Nothing -> errConn
           handlePipe vert =
             {-
-              pipes only care about its own directions, otherwise cases with curves would be tricky,
+              pipes only care about its own directions,
+              otherwise cases with curves would be tricky,
+
               e.g.
-               \
-              ---
-               /
+                |
+                \---
+              --a--
+                /---
+                |
+
+              From a's respective, it might seem the `\` and `/` could be connected
+              while actually they are no, if a is `-`.
+              We could go beyond to preprocess those curves first to fix them
+              to a specific connectivity, but I don't see much benefit doing
+              an extra round just for this, so let's settle for just looking at
+              our direction of interest only.
              -}
             checkAndReturn (if vert then [connU, connD] else [connL, connR])
           handleCurve connAlt0 connAlt1 = do
