@@ -3,7 +3,6 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
 
@@ -217,7 +216,9 @@ ampHomingDists roomSize ampType cs =
       room row range: [2 .. roomSize-1]
       compute how many more most to "pack" those already home to bottom.
      -}
-    alreadyHomeIncr = sum $ zipWith (-) [roomSize + 1, roomSize ..] alreadyHomeSortedRowsDesc
+    alreadyHomeIncr =
+      sum $
+        zipWith (-) [roomSize + 1, roomSize ..] alreadyHomeSortedRowsDesc
     stillOutsideIncr = cnt * (cnt -1) `quot` 2
       where
         cnt = length stillOutside
@@ -259,10 +260,10 @@ findNextMoves MapInfo {miRoomSize, miGraph} ampType initCoord wsPre =
 
     getNextsOf coord =
       if useAmpGraph
-       then ampGraph miRoomSize coord
-            else do
-                Just coords' <- [miGraph M.!? coord]
-                coords'
+        then ampGraph miRoomSize coord
+        else do
+          Just coords' <- [miGraph M.!? coord]
+          coords'
 
     findNextMovesAux q0 discovered = case PQ.minView q0 of
       Nothing -> []
