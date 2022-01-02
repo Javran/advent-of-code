@@ -71,8 +71,10 @@ parseFromRaw raw =
   )
   where
     g = M.fromListWith (<>) do
-      coord <- opens
-      coord' <- udlrOfCoord coord
+      coord@(y, x) <- opens
+      coord' <-
+        -- explicit listing to make sure it's in reading order.
+        [(y -1, x), (y, x -1), (y, x + 1), (y + 1, x)]
       guard $ S.member coord' opensSet
       pure (coord, [coord'])
     (elves, goblins) = unzip combatUnits
