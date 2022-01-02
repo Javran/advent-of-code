@@ -27,7 +27,9 @@ where
 
 import Control.Applicative
 import Control.Monad
+import Control.Monad.Writer.Lazy
 import Data.Char
+import qualified Data.DList as DL
 import Data.Foldable
 import Data.Function
 import Data.Function.Memoize (memoFix)
@@ -48,24 +50,40 @@ import Text.ParserCombinators.ReadP hiding (count, get, many)
 
 data Day14 deriving (Generic)
 
-type ReceiptState = ((Int, Int), Seq.Seq Int)
+type RecipeState = ((Int, Int), Seq.Seq Int)
 
-step :: ReceiptState -> ReceiptState
-step ((elf0, elf1), xs) = ((norm $ elf0 + v0 + 1, norm $ elf1 + v1 + 1), xs')
+step :: RecipeState -> (RecipeState, DL.DList Int)
+step ((elf0, elf1), xs) =
+  (((norm $ elf0 + v0 + 1, norm $ elf1 + v1 + 1), xs'), DL.fromList extra)
   where
     norm = (`rem` newL)
     v0 = Seq.index xs elf0
     v1 = Seq.index xs elf1
     extra =
       -- TODO: can't use intToDigits, as it'll generate [] instead of expected [0]
-      Seq.fromList $ if v0 + v1 > 9 then [1, v0 + v1 -10] else [v0 + v1]
-    xs' = xs <> extra
+      if v0 + v1 > 9 then [1, v0 + v1 -10] else [v0 + v1]
+    xs' = xs <> Seq.fromList extra
     newL = Seq.length xs'
+
+recipes :: [Int]
+recipes = 3 : 7 : DL.toList xs
+  where
+    xs = execWriter (gen initSt)
+    gen s = do
+      s' <- writer (step s)
+      gen s'
+    initSt = ((0, 1), Seq.fromList [3, 7])
 
 instance Solution Day14 where
   solutionSolved _ = False
-  solutionRun _ SolutionContext {getInputS, answerS} = do
-    n <- read @Int . head . lines <$> getInputS
-    let progression = iterate step ((0, 1), Seq.fromList [3, 7])
-        ans = dropWhile ((< n + 10) . Seq.length . snd) progression
-    answerS (fmap (\v -> chr (v + ord '0'))$ take 10 $ toList $ Seq.drop n $ snd $ head ans)
+  solutionRun _ SolutionContext {getInputS, answerS, answerShow} = do
+    rawN <- head . lines <$> getInputS
+    do
+      let n = read @Int rawN
+      answerS (fmap (\v -> chr (v + ord '0')) $ take 10 $ toList $ drop n recipes)
+    do
+      let nSeq = fmap (read @Int . (: [])) rawN
+          (ans, _) : _ =
+            dropWhile ((nSeq /=) . snd) $
+              zip [0 :: Int ..] (divvy (length nSeq) 1 recipes)
+      answerShow ans
