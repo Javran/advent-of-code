@@ -1,52 +1,22 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE PatternGuards #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# OPTIONS_GHC -Wno-deprecations #-}
-{-# OPTIONS_GHC -Wno-typed-holes #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -fdefer-typed-holes #-}
 
 module Javran.AdventOfCode.Y2018.Day14
   (
   )
 where
 
-{- HLINT ignore -}
-
-import Control.Applicative
 import Control.Monad
 import Control.Monad.Writer.Lazy
 import Data.Char
 import qualified Data.DList as DL
 import Data.Foldable
-import Data.Function
-import Data.Function.Memoize (memoFix)
-import qualified Data.IntMap.Strict as IM
-import qualified Data.IntSet as IS
-import Data.List
 import Data.List.Split hiding (sepBy)
-import qualified Data.Map.Strict as M
-import Data.Monoid
-import Data.Semigroup
 import qualified Data.Sequence as Seq
-import qualified Data.Set as S
-import qualified Data.Text as T
-import qualified Data.Vector as V
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
-import Text.ParserCombinators.ReadP hiding (count, get, many)
 
 data Day14 deriving (Generic)
 
@@ -60,28 +30,28 @@ step ((elf0, elf1), xs) =
     v0 = Seq.index xs elf0
     v1 = Seq.index xs elf1
     extra =
+      let y = v0 + v1
       -- TODO: can't use intToDigits, as it'll generate [] instead of expected [0]
-      if v0 + v1 > 9 then [1, v0 + v1 -10] else [v0 + v1]
+       in if y > 9 then [1, y -10] else [y]
     xs' = xs <> Seq.fromList extra
     newL = Seq.length xs'
 
 recipes :: [Int]
-recipes = 3 : 7 : DL.toList xs
+recipes = 3 : 7 : DL.toList (execWriter (gen initSt))
   where
-    xs = execWriter (gen initSt)
-    gen s = do
-      s' <- writer (step s)
-      gen s'
+    gen s = writer (step s) >>= gen
     initSt = ((0, 1), Seq.fromList [3, 7])
 
 instance Solution Day14 where
-  solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerS, answerShow} = do
-    rawN <- head . lines <$> getInputS
-    do
+    (extraOps, rawInput) <- consumeExtraLeadingLines <$> getInputS
+    let rawN = head . lines $ rawInput
+        runPart1 = maybe True ("part1" `elem`) extraOps
+        runPart2 = maybe True ("part2" `elem`) extraOps
+    when runPart1 do
       let n = read @Int rawN
       answerS (fmap (\v -> chr (v + ord '0')) $ take 10 $ toList $ drop n recipes)
-    do
+    when runPart2 do
       let nSeq = fmap (read @Int . (: [])) rawN
           (ans, _) : _ =
             dropWhile ((nSeq /=) . snd) $
