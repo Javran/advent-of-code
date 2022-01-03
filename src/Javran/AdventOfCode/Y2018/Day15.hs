@@ -191,7 +191,7 @@ data GameState = GameState
   , gsRound :: Int
   }
 
-performRound :: Graph -> ContT a (State GameState) Bool
+performRound :: Monad m => Graph -> ContT a (StateT GameState m) Bool
 performRound g = callCC \done -> do
   (elves, goblins) <- gets gsHps
   forM_
@@ -206,29 +206,25 @@ performRound g = callCC \done -> do
       isAlive <- gets (M.member coord . (^. _friend) . gsHps)
       when isAlive do
         (friends, enemies) <- gets (((,) <$> (^. _friend) <*> (^. _enemy)) . gsHps)
-        let action = unitAction g friends enemies coord
-        case action of
+        case unitAction g friends enemies coord of
           EndCombat -> done True
           MoveThenAttack mMoveTarget mAttackTarget -> do
-            -- TODO: cleanup later, probably both fields could be Maybes.
             maybe
               (pure ())
-              (\mvTo -> do
-                 let f0 m = M.insert mvTo hp $ M.delete coord m
+              (\mvTo ->
+                 let f m = M.insert mvTo hp $ M.delete coord m
                        where
                          hp = m M.! coord
-                 modify (\s -> s {gsHps = gsHps s & _friend %~ f0}))
+                  in modify (\s -> s {gsHps = gsHps s & _friend %~ f}))
               mMoveTarget
             maybe
               (pure ())
-              (\attackAt -> do
-                 let f1 =
-                       M.alter
-                         (\case
-                            Nothing -> Nothing
-                            Just v -> let v' = v - 3 in v' <$ guard (v' > 0))
+              (\attackAt ->
+                 let f =
+                       M.update
+                         (\v -> let v' = v - 3 in v' <$ guard (v' > 0))
                          attackAt
-                 modify (\s -> s {gsHps = gsHps s & _enemy %~ f1}))
+                  in modify (\s -> s {gsHps = gsHps s & _enemy %~ f}))
               mAttackTarget
 
   modify (\s -> s {gsRound = gsRound s + 1})
