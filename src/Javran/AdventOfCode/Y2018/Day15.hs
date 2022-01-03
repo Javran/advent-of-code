@@ -23,6 +23,7 @@ where
 import Control.Lens
 import Control.Monad
 import Control.Monad.Cont
+import Control.Monad.Loops
 import Control.Monad.State.Strict
 import Data.List
 import qualified Data.Map.Strict as M
@@ -224,12 +225,9 @@ simulate g mElfAttack initSt =
   runState (runContT sim pure) initSt
   where
     sim = do
-      end <- performRound g mElfAttack
-      case end of
-        Nothing -> sim
-        Just r -> do
-          GameState {gsRound, gsHps = (es, gs)} <- get
-          pure (r, gsRound * (sum es + sum gs))
+      r <- untilJust (performRound g mElfAttack)
+      GameState {gsRound, gsHps = (es, gs)} <- get
+      pure (r, gsRound * (sum es + sum gs))
 
 instance Solution Day15 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
