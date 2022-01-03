@@ -64,11 +64,19 @@ parseFromRaw raw =
     )
   )
   where
-    g = M.fromListWith (error "no conflict") do
+    g = M.fromListWith (error "expected no conflict") do
       coord@(y, x) <- opens
-      -- TODO: somehow flatten this gives us the wrong order?
+      {-
+        There is no guarantee of the merge order of values,
+        so one has to be very careful not to flatten this `coord'` outside,
+        if our intention is to preserve this "reading order".
+        (in fact, it destroys the order we put here, for this particular example).
+        So instead of doing that, we construct values in one go
+        and make sure there's no value-merging happening by `M.fromListWith`,
+        which would indicate that it wants to touch values and thus a potential risk
+        of reordering.
+       -}
       let coordNext = do
-            -- explicit listing to make sure it's in reading order.
             coord' <- [(y -1, x), (y, x -1), (y, x + 1), (y + 1, x)]
             coord' <$ guard (S.member coord' opensSet)
       pure (coord, coordNext)
