@@ -1,57 +1,35 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE PatternGuards #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
-{-# OPTIONS_GHC -Wno-deprecations #-}
-{-# OPTIONS_GHC -Wno-typed-holes #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -Wno-unused-top-binds #-}
-{-# OPTIONS_GHC -fdefer-typed-holes #-}
 
 module Javran.AdventOfCode.Y2018.Day15
   (
   )
 where
 
-{- HLINT ignore -}
+{-
+  (ranting)
 
-import Control.Applicative
+  Who the f comes up with this and has the guts to publish this bs,
+  please go f yourself, excuse my language but you deserve exactly that.
+
+  Or tell me what exactly am I supposed to learn from this?
+  Is this a fcking reading contest?
+ -}
+
 import Control.Lens
 import Control.Monad
 import Control.Monad.Cont
 import Control.Monad.State.Strict
-import Data.Char
-import Data.Containers.ListUtils (nubOrd)
-import Data.Function
-import Data.Function.Memoize (memoFix)
-import qualified Data.IntMap.Strict as IM
-import qualified Data.IntSet as IS
 import Data.List
-import Data.List.Split hiding (sepBy)
 import qualified Data.Map.Strict as M
-import Data.Monoid
 import Data.Semigroup
 import qualified Data.Sequence as Seq
 import qualified Data.Set as S
-import qualified Data.Text as T
-import qualified Data.Vector as V
-import Debug.Trace
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
-import System.IO.Unsafe (unsafePerformIO)
-import Text.ParserCombinators.ReadP hiding (count, get, many)
 
 data Day15 deriving (Generic)
 
@@ -91,7 +69,7 @@ parseFromRaw raw =
       let coordNext = do
             -- explicit listing to make sure it's in reading order.
             coord' <- [(y -1, x), (y, x -1), (y, x + 1), (y + 1, x)]
-            coord' <$ (guard $ S.member coord' opensSet)
+            coord' <$ guard (S.member coord' opensSet)
       pure (coord, coordNext)
     (elves, goblins) = unzip combatUnits
     opensSet = S.fromList opens
@@ -104,8 +82,8 @@ parseFromRaw raw =
           gm = [(coord, 200 :: Int) | ch == 'G']
       pure (coord, (em, gm))
 
-pprGame :: Graph -> GameState -> IO ()
-pprGame g GameState {gsHps = (elves, goblins), gsRound} = do
+_pprGame :: Graph -> GameState -> IO ()
+_pprGame g GameState {gsHps = (elves, goblins), gsRound} = do
   let Just (MinMax2D ((minY, maxY), (minX, maxX))) =
         foldMap (Just . minMax2D) $ M.keys g
       units :: M.Map Coord (Either Int Int)
@@ -136,7 +114,7 @@ pprGame g GameState {gsHps = (elves, goblins), gsRound} = do
                       Left v -> "E:" <> show v
                       Right v -> "G:" <> show v)
                    rowUnits)
-    putStrLn $ (concatMap render [minX - 1 .. maxX + 1]) <> rowExtra
+    putStrLn $ concatMap render [minX - 1 .. maxX + 1] <> rowExtra
 
 findPath :: Graph -> (Coord -> Bool) -> S.Set Coord -> Seq.Seq (Coord, [Coord]) -> S.Set Coord -> Maybe [Coord]
 findPath g isAvailable goals = fix \loop -> curry \case
@@ -186,25 +164,34 @@ data GameState = GameState
   , gsRound :: Int
   }
 
-performRound :: Monad m => Graph -> ContT a (StateT GameState m) Bool
-performRound g = callCC \done -> do
+data CombatResult
+  = EndedNormally
+  | ElfDied
+  deriving (Show, Eq)
+
+performRound :: Monad m => Graph -> Maybe Int -> ContT a (StateT GameState m) (Maybe CombatResult)
+performRound g mElfAttackPower = callCC \done -> do
   (elves, goblins) <- gets gsHps
-  let iteratee :: M.Map Coord (ALens' (a, a) a, ALens' (a, a) a)
+  let (elfAttackPower, haltOnElfDeath) = case mElfAttackPower of
+        Nothing -> (3, False)
+        Just v -> (v, True)
+      iteratee :: M.Map Coord Bool
       iteratee =
         M.unionWithKey
           (\k _ _ -> error $ "duplicated: " <> show k)
-          (M.map (const (_1, _2)) elves)
-          (M.map (const (_2, _1)) goblins)
+          (M.map (const True) elves)
+          (M.map (const False) goblins)
   forM_
     (M.toAscList iteratee)
-    \(coord, (_f, _e)) -> do
-      let _friend = cloneLens _f
-          _enemy = cloneLens _e
+    \(coord, isElf) -> do
+      let attackPower = if isElf then elfAttackPower else 3
+          _friend = if isElf then _1 else _2
+          _enemy = if isElf then _2 else _1
       isAlive <- gets (M.member coord . (^. _friend) . gsHps)
       when isAlive do
         (friends, enemies) <- gets (((,) <$> (^. _friend) <*> (^. _enemy)) . gsHps)
         case unitAction g friends enemies coord of
-          EndCombat -> done True
+          EndCombat -> done (Just EndedNormally)
           MoveThenAttack mMoveTarget mAttackTarget -> do
             maybe
               (pure ())
@@ -216,34 +203,51 @@ performRound g = callCC \done -> do
               mMoveTarget
             maybe
               (pure ())
-              (\attackAt ->
+              (\attackAt -> do
                  let f =
                        M.update
-                         (\v -> let v' = v - 3 in v' <$ guard (v' > 0))
+                         (\v -> let v' = v - attackPower in v' <$ guard (v' > 0))
                          attackAt
-                  in modify (\s -> s {gsHps = gsHps s & _enemy %~ f}))
+                 modify (\s -> s {gsHps = gsHps s & _enemy %~ f})
+                 unless isElf do
+                   -- goblin attacking elf.
+                   targetIsAlive <- gets (M.member attackAt . (^. _enemy) . gsHps)
+                   when (not targetIsAlive && haltOnElfDeath) do
+                     done (Just ElfDied))
               mAttackTarget
 
   modify (\s -> s {gsRound = gsRound s + 1})
-  pure False
+  pure Nothing
 
--- simulate :: Graph -> ContT GameState (State GameState) GameState
-simulate g = do
-  end <- performRound g
-  if end
-    then get
-    else simulate g
+simulate :: Graph -> Maybe Int -> GameState -> ((CombatResult, Int), GameState)
+simulate g mElfAttack initSt =
+  runState (runContT sim pure) initSt
+  where
+    sim = do
+      end <- performRound g mElfAttack
+      case end of
+        Nothing -> sim
+        Just r -> do
+          GameState {gsRound, gsHps = (es, gs)} <- get
+          pure (r, gsRound * (sum es + sum gs))
 
 instance Solution Day15 where
-  solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     xs <- lines <$> getInputS
     let (g, hps) = parseFromRaw xs
         initSt = GameState {gsHps = hps, gsRound = 0}
-        -- (_, r) = runState (runContT (performRound g) pure) initSt
-        (_, fin@GameState {gsRound, gsHps = (es, gs)}) =
-          runState (runContT (simulate g) pure) initSt
-        outcome = gsRound * (sum es + sum gs)
-    --
-    pprGame g fin
-    answerShow outcome
+    do
+      let ((_, outcome), _) = simulate g Nothing initSt
+      answerShow outcome
+    do
+      {-
+        A binary search is probably fine, but I won't bet my money
+        on this puzzle having a monotonic property that guarantees correctness of
+        binary search - the linear approach looks fine and doesn't seem to have a
+        terrible performance, that where I'm heading.
+       -}
+      let simulations =
+            fmap (\i -> simulate g (Just i) initSt) [4 ..]
+          ((_, outcome), _) : _ =
+            dropWhile ((== ElfDied) . fst . fst) simulations
+      answerShow outcome
