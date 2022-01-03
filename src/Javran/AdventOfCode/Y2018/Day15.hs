@@ -127,7 +127,7 @@ pprGame g GameState {gsHps = (elves, goblins), gsRound} = do
             sortOn fst $ fmap (\((y', x'), hp) -> (x', hp)) $ M.toList $ M.filterWithKey (\(y', _) _ -> y' == y) units
         rowExtra = case rowUnits of
           [] -> ""
-          _:_ ->
+          _ : _ ->
             " "
               <> intercalate
                 ", "
@@ -141,28 +141,17 @@ pprGame g GameState {gsHps = (elves, goblins), gsRound} = do
 findPath g isAvailable goals q0 discovered = case q0 of
   Seq.Empty ->
     Nothing
-  (cur, depth) Seq.:<| q1 ->
+  (cur, pRev) Seq.:<| q1 ->
     if
-        | S.member cur goals -> Just depth
+        | S.member cur goals -> Just (reverse pRev)
         | otherwise ->
           let nexts = do
                 coord' <- g M.! cur
                 guard $ isAvailable coord' && S.notMember coord' discovered
-                pure (coord', depth + 1)
+                pure (coord', coord' : pRev)
               discovered' = foldr S.insert discovered (fmap fst nexts)
               q2 = q1 <> Seq.fromList nexts
            in findPath g isAvailable goals q2 discovered'
-
-dfs :: Graph -> (Coord -> Bool) -> S.Set Coord -> Int -> [Coord] -> Coord -> Int -> StateT (S.Set Coord) [] [Coord]
-dfs g isAvailable goals dLim pathRev cur depth
-  | depth > dLim = mzero
-  | S.member cur goals = pure (reverse pathRev)
-  | otherwise = do
-    modify (S.insert cur)
-    visited <- get
-    next <- lift (g M.! cur)
-    guard $ S.notMember next visited && isAvailable next
-    dfs g isAvailable goals dLim (next : pathRev) next (depth + 1)
 
 -- computes the action of a unit
 unitAction :: Graph -> HpState -> HpState -> Coord -> Action
@@ -186,16 +175,10 @@ unitAction graph friends enemies myCoord = either id id do
         (_, target) : _ = filter ((== minEnemyHp) . fst) possibleTargets
     Left $ Attack target
   -- no target immediately available, go to one.
-  {-
-    TODO: in case reading order is somehow not enforced, let's do this stupidest thing imaginable:
-    BFS to get a depth, and then do DFS to get a path, this at least guarantees that we get the reading order enforcement right.
-   -}
-  case findPath graph isAvailable moveDsts (Seq.singleton (myCoord, 0 :: Int)) (S.singleton myCoord) of
+  case findPath graph isAvailable moveDsts (Seq.singleton (myCoord, [])) (S.singleton myCoord) of
     Nothing -> Right EndTurn
-    Just dLim ->
-      let alts = evalStateT (dfs graph isAvailable moveDsts dLim [] myCoord 0) S.empty
-          mv = head $ head alts
-          possibleTargets = do
+    Just ~(mv : _) ->
+      let possibleTargets = do
             c' <- graph M.! mv
             Just eHp <- pure $ enemies M.!? c'
             pure (eHp, c')
@@ -262,10 +245,7 @@ performRound g = callCC \done -> do
 -- simulate :: Graph -> ContT GameState (State GameState) GameState
 simulate g = do
   end <- performRound g
-  s <- get
-  if unsafePerformIO do
-    pprGame g s
-    pure end
+  if end
     then get
     else simulate g
 
@@ -276,7 +256,7 @@ instance Solution Day15 where
     let (g, hps) = parseFromRaw xs
         initSt = GameState {gsHps = hps, gsRound = 0}
         -- (_, r) = runState (runContT (performRound g) pure) initSt
-        (_, fin@GameState{gsRound, gsHps = (es, gs)}) = runState (runContT (simulate g) pure) initSt
+        (_, fin@GameState {gsRound, gsHps = (es, gs)}) = runState (runContT (simulate g) pure) initSt
         outcome = gsRound * (sum es + sum gs)
     --
     pprGame g fin
