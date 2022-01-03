@@ -139,10 +139,9 @@ pprGame g GameState {gsHps = (elves, goblins), gsRound} = do
     putStrLn $ (concatMap render [minX - 1 .. maxX + 1]) <> rowExtra
 
 findPath :: Graph -> (Coord -> Bool) -> S.Set Coord -> Seq.Seq (Coord, [Coord]) -> S.Set Coord -> Maybe [Coord]
-findPath g isAvailable goals q0 discovered = case q0 of
-  Seq.Empty ->
-    Nothing
-  (cur, pRev) Seq.:<| q1 ->
+findPath g isAvailable goals = fix \loop -> curry \case
+  (Seq.Empty, _) -> Nothing
+  ((cur, pRev) Seq.:<| q1, discovered) ->
     if S.member cur goals
       then Just (reverse pRev)
       else
@@ -152,7 +151,7 @@ findPath g isAvailable goals q0 discovered = case q0 of
               pure (coord', coord' : pRev)
             discovered' = foldr S.insert discovered (fmap fst nexts)
             q2 = q1 <> Seq.fromList nexts
-         in findPath g isAvailable goals q2 discovered'
+         in loop q2 discovered'
 
 -- Computes the action of a unit
 unitAction :: Graph -> HpState -> HpState -> Coord -> Action
@@ -174,14 +173,12 @@ unitAction graph friends enemies myCoord = either id id do
         -- just pick the first one available - this should already be in reading order.
         let (_, target) : _ = filter ((== minEnemyHp) . fst) possibleTargets
         pure target
-
-  when (S.member myCoord moveDsts) do
-    -- already near, perform attack.
-    Left $ MoveThenAttack Nothing (mayAttackFromCoord myCoord)
-  -- no target immediately available, go to one.
   Right $ case findPath graph isAvailable moveDsts (Seq.singleton (myCoord, [])) (S.singleton myCoord) of
     Nothing -> MoveThenAttack Nothing Nothing
-    Just ~(mv : _) ->
+    Just [] ->
+      -- no move necessary, just attack.
+      MoveThenAttack Nothing (mayAttackFromCoord myCoord)
+    Just (mv : _) ->
       MoveThenAttack (Just mv) (mayAttackFromCoord mv)
 
 data GameState = GameState
@@ -244,7 +241,8 @@ instance Solution Day15 where
     let (g, hps) = parseFromRaw xs
         initSt = GameState {gsHps = hps, gsRound = 0}
         -- (_, r) = runState (runContT (performRound g) pure) initSt
-        (_, fin@GameState {gsRound, gsHps = (es, gs)}) = runState (runContT (simulate g) pure) initSt
+        (_, fin@GameState {gsRound, gsHps = (es, gs)}) =
+          runState (runContT (simulate g) pure) initSt
         outcome = gsRound * (sum es + sum gs)
     --
     pprGame g fin
