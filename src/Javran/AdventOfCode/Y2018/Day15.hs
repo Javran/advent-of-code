@@ -198,7 +198,7 @@ performRound :: Graph -> ContT a (State GameState) Bool
 performRound g = callCC \done -> do
   (elves, goblins) <- gets gsHps
   forM_
-    (M.toList $
+    (M.toAscList $
        M.unionWithKey
          (\k _ _ -> error $ "duplicated: " <> show k)
          (M.map (const True) elves)
@@ -227,6 +227,7 @@ performRound g = callCC \done -> do
                     coord'
              in modify (\s -> s {gsHps = gsHps s & _enemy %~ f})
           MoveAttack mvTo attackAt -> do
+            -- TODO: cleanup later, probably both fields could be Maybes.
             let f0 m = M.insert mvTo hp $ M.delete coord m
                   where
                     hp = m M.! coord
