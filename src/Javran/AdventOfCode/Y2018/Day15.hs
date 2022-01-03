@@ -73,10 +73,7 @@ type Hitpoints = (HpState, HpState)
 type Graph = M.Map Coord [Coord]
 
 data Action
-  = Move Coord
-  | Attack Coord
-  | MoveAttack Coord Coord
-  | EndTurn
+  = MoveThenAttack (Maybe Coord) (Maybe Coord)
   | EndCombat
   deriving (Show)
 
@@ -173,21 +170,21 @@ unitAction graph friends enemies myCoord = either id id do
         minEnemyHp = minimum (fmap fst possibleTargets)
         -- just pick the first one available - this should already be in reading order.
         (_, target) : _ = filter ((== minEnemyHp) . fst) possibleTargets
-    Left $ Attack target
+    Left $ MoveThenAttack Nothing (Just target)
   -- no target immediately available, go to one.
   case findPath graph isAvailable moveDsts (Seq.singleton (myCoord, [])) (S.singleton myCoord) of
-    Nothing -> Right EndTurn
+    Nothing -> Right $ MoveThenAttack Nothing Nothing
     Just ~(mv : _) ->
       let possibleTargets = do
             c' <- graph M.! mv
             Just eHp <- pure $ enemies M.!? c'
             pure (eHp, c')
        in Right case possibleTargets of
-            [] -> Move mv
+            [] -> MoveThenAttack (Just mv) Nothing
             _ : _ ->
               let minEnemyHp = minimum (fmap fst possibleTargets)
                   (_, target) : _ = filter ((== minEnemyHp) . fst) possibleTargets
-               in MoveAttack mv target
+               in MoveThenAttack (Just mv) (Just target)
 
 data GameState = GameState
   { gsHps :: Hitpoints
@@ -212,33 +209,27 @@ performRound g = callCC \done -> do
         let action = unitAction g friends enemies coord
         case action of
           EndCombat -> done True
-          EndTurn -> pure ()
-          Move coord' ->
-            let f m = M.insert coord' hp $ M.delete coord m
-                  where
-                    hp = m M.! coord
-             in modify (\s -> s {gsHps = gsHps s & _friend %~ f})
-          Attack coord' ->
-            let f =
-                  M.alter
-                    (\case
-                       Nothing -> Nothing
-                       Just v -> let v' = v - 3 in v' <$ guard (v' > 0))
-                    coord'
-             in modify (\s -> s {gsHps = gsHps s & _enemy %~ f})
-          MoveAttack mvTo attackAt -> do
+          MoveThenAttack mMoveTarget mAttackTarget -> do
             -- TODO: cleanup later, probably both fields could be Maybes.
-            let f0 m = M.insert mvTo hp $ M.delete coord m
-                  where
-                    hp = m M.! coord
-            modify (\s -> s {gsHps = gsHps s & _friend %~ f0})
-            let f1 =
-                  M.alter
-                    (\case
-                       Nothing -> Nothing
-                       Just v -> let v' = v - 3 in v' <$ guard (v' > 0))
-                    attackAt
-            modify (\s -> s {gsHps = gsHps s & _enemy %~ f1})
+            maybe
+              (pure ())
+              (\mvTo -> do
+                 let f0 m = M.insert mvTo hp $ M.delete coord m
+                       where
+                         hp = m M.! coord
+                 modify (\s -> s {gsHps = gsHps s & _friend %~ f0}))
+              mMoveTarget
+            maybe
+              (pure ())
+              (\attackAt -> do
+                 let f1 =
+                       M.alter
+                         (\case
+                            Nothing -> Nothing
+                            Just v -> let v' = v - 3 in v' <$ guard (v' > 0))
+                         attackAt
+                 modify (\s -> s {gsHps = gsHps s & _enemy %~ f1}))
+              mAttackTarget
 
   modify (\s -> s {gsRound = gsRound s + 1})
   pure False
