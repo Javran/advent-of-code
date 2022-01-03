@@ -120,8 +120,11 @@ pprGame g GameState {gsHps = (elves, goblins), gsRound} = do
           where
             coord = (y, x)
         rowUnits =
-          fmap snd $
-            sortOn fst $ fmap (\((y', x'), hp) -> (x', hp)) $ M.toList $ M.filterWithKey (\(y', _) _ -> y' == y) units
+          fmap snd
+            . sortOn fst
+            . fmap (\((_, x'), hp) -> (x', hp))
+            . M.toList
+            $ M.filterWithKey (\(y', _) _ -> y' == y) units
         rowExtra = case rowUnits of
           [] -> ""
           _ : _ ->
@@ -135,22 +138,23 @@ pprGame g GameState {gsHps = (elves, goblins), gsRound} = do
                    rowUnits)
     putStrLn $ (concatMap render [minX - 1 .. maxX + 1]) <> rowExtra
 
+findPath :: Graph -> (Coord -> Bool) -> S.Set Coord -> Seq.Seq (Coord, [Coord]) -> S.Set Coord -> Maybe [Coord]
 findPath g isAvailable goals q0 discovered = case q0 of
   Seq.Empty ->
     Nothing
   (cur, pRev) Seq.:<| q1 ->
-    if
-        | S.member cur goals -> Just (reverse pRev)
-        | otherwise ->
-          let nexts = do
-                coord' <- g M.! cur
-                guard $ isAvailable coord' && S.notMember coord' discovered
-                pure (coord', coord' : pRev)
-              discovered' = foldr S.insert discovered (fmap fst nexts)
-              q2 = q1 <> Seq.fromList nexts
-           in findPath g isAvailable goals q2 discovered'
+    if S.member cur goals
+      then Just (reverse pRev)
+      else
+        let nexts = do
+              coord' <- g M.! cur
+              guard $ isAvailable coord' && S.notMember coord' discovered
+              pure (coord', coord' : pRev)
+            discovered' = foldr S.insert discovered (fmap fst nexts)
+            q2 = q1 <> Seq.fromList nexts
+         in findPath g isAvailable goals q2 discovered'
 
--- computes the action of a unit
+-- Computes the action of a unit
 unitAction :: Graph -> HpState -> HpState -> Coord -> Action
 unitAction graph friends enemies myCoord = either id id do
   when (null enemies) do
@@ -161,30 +165,24 @@ unitAction graph friends enemies myCoord = either id id do
         ec <- M.keys enemies
         -- get adjacents of this enemy
         graph M.! ec
+      mayAttackFromCoord coord = do
+        let possibleTargets = do
+              c' <- graph M.! coord
+              Just eHp <- pure $ enemies M.!? c'
+              pure (eHp, c')
+        Min minEnemyHp <- foldMap (Just . Min . fst) possibleTargets
+        -- just pick the first one available - this should already be in reading order.
+        let (_, target) : _ = filter ((== minEnemyHp) . fst) possibleTargets
+        pure target
+
   when (S.member myCoord moveDsts) do
     -- already near, perform attack.
-    let possibleTargets = do
-          c' <- graph M.! myCoord
-          Just eHp <- pure $ enemies M.!? c'
-          pure (eHp, c')
-        minEnemyHp = minimum (fmap fst possibleTargets)
-        -- just pick the first one available - this should already be in reading order.
-        (_, target) : _ = filter ((== minEnemyHp) . fst) possibleTargets
-    Left $ MoveThenAttack Nothing (Just target)
+    Left $ MoveThenAttack Nothing (mayAttackFromCoord myCoord)
   -- no target immediately available, go to one.
-  case findPath graph isAvailable moveDsts (Seq.singleton (myCoord, [])) (S.singleton myCoord) of
-    Nothing -> Right $ MoveThenAttack Nothing Nothing
+  Right $ case findPath graph isAvailable moveDsts (Seq.singleton (myCoord, [])) (S.singleton myCoord) of
+    Nothing -> MoveThenAttack Nothing Nothing
     Just ~(mv : _) ->
-      let possibleTargets = do
-            c' <- graph M.! mv
-            Just eHp <- pure $ enemies M.!? c'
-            pure (eHp, c')
-       in Right case possibleTargets of
-            [] -> MoveThenAttack (Just mv) Nothing
-            _ : _ ->
-              let minEnemyHp = minimum (fmap fst possibleTargets)
-                  (_, target) : _ = filter ((== minEnemyHp) . fst) possibleTargets
-               in MoveThenAttack (Just mv) (Just target)
+      MoveThenAttack (Just mv) (mayAttackFromCoord mv)
 
 data GameState = GameState
   { gsHps :: Hitpoints
@@ -194,15 +192,17 @@ data GameState = GameState
 performRound :: Monad m => Graph -> ContT a (StateT GameState m) Bool
 performRound g = callCC \done -> do
   (elves, goblins) <- gets gsHps
+  let iteratee :: M.Map Coord (ALens' (a, a) a, ALens' (a, a) a)
+      iteratee =
+        M.unionWithKey
+          (\k _ _ -> error $ "duplicated: " <> show k)
+          (M.map (const (_1, _2)) elves)
+          (M.map (const (_2, _1)) goblins)
   forM_
-    (M.toAscList $
-       M.unionWithKey
-         (\k _ _ -> error $ "duplicated: " <> show k)
-         (M.map (const True) elves)
-         (M.map (const False) goblins))
-    \(coord, isElf) -> do
-      let _friend = if isElf then _1 else _2
-          _enemy = if isElf then _2 else _1
+    (M.toAscList iteratee)
+    \(coord, (_f, _e)) -> do
+      let _friend = cloneLens _f
+          _enemy = cloneLens _e
       isAlive <- gets (M.member coord . (^. _friend) . gsHps)
       when isAlive do
         (friends, enemies) <- gets (((,) <$> (^. _friend) <*> (^. _enemy)) . gsHps)
