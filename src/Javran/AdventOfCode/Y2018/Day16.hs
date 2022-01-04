@@ -28,7 +28,7 @@ where
 {- HLINT ignore -}
 
 import Control.Applicative
-import Control.Lens
+import Control.Lens hiding (universe)
 import Control.Monad
 import Data.Bits
 import Data.Char
@@ -52,12 +52,17 @@ data Day16 deriving (Generic)
 
 data Register = R0 | R1 | R2 | R3 deriving (Enum)
 
-data ValueMode = Reg | Imm
+data ValueMode = Reg | Imm deriving (Enum, Bounded, Show)
 
+{-
+  TODO: How to better model this, if we were to generalize to "higher dimensions",
+  that say, only few constructs are forbidden?
+ -}
 data BinValueMode
   = ImmReg
   | RegImm
   | RegReg
+  deriving (Enum, Bounded, Show)
 
 data OpType
   = Add ValueMode
@@ -67,8 +72,14 @@ data OpType
   | Assign ValueMode
   | TestGreaterThan BinValueMode
   | TestEqual BinValueMode
+  deriving (Show)
 
 type DeviceState = (Int, Int, Int, Int)
+
+allOpTypes :: [OpType]
+allOpTypes =
+  ([Add, Mul, BitAnd, BitOr, Assign] <*> universe)
+    <> ([TestGreaterThan, TestEqual] <*> universe)
 
 interpret :: DeviceState -> OpType -> (Int, Int, Int) -> Maybe DeviceState
 interpret ds opType (a, b, c) = case opType of
@@ -119,6 +130,6 @@ instance Solution Day16 where
   solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     xs <- fmap id . lines <$> getInputS
-    print (interpret (3,2,1,1) (Mul Reg) (2,1,2))
-    print (interpret (3,2,1,1) (Add Imm) (2,1,2))
-    print (interpret (3,2,1,1) (Assign Imm) (2,1,2))
+    forM_ allOpTypes $ \opTyp -> do
+      print opTyp
+      print (interpret (3, 2, 1, 1) opTyp (2, 1, 2))
