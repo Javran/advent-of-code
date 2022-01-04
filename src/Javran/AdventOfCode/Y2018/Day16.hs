@@ -3,6 +3,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
@@ -42,9 +43,34 @@ import qualified Data.Text as T
 import qualified Data.Vector as V
 import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
-import Text.ParserCombinators.ReadP hiding (count, many, get)
+import Text.ParserCombinators.ReadP hiding (count, get, many)
 
 data Day16 deriving (Generic)
+
+data Register = R0 | R1 | R2 | R3
+
+data ValueMode = Reg Register | Imm Int
+
+data BinValueMode
+  = ImmReg Int Register
+  | RegImm Register Int
+  | RegReg Register Register
+
+data InstrLhs
+  = Add ValueMode
+  | Mul ValueMode
+  | BitAnd ValueMode
+  | BitOr ValueMode
+  | Assign ValueMode
+  | TestGreaterThan BinValueMode
+  | TestEqual BinValueMode
+
+type Instr =
+  ( InstrLhs
+  , Register -- C is always a register.
+  )
+
+type DeviceState = (Int, Int, Int, Int)
 
 instance Solution Day16 where
   solutionSolved _ = False
