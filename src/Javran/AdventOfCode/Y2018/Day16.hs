@@ -14,6 +14,7 @@
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
 {-# OPTIONS_GHC -Wno-deprecations #-}
 {-# OPTIONS_GHC -Wno-typed-holes #-}
 {-# OPTIONS_GHC -Wno-unused-imports #-}
@@ -27,7 +28,9 @@ where
 {- HLINT ignore -}
 
 import Control.Applicative
+import Control.Lens
 import Control.Monad
+import Data.Bits
 import Data.Char
 import Data.Function
 import Data.Function.Memoize (memoFix)
@@ -47,16 +50,16 @@ import Text.ParserCombinators.ReadP hiding (count, get, many)
 
 data Day16 deriving (Generic)
 
-data Register = R0 | R1 | R2 | R3
+data Register = R0 | R1 | R2 | R3 deriving (Enum)
 
-data ValueMode = Reg Register | Imm Int
+data ValueMode = Reg | Imm
 
 data BinValueMode
-  = ImmReg Int Register
-  | RegImm Register Int
-  | RegReg Register Register
+  = ImmReg
+  | RegImm
+  | RegReg
 
-data InstrLhs
+data OpType
   = Add ValueMode
   | Mul ValueMode
   | BitAnd ValueMode
@@ -65,15 +68,57 @@ data InstrLhs
   | TestGreaterThan BinValueMode
   | TestEqual BinValueMode
 
-type Instr =
-  ( InstrLhs
-  , Register -- C is always a register.
-  )
-
 type DeviceState = (Int, Int, Int, Int)
+
+interpret :: DeviceState -> OpType -> (Int, Int, Int) -> Maybe DeviceState
+interpret ds opType (a, b, c) = case opType of
+  Add mb -> cat0 mb (+)
+  Mul mb -> cat0 mb (*)
+  BitAnd mb -> cat0 mb (.&.)
+  BitOr mb -> cat0 mb (.|.)
+  Assign ma -> do
+    v0 <- getVal ma a
+    rOut <- resolveReg c
+    pure $ ds & _r rOut .~ v0
+  TestGreaterThan mab -> cat1 mab (>)
+  TestEqual mab -> cat1 mab (==)
+  where
+    -- category0 covers ops with prefix add / mul / ban / bor
+    cat0 mb f = do
+      v0 <- getVal Reg a
+      v1 <- getVal mb b
+      rOut <- resolveReg c
+      pure $ ds & _r rOut .~ (f v0 v1)
+    -- category1 covers ops with prefix gt / eq
+    cat1 mab f = do
+      let (ma, mb) = case mab of
+            ImmReg -> (Imm, Reg)
+            RegImm -> (Reg, Imm)
+            RegReg -> (Reg, Reg)
+      v0 <- getVal ma a
+      v1 <- getVal mb b
+      rOut <- resolveReg c
+      pure $ ds & _r rOut .~ (bool 0 1 (f v0 v1))
+    _r = \case
+      R0 -> _1
+      R1 -> _2
+      R2 -> _3
+      R3 -> _4
+
+    getVal vm i = case vm of
+      Reg -> do
+        r <- resolveReg i
+        pure $ ds ^. _r r
+      Imm -> pure i
+
+    resolveReg :: Int -> Maybe Register
+    resolveReg i =
+      toEnum @Register i <$ guard (i >= 0 && i <= 3)
 
 instance Solution Day16 where
   solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     xs <- fmap id . lines <$> getInputS
-    mapM_ print xs
+    print (interpret (3,2,1,1) (Mul Reg) (2,1,2))
+    print (interpret (3,2,1,1) (Add Imm) (2,1,2))
+    print (interpret (3,2,1,1) (Assign Imm) (2,1,2))
