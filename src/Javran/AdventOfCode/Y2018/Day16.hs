@@ -44,11 +44,41 @@ import Data.Semigroup
 import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Vector as V
+import Debug.Trace
 import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (count, get, many)
 
 data Day16 deriving (Generic)
+
+type Tuple4 a = (a, a, a, a)
+
+data Example = Example
+  { exBefore :: Tuple4 Int
+  , exCode :: Tuple4 Int
+  , exAfter :: Tuple4 Int
+  }
+  deriving (Show)
+
+inputP :: ReadP ([Example], [Tuple4 Int])
+inputP =
+  (,)
+    <$> manyTill (exampleP <* char '\n') (string "\n\n")
+    <*> many tuple4nl
+  where
+    list4nl = between (char '[') (string "]\n") do
+      ~[a, b, c] <- replicateM 3 (decimal1P <* string ", ")
+      d <- decimal1P
+      pure (a, b, c, d)
+    tuple4nl = do
+      [a, b, c, d] <- decimal1P `sepBy1` char ' '
+      (a, b, c, d) <$ char '\n'
+
+    exampleP :: ReadP Example
+    exampleP =
+      Example <$> (string "Before: " *> list4nl)
+        <*> tuple4nl
+        <*> (string "After:  " *> list4nl)
 
 data Register = R0 | R1 | R2 | R3 deriving (Enum)
 
@@ -129,7 +159,10 @@ interpret ds opType (a, b, c) = case opType of
 instance Solution Day16 where
   solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    xs <- fmap id . lines <$> getInputS
-    forM_ allOpTypes $ \opTyp -> do
-      print opTyp
-      print (interpret (3, 2, 1, 1) opTyp (2, 1, 2))
+    xs <- consumeAllWithReadPDebugShow inputP <$> getInputS
+    print xs
+
+{-
+forM_ allOpTypes $ \opTyp -> do
+  print opTyp
+  print (interpret (3, 2, 1, 1) opTyp (2, 1, 2)) -}
