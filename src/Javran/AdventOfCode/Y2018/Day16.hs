@@ -156,13 +156,22 @@ interpret ds opType (a, b, c) = case opType of
     resolveReg i =
       toEnum @Register i <$ guard (i >= 0 && i <= 3)
 
+isConsistent :: OpType -> Example -> Bool
+isConsistent opTyp Example {exBefore, exCode = (_, b, c, d), exAfter} = isJust do
+  actualAfter <- interpret exBefore opTyp (b, c, d)
+  guard $ exAfter == actualAfter
+
+allConsistentOpTypes :: Example -> [OpType]
+allConsistentOpTypes e = filter (\opTyp -> isConsistent opTyp e) allOpTypes
+
 instance Solution Day16 where
   solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    xs <- consumeAllWithReadPDebugShow inputP <$> getInputS
-    print xs
+    (samples, _) <- consumeOrDie inputP <$> getInputS
+    answerShow $
+      countLength
+        (\e -> case allConsistentOpTypes e of
+           _ : _ : _ : _ -> True
+           _ -> False)
+        samples
 
-{-
-forM_ allOpTypes $ \opTyp -> do
-  print opTyp
-  print (interpret (3, 2, 1, 1) opTyp (2, 1, 2)) -}
