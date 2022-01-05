@@ -1,51 +1,23 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE PatternGuards #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
-{-# OPTIONS_GHC -Wno-deprecations #-}
-{-# OPTIONS_GHC -Wno-typed-holes #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -fdefer-typed-holes #-}
 
 module Javran.AdventOfCode.Y2018.Day16
   (
   )
 where
 
-{- HLINT ignore -}
-
 import Control.Applicative
 import Control.Lens hiding (universe)
 import Control.Monad
 import Data.Bits
-import Data.Char
-import Data.Function
-import Data.Function.Memoize (memoFix)
 import qualified Data.IntMap.Strict as IM
-import qualified Data.IntSet as IS
 import Data.List
-import Data.List.Split hiding (sepBy)
-import qualified Data.Map.Strict as M
 import Data.Monoid
-import Data.Semigroup
 import qualified Data.Set as S
-import qualified Data.Text as T
-import qualified Data.Vector as V
-import Debug.Trace
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (count, get, many)
 
@@ -53,17 +25,17 @@ data Day16 deriving (Generic)
 
 type Tuple4 a = (a, a, a, a)
 
-data Example = Example
-  { exBefore :: Tuple4 Int
-  , exCode :: Tuple4 Int
-  , exAfter :: Tuple4 Int
+data Sample = Sample
+  { sBefore :: Tuple4 Int
+  , sCode :: Tuple4 Int
+  , sAfter :: Tuple4 Int
   }
   deriving (Show)
 
-inputP :: ReadP ([Example], [Tuple4 Int])
+inputP :: ReadP ([Sample], [Tuple4 Int])
 inputP =
   (,)
-    <$> manyTill (exampleP <* char '\n') (string "\n\n")
+    <$> manyTill (sampleP <* char '\n') (string "\n\n")
     <*> many tuple4nl
   where
     list4nl = between (char '[') (string "]\n") do
@@ -74,15 +46,15 @@ inputP =
       [a, b, c, d] <- decimal1P `sepBy1` char ' '
       (a, b, c, d) <$ char '\n'
 
-    exampleP :: ReadP Example
-    exampleP =
-      Example <$> (string "Before: " *> list4nl)
+    sampleP :: ReadP Sample
+    sampleP =
+      Sample <$> (string "Before: " *> list4nl)
         <*> tuple4nl
         <*> (string "After:  " *> list4nl)
 
 data Register = R0 | R1 | R2 | R3 deriving (Enum)
 
-data ValueMode = Reg | Imm deriving (Enum, Bounded, Show)
+data ValueMode = Reg | Imm deriving (Enum, Bounded, Show, Ord, Eq)
 
 {-
   TODO: How to better model this, if we were to generalize to "higher dimensions",
@@ -92,7 +64,7 @@ data BinValueMode
   = ImmReg
   | RegImm
   | RegReg
-  deriving (Enum, Bounded, Show)
+  deriving (Enum, Bounded, Show, Ord, Eq)
 
 data OpType
   = Add ValueMode
@@ -102,7 +74,7 @@ data OpType
   | Assign ValueMode
   | TestGreaterThan BinValueMode
   | TestEqual BinValueMode
-  deriving (Show)
+  deriving (Show, Ord, Eq)
 
 type DeviceState = (Int, Int, Int, Int)
 
@@ -129,7 +101,7 @@ interpret ds opType (a, b, c) = case opType of
       v0 <- getVal Reg a
       v1 <- getVal mb b
       rOut <- resolveReg c
-      pure $ ds & _r rOut .~ (f v0 v1)
+      pure $ ds & _r rOut .~ f v0 v1
     -- category1 covers ops with prefix gt / eq
     cat1 mab f = do
       let (ma, mb) = case mab of
@@ -139,7 +111,7 @@ interpret ds opType (a, b, c) = case opType of
       v0 <- getVal ma a
       v1 <- getVal mb b
       rOut <- resolveReg c
-      pure $ ds & _r rOut .~ (bool 0 1 (f v0 v1))
+      pure $ ds & _r rOut .~ bool 0 1 (f v0 v1)
     _r = \case
       R0 -> _1
       R1 -> _2
@@ -156,22 +128,55 @@ interpret ds opType (a, b, c) = case opType of
     resolveReg i =
       toEnum @Register i <$ guard (i >= 0 && i <= 3)
 
-isConsistent :: OpType -> Example -> Bool
-isConsistent opTyp Example {exBefore, exCode = (_, b, c, d), exAfter} = isJust do
-  actualAfter <- interpret exBefore opTyp (b, c, d)
-  guard $ exAfter == actualAfter
+interpret2 :: IM.IntMap OpType -> (Int, Int, Int, Int) -> DeviceState -> DeviceState
+interpret2 opTable (opCode, a, b, c) ds =
+  fromJust $ interpret ds (opTable IM.! opCode) (a, b, c)
 
-allConsistentOpTypes :: Example -> [OpType]
-allConsistentOpTypes e = filter (\opTyp -> isConsistent opTyp e) allOpTypes
+isConsistent :: OpType -> Sample -> Bool
+isConsistent opTyp Sample {sBefore, sCode = (_, b, c, d), sAfter} = isJust do
+  actualAfter <- interpret sBefore opTyp (b, c, d)
+  guard $ sAfter == actualAfter
+
+allConsistentOpTypes :: Sample -> [OpType]
+allConsistentOpTypes e = filter (`isConsistent` e) allOpTypes
+
+solve :: IM.IntMap (S.Set OpType) -> IM.IntMap OpType -> [IM.IntMap OpType]
+solve clues assigned =
+  if null clues
+    then pure assigned
+    else do
+      let (opCode, alts) : _ = sortOn (length . snd) $ IM.toList clues
+      opType <- S.toList alts
+      let clues' = IM.map (S.delete opType) $ IM.delete opCode clues
+      guard $ not (any null clues')
+      solve clues' (IM.insert opCode opType assigned)
 
 instance Solution Day16 where
-  solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    (samples, _) <- consumeOrDie inputP <$> getInputS
+    (samples, code) <- consumeOrDie inputP <$> getInputS
+    let individualClues :: [(Int, [OpType])]
+        individualClues =
+          fmap
+            (\s@Sample {sCode = (opCode, _, _, _)} ->
+               (opCode, allConsistentOpTypes s))
+            samples
     answerShow $
       countLength
-        (\e -> case allConsistentOpTypes e of
+        (\(_, ops) -> case ops of
            _ : _ : _ : _ -> True
            _ -> False)
-        samples
-
+        individualClues
+    do
+      let clues = IM.fromListWith S.intersection do
+            (opCode, opTypes) <- individualClues
+            pure (opCode, S.fromList opTypes)
+          -- expect a unique solution,
+          -- otherwise it's likely that we don't have a unique answer for part 2.
+          [opCodeTable] = solve clues IM.empty
+          prog =
+            appEndo
+              . getDual
+              . foldMap (Dual . Endo . interpret2 opCodeTable)
+              $ code
+          (ans, _, _, _) = prog (0, 0, 0, 0)
+      answerShow ans
