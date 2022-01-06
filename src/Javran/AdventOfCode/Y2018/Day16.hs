@@ -76,7 +76,7 @@ data OpType
   | TestEqual BinValueMode
   deriving (Show, Ord, Eq)
 
-type DeviceState = (Int, Int, Int, Int)
+type DeviceState = Tuple4 Int
 
 allOpTypes :: [OpType]
 allOpTypes =
@@ -128,7 +128,7 @@ interpret ds opType (a, b, c) = case opType of
     resolveReg i =
       toEnum @Register i <$ guard (i >= 0 && i <= 3)
 
-interpret2 :: IM.IntMap OpType -> (Int, Int, Int, Int) -> DeviceState -> DeviceState
+interpret2 :: IM.IntMap OpType -> Tuple4 Int -> DeviceState -> DeviceState
 interpret2 opTable (opCode, a, b, c) ds =
   fromJust $ interpret ds (opTable IM.! opCode) (a, b, c)
 
