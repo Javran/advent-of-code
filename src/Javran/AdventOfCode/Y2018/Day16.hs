@@ -141,6 +141,10 @@ isConsistent opTyp Sample {sBefore, sCode = (_, b, c, d), sAfter} = isJust do
 allConsistentOpTypes :: Sample -> [OpType]
 allConsistentOpTypes e = filter (`isConsistent` e) allOpTypes
 
+{-
+  TODO: I feel this type of search comes up a bit frequent,
+  should we generalize this?
+ -}
 solve :: IM.IntMap (S.Set OpType) -> IM.IntMap OpType -> [IM.IntMap OpType]
 solve clues assigned =
   if null clues
