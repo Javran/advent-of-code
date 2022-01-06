@@ -57,8 +57,9 @@ data Register = R0 | R1 | R2 | R3 deriving (Enum)
 data ValueMode = Reg | Imm deriving (Enum, Bounded, Show, Ord, Eq)
 
 {-
-  TODO: How to better model this, if we were to generalize to "higher dimensions",
-  that say, only few constructs are forbidden?
+  Looks a bit ugly, but this is probably best we can do without too much machinery:
+
+  https://stackoverflow.com/q/70590623/315302
  -}
 data BinValueMode
   = ImmReg
