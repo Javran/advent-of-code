@@ -16,6 +16,7 @@ import Control.Lens hiding (universe)
 import Control.Monad
 import Data.List
 import qualified Data.Map.Strict as M
+import qualified Data.HashMap.Strict as HM
 import qualified Data.PSQueue as PQ
 import Data.Semigroup
 import qualified Data.Set as S
@@ -323,14 +324,14 @@ findNextMoves MapInfo {miRoomSize, miGraph} ampType initCoord wsPre =
 {-
   https://en.wikipedia.org/wiki/A*_search_algorithm
  -}
-aStar :: MapInfo -> PQ.PSQ WorldState (Arg Int Int) -> M.Map WorldState Int -> Int
+aStar :: MapInfo -> PQ.PSQ WorldState (Arg Int Int) -> HM.HashMap WorldState Int -> Int
 aStar mi@MapInfo {miRoomSize} q0 gScores = case PQ.minView q0 of
   Nothing -> error "queue exhausted"
   Just (ws PQ.:-> (Arg fScore energy), q1) ->
     if fScore == energy
       then energy
       else
-        let gScore = gScores M.! ws
+        let gScore = gScores HM.! ws
             nexts = do
               (ampType, coords) <- zip [A .. D] ws
               coord@(_r, c) <- coords
@@ -353,7 +354,7 @@ aStar mi@MapInfo {miRoomSize} q0 gScores = case PQ.minView q0 of
               let gScore' = gScore + incr
                   fScore' = gScore' + homingEnergy miRoomSize ws'
                   energy' = energy + incr
-              guard $ case gScores M.!? ws' of
+              guard $ case gScores HM.!? ws' of
                 Nothing -> True
                 Just v -> gScore' < v
               pure (ws', gScore', Arg fScore' energy')
@@ -362,7 +363,7 @@ aStar mi@MapInfo {miRoomSize} q0 gScores = case PQ.minView q0 of
                 upd (ws', _, prio') = PQ.insert ws' prio'
             gScores' = foldr upd gScores nexts
               where
-                upd (ws', gScore', _) = M.insert ws' gScore'
+                upd (ws', gScore', _) = HM.insert ws' gScore'
          in aStar mi q2 gScores'
 
 solveFromRawMap :: [String] -> Int
@@ -372,7 +373,7 @@ solveFromRawMap rawMap =
     (PQ.singleton
        startState
        (Arg initHoming 0))
-    (M.singleton startState 0)
+    (HM.singleton startState 0)
   where
     (mi, startState) = parseRawMap rawMap
     initHoming = homingEnergy (miRoomSize mi) startState
