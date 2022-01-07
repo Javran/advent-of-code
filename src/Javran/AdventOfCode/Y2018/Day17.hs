@@ -27,6 +27,7 @@ where
 
 import Control.Applicative
 import Control.Monad
+import Control.Monad.State.Strict
 import Data.Char
 import Data.Function
 import Data.Function.Memoize (memoFix)
@@ -46,7 +47,7 @@ import Text.ParserCombinators.ReadP hiding (count, get, many)
 
 data Day17 deriving (Generic)
 
-type Coord = (Int, Int)
+type Coord = (Int, Int) -- x, y
 
 inputLineP :: ReadP [Coord]
 inputLineP = do
@@ -61,7 +62,7 @@ inputLineP = do
              <$ char 'y')
   _ <- char '='
   u <- decimal1P
-  _ <- string (", "  <> [cNext] <> "=")
+  _ <- string (", " <> [cNext] <> "=")
   vFrom <- decimal1P
   _ <- string ".."
   vTo <- decimal1P
