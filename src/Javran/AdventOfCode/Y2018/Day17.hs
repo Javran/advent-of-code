@@ -199,7 +199,6 @@ pprWaterState clay WaterState {wsStayed, wsReached} = do
     putStrLn $ "<<" <> (fmap render [xMin .. xMax]) <> ">>"
 
 instance Solution Day17 where
-  solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     xs <- fmap (consumeOrDie inputLineP) . lines <$> getInputS
     let clay = S.fromList (concat xs)
