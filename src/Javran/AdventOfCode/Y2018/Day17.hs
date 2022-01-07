@@ -92,7 +92,7 @@ inputLineP = do
   in which case that coord is considered stayed.
  -}
 data WaterState = WaterState
-  { wsSpring :: IS.IntSet
+  { wsSpring :: S.Set Coord
   , wsScanY :: Int -- current scanning line, only coord of that y-coord is considered.
   , wsReached :: S.Set Coord
   , wsStayed :: S.Set Coord
@@ -102,9 +102,9 @@ simulate :: S.Set Coord -> Int -> State WaterState ()
 simulate clay yMax = do
   y <- gets wsScanY
   when (y <= yMax) do
-    xs <- gets (IS.toList . wsSpring)
+    xs <- gets (concatMap (\(x', y') -> [x' | y' == y - 1]) . S.toList . wsSpring)
     shouldGoUp <- forM xs \x -> do
-      exist <- gets ((IS.member x) . wsSpring)
+      exist <- gets ((S.member (x, y -1)) . wsSpring)
       if exist
         then simulateAux clay x
         else pure False
@@ -122,6 +122,7 @@ simulateAux clay x = do
     gets
       ((\stayed coord -> S.member coord stayed || S.member coord clay)
          . wsStayed)
+  let curSpring = (x, y -1)
   if isSolid (x, y + 1)
     then do
       -- solid, now we want to reach both left and right.
@@ -139,6 +140,7 @@ simulateAux clay x = do
       case (openL, openR) of
         (False, False) -> do
           -- both end closed, we need to go back up.
+          modify (\ws@WaterState {wsSpring} -> ws {wsSpring = S.insert (x, y -2) $ S.delete curSpring wsSpring})
           True <$ modify (\ws@WaterState {wsStayed} -> ws {wsStayed = foldr S.insert wsStayed newCoords})
         (True, True) -> do
           markReached
@@ -148,9 +150,9 @@ simulateAux clay x = do
               (\ws@WaterState {wsSpring} ->
                  ws
                    { wsSpring =
-                       IS.insert rightmost
-                         . IS.insert leftmost
-                         . IS.delete x
+                       S.insert (rightmost, y)
+                         . S.insert (leftmost, y)
+                         . S.delete curSpring
                          $ wsSpring
                    })
         (False, True) -> do
@@ -161,8 +163,8 @@ simulateAux clay x = do
               (\ws@WaterState {wsSpring} ->
                  ws
                    { wsSpring =
-                       IS.insert rightmost
-                         . IS.delete x
+                       S.insert (rightmost, y)
+                         . S.delete curSpring
                          $ wsSpring
                    })
         (True, False) -> do
@@ -172,12 +174,13 @@ simulateAux clay x = do
               (\ws@WaterState {wsSpring} ->
                  ws
                    { wsSpring =
-                       IS.insert leftmost
-                         . IS.delete x
+                       S.insert (leftmost, y)
+                         . S.delete curSpring
                          $ wsSpring
                    })
-    else -- not solid, mark reached and move on
-
+    else do
+      -- not solid, mark reached and move on
+      modify (\ws@WaterState {wsSpring} -> ws {wsSpring = S.insert (x, y) $ S.delete curSpring wsSpring})
       False
         <$ modify
           (\ws@WaterState {wsReached} ->
@@ -201,8 +204,11 @@ instance Solution Day17 where
     xs <- fmap (consumeOrDie inputLineP) . lines <$> getInputS
     let clay = S.fromList (concat xs)
         Just (MinMax2D (_, (yMin, yMax))) = foldMap (Just . minMax2D) (S.toList clay)
-        ws = execState (simulate clay yMax) WaterState {wsSpring = IS.singleton 500, wsScanY = 1, wsStayed = S.empty, wsReached = S.empty}
+        ws = execState (simulate clay yMax) WaterState {wsSpring = S.singleton (500, 0), wsScanY = 1, wsStayed = S.empty, wsReached = S.empty}
         reachables = S.filter (\(_x, y) -> y >= yMin && y <= yMax) $ S.union (wsStayed ws) (wsReached ws)
-    pprWaterState clay ws
-    print $ S.size $ S.union (wsStayed ws) (wsReached ws)
+        stayed = S.filter (\(_x, y) -> y >= yMin && y <= yMax) $ wsStayed ws
+        display = False
+    when display do
+      pprWaterState clay ws
     answerShow (S.size reachables)
+    answerShow (S.size stayed)
