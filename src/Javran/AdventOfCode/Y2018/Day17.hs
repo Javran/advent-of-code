@@ -92,10 +92,11 @@ instance Solution Day17 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     xs <- fmap (consumeOrDie inputLineP) . lines <$> getInputS
     let coords = S.fromList (concat xs)
-        Just (MinMax2D ((minX, maxX), (minY, maxY))) = foldMap (Just . minMax2D) (S.toList coords)
+        Just (MinMax2D rng@((minX, maxX), (minY, maxY))) = foldMap (Just . minMax2D) (S.toList coords)
     forM_ [minY .. maxY] \y -> do
       let render x =
             if S.member (x, y) coords
               then '█'
               else ' '
       putStrLn $ "|" <> (fmap render [minX .. maxX]) <> "|"
+    print rng
