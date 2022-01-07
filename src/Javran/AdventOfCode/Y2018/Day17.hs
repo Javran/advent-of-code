@@ -98,27 +98,111 @@ data WaterState = WaterState
   , wsStayed :: S.Set Coord
   }
 
+simulate :: S.Set Coord -> Int -> State WaterState ()
+simulate clay yMax = do
+  y <- gets wsScanY
+  when (y <= yMax) do
+    xs <- gets (IS.toList . wsSpring)
+    shouldGoUp <- forM xs \x -> do
+      exist <- gets ((IS.member x) . wsSpring)
+      if exist
+        then simulateAux clay x
+        else pure False
+    modify (\ws@WaterState {wsScanY} -> ws {wsScanY = if or shouldGoUp then wsScanY -1 else wsScanY + 1})
+    simulate clay yMax
+
 {-
   considers a single spring x, processes it and return whether we want to "rewind" y.
+  (True means we want to rewind)
  -}
-simulate :: S.Set Coord -> Int -> State WaterState Bool
-simulate clay x = do
+simulateAux :: S.Set Coord -> Int -> State WaterState Bool
+simulateAux clay x = do
+  y <- gets wsScanY
   (isSolid :: Coord -> Bool) <-
     gets
       ((\stayed coord -> S.member coord stayed || S.member coord clay)
          . wsStayed)
-  todo
+  if isSolid (x, y + 1)
+    then do
+      -- solid, now we want to reach both left and right.
+      let reaching next curX =
+            if
+                | isSolid (nextX, y) -> (curX, False) -- (<farthest reach>, <is open?>)
+                | isSolid (nextX, y + 1) -> reaching next nextX
+                | otherwise -> (nextX, True)
+            where
+              nextX = next curX
+          (leftmost, openL) = reaching pred x
+          (rightmost, openR) = reaching succ x
+          newCoords = [(x', y) | x' <- [leftmost .. rightmost]]
+          markReached = modify (\ws@WaterState {wsReached} -> ws {wsReached = foldr S.insert wsReached newCoords})
+      case (openL, openR) of
+        (False, False) -> do
+          -- both end closed, we need to go back up.
+          True <$ modify (\ws@WaterState {wsStayed} -> ws {wsStayed = foldr S.insert wsStayed newCoords})
+        (True, True) -> do
+          markReached
+          -- both open, split the spring.
+          False
+            <$ modify
+              (\ws@WaterState {wsSpring} ->
+                 ws
+                   { wsSpring =
+                       IS.insert rightmost
+                         . IS.insert leftmost
+                         . IS.delete x
+                         $ wsSpring
+                   })
+        (False, True) -> do
+          markReached
+          -- left closed, right open, move to right.
+          False
+            <$ modify
+              (\ws@WaterState {wsSpring} ->
+                 ws
+                   { wsSpring =
+                       IS.insert rightmost
+                         . IS.delete x
+                         $ wsSpring
+                   })
+        (True, False) -> do
+          markReached
+          False
+            <$ modify
+              (\ws@WaterState {wsSpring} ->
+                 ws
+                   { wsSpring =
+                       IS.insert leftmost
+                         . IS.delete x
+                         $ wsSpring
+                   })
+    else -- not solid, mark reached and move on
+
+      False
+        <$ modify
+          (\ws@WaterState {wsReached} ->
+             ws {wsReached = S.insert (x, y) wsReached})
+
+pprWaterState :: S.Set Coord -> WaterState -> IO ()
+pprWaterState clay WaterState {wsStayed, wsReached} = do
+  let Just (MinMax2D ((xMin, xMax), (yMin, yMax))) = foldMap (Just . minMax2D) (S.toList clay)
+  forM_ [yMin .. yMax] \y -> do
+    let render x =
+          if
+              | S.member (x, y) clay -> '█'
+              | S.member (x, y) wsStayed -> '~'
+              | S.member (x, y) wsReached -> '|'
+              | otherwise -> ' '
+    putStrLn $ "<<" <> (fmap render [xMin .. xMax]) <> ">>"
 
 instance Solution Day17 where
   solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     xs <- fmap (consumeOrDie inputLineP) . lines <$> getInputS
-    let coords = S.fromList (concat xs)
-        Just (MinMax2D rng@((minX, maxX), (minY, maxY))) = foldMap (Just . minMax2D) (S.toList coords)
-    forM_ [minY .. maxY] \y -> do
-      let render x =
-            if S.member (x, y) coords
-              then '█'
-              else ' '
-      putStrLn $ "|" <> (fmap render [minX .. maxX]) <> "|"
-    print rng
+    let clay = S.fromList (concat xs)
+        Just (MinMax2D (_, (yMin, yMax))) = foldMap (Just . minMax2D) (S.toList clay)
+        ws = execState (simulate clay yMax) WaterState {wsSpring = IS.singleton 500, wsScanY = 1, wsStayed = S.empty, wsReached = S.empty}
+        reachables = S.filter (\(_x, y) -> y >= yMin && y <= yMax) $ S.union (wsStayed ws) (wsReached ws)
+    pprWaterState clay ws
+    print $ S.size $ S.union (wsStayed ws) (wsReached ws)
+    answerShow (S.size reachables)
