@@ -87,6 +87,28 @@ inputLineP = do
 
  -}
 
+{-
+  a coord could be in both, wsReached and wsStayed.
+  in which case that coord is considered stayed.
+ -}
+data WaterState = WaterState
+  { wsSpring :: IS.IntSet
+  , wsScanY :: Int -- current scanning line, only coord of that y-coord is considered.
+  , wsReached :: S.Set Coord
+  , wsStayed :: S.Set Coord
+  }
+
+{-
+  considers a single spring x, processes it and return whether we want to "rewind" y.
+ -}
+simulate :: S.Set Coord -> Int -> State WaterState Bool
+simulate clay x = do
+  (isSolid :: Coord -> Bool) <-
+    gets
+      ((\stayed coord -> S.member coord stayed || S.member coord clay)
+         . wsStayed)
+  todo
+
 instance Solution Day17 where
   solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
