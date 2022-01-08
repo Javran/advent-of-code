@@ -48,6 +48,8 @@ import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.Y2018.Day16 (BinValueMode (..), OpType (..), ValueMode (..))
 import Text.ParserCombinators.ReadP hiding (count, get, many)
 import Text.Printf
+import Debug.Trace
+import Math.NumberTheory.Primes
 
 data Day19 deriving (Generic)
 
@@ -193,7 +195,7 @@ runProgram :: Program -> Machine
 runProgram prog = runAux (0, (0, 0, 0, 0, 0, 0))
   where
     runAux :: Machine -> Machine
-    runAux m = case interpret prog m of
+    runAux m = traceShow m $ case interpret prog m of
       Nothing -> m
       Just m' -> runAux m'
 
@@ -201,7 +203,7 @@ runProgram2 :: Program -> Machine
 runProgram2 prog = runAux (0, (1, 0, 0, 0, 0, 0))
   where
     runAux :: Machine -> Machine
-    runAux m = case interpret prog m of
+    runAux m = traceShow m $ case interpret prog m of
       Nothing -> m
       Just m' -> runAux m'
 
@@ -209,6 +211,8 @@ instance Solution Day19 where
   solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     prog@(r, xs) <- consumeOrDie programP <$> getInputS
-    print (runProgram prog)
+    -- print (runProgram2 prog)
     mapM_ (\(i, instr) -> putStrLn $ show i <> "\t" <> pprInstr r instr) (zip [0 :: Int ..] $ V.toList xs)
-
+    print (factorise (10551287 :: Int))
+    -- https://math.stackexchange.com/a/22723/139439
+    answerShow $ (1 + 127) * (1 + 251) *(1 + 331)
