@@ -2,6 +2,8 @@
 ;; r0 is the "answer register", the only mutation to it at 7,
 ;; which means it accumulates from r3.
 
+;; probably: sum [ r3 | r3 <- [1..r2-1], r5 <- [1..r2-1], r3 * r5 == r2 ]
+
 0	jmp 17
 1	r3 = 1
 2	r5 = 1
@@ -9,7 +11,7 @@
 ;; when r3 * r5 /= r2
 6	jmp 8
 ;; otherwise
-7	r0 = r3 + r0
+7	r0 = r3 + r0 ;; only do this when r3 * r5 == r2
 8	r5 = r5 + 1
 ;; when r5 < r2
 11	jmp 3
