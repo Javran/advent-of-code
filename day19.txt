@@ -4,17 +4,30 @@
 3	r1 = r3 * r5
 4	r1 = r1 == r2
 5	jmp r1 + 6
+;; when r1 /= r2
 6	jmp 8
+;; otherwise
+;; r0 is the "answer register", this is the only mutation to it.
+;; which means it accumulates from r3.
 7	r0 = r3 + r0
 8	r5 = r5 + 1
 9	r1 = r5 >= r2
 10	jmp r1 + 11
+;; when r5 < r2
 11	jmp 3
+;; otherwise
 12	r3 = r3 + 1
 13	r1 = r3 >= r2
 14	jmp r1 + 15
+;; when r3 < r2
 15	jmp 2
+;; otherwise
 16	halt
+;; everything beyond this appears to be input setup
+;; in fact:
+;; - r0 is always 0 when we jump back to 1.
+;; - whatever value r1 holds doesn't matter, as it's overwritten at 3.
+;; - r2 is never mutated above.
 17	r2 = r2 + 2
 18	r2 = r2 * r2
 19	r2 = 19 * r2
@@ -24,7 +37,7 @@
 23	r1 = r1 + 7
 24	r2 = r2 + r1
 25	jmp r0 + 26
-26	jmp 1
+26	jmp 1  ;; r2 = 887
 27	r1 = 27
 28	r1 = r1 * 28
 29	r1 = 29 + r1
@@ -33,5 +46,4 @@
 32	r1 = r1 * 32
 33	r2 = r2 + r1
 34	r0 = 0
-35	jmp 1
-
+35	jmp 1  ;; r2 = 10551287
