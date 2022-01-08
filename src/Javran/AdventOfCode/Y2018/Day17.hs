@@ -1,11 +1,8 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Javran.AdventOfCode.Y2018.Day17
@@ -141,17 +138,15 @@ simulateOneSpring clay x = do
              ws {wsReached = S.insert (x, y) wsReached})
 
 simulate :: S.Set Coord -> Int -> State WaterState ()
-simulate clay yMax = do
+simulate clay yMax = fix \loop -> do
   y <- gets wsScanY
   when (y <= yMax) do
     xs <- gets (concatMap (\(x', y') -> [x' | y' == y - 1]) . S.toList . wsSpring)
-    shouldGoUp <- forM xs \x -> do
-      exist <- gets (S.member (x, y -1) . wsSpring)
-      if exist
-        then simulateOneSpring clay x
-        else pure False
-    modify (\ws@WaterState {wsScanY} -> ws {wsScanY = if or shouldGoUp then wsScanY -1 else wsScanY + 1})
-    simulate clay yMax
+    shouldGoUp <- mapM (simulateOneSpring clay) xs
+    modify
+      (\ws@WaterState {wsScanY} ->
+         ws {wsScanY = if or shouldGoUp then wsScanY -1 else wsScanY + 1})
+    loop
 
 pprWaterState :: S.Set Coord -> WaterState -> IO ()
 pprWaterState clay WaterState {wsStayed, wsReached} = do
@@ -170,11 +165,20 @@ instance Solution Day17 where
     xs <- fmap (consumeOrDie inputLineP) . lines <$> getInputS
     let clay = S.fromList (concat xs)
         Just (MinMax2D (_, (yMin, yMax))) = foldMap (Just . minMax2D) (S.toList clay)
-        ws = execState (simulate clay yMax) WaterState {wsSpring = S.singleton (500, 0), wsScanY = 1, wsStayed = S.empty, wsReached = S.empty}
-        reachables = S.filter (\(_x, y) -> y >= yMin && y <= yMax) $ S.union (wsStayed ws) (wsReached ws)
-        stayed = S.filter (\(_x, y) -> y >= yMin && y <= yMax) $ wsStayed ws
+        shouldCount (_x, y) = yMin <= y && y <= yMax
+        wsFin@WaterState {wsStayed = stayed, wsReached = reached} =
+          execState
+            (simulate clay yMax)
+            WaterState
+              { wsSpring = S.singleton (500, 0)
+              , wsScanY = 1
+              , wsStayed = S.empty
+              , wsReached = S.empty
+              }
+        reachables = S.filter shouldCount $ S.union stayed reached
+        stills = S.filter shouldCount stayed
         display = False
     when display do
-      pprWaterState clay ws
+      pprWaterState clay wsFin
     answerShow (S.size reachables)
-    answerShow (S.size stayed)
+    answerShow (S.size stills)
