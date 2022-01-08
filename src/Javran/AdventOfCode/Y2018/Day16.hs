@@ -6,7 +6,9 @@
 {-# LANGUAGE NoMonomorphismRestriction #-}
 
 module Javran.AdventOfCode.Y2018.Day16
-  (
+  ( OpType (..)
+  , BinValueMode (..)
+  , ValueMode (..)
   )
 where
 
