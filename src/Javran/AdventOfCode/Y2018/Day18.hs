@@ -97,13 +97,14 @@ stepWorld (rows, cols) (ts, ls) = (convert ts', convert ls')
         if yardCnt >= 3 then (mempty, DL.singleton coord) else (DL.singleton coord, mempty)
       | isYard =
         if treeCnt >= 1 && yardCnt >= 1 then (mempty, DL.singleton coord) else mempty
+      | otherwise = unreachable
       where
         isTree = S.member coord ts
         isYard = S.member coord ls
         treeCnt = fromMaybe 0 (treeContrib M.!? coord)
         yardCnt = fromMaybe 0 (yardContrib M.!? coord)
 
-    coords = S.union (M.keysSet treeContrib) (M.keysSet yardContrib)
+    coords = S.unions [M.keysSet treeContrib, M.keysSet yardContrib, ts, ls]
     treeContrib = M.fromListWith (+) do
       coord <- S.toList ts
       coord'@(r', c') <- adjacents coord
@@ -116,9 +117,23 @@ stepWorld (rows, cols) (ts, ls) = (convert ts', convert ls')
       guard $ 0 <= r' && r' < rows && 0 <= c' && c' < cols
       pure (coord', 1 :: Int)
 
+findFix seen ~((j, x) : xs) = case seen M.!? x of
+  Nothing -> findFix (M.insert x j seen) xs
+  Just i -> (i, j)
+
 instance Solution Day18 where
-  solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     xs <- fmap id . lines <$> getInputS
     let (dims, w) = parseFromRaw xs
-    pprWorld dims w
+        progression = iterate (stepWorld dims) w
+    do
+      let (ts, ls) = progression !! 10
+      pprWorld dims (ts, ls)
+      answerShow (S.size ts * S.size ls)
+    do
+      let (i, j) = findFix M.empty (zip [0 ..] progression)
+          period = j - i
+          n = 1000000000
+          i' = i + (n - i) `rem` period
+          (ts, ls) = progression !! i'
+      answerShow (S.size ts * S.size ls)
