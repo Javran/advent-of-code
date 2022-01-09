@@ -1,3 +1,5 @@
+# EXAMPLE_EXTRA_BEGIN
+# EXAMPLE_EXTRA_END
 #ip 0
 seti 5 0 1
 seti 6 0 2

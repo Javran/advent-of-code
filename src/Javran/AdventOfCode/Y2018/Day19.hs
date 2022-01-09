@@ -240,7 +240,7 @@ staticAnalysis (ipReg, prog) = do
   pure (toEnum inpReg)
 
 extractInput :: Program -> Int -> Int
-extractInput prog r0 = m ^.  _reg inpReg
+extractInput prog r0 = m ^. _reg inpReg
   where
     (1, m) = runProgram prog (IS.singleton 1) (r0, 0, 0, 0, 0, 0)
     inpReg = case staticAnalysis prog of
@@ -249,8 +249,15 @@ extractInput prog r0 = m ^.  _reg inpReg
 
 instance Solution Day19 where
   solutionSolved _ = False
-  solutionRun _ SolutionContext {getInputS, answerShow} = do
-    prog <- consumeOrDie programP <$> getInputS
-    answerShow $ sumOfProperDivisors $ extractInput prog 0
-    answerShow $ sumOfProperDivisors $ extractInput prog 1
-    -- mapM_ (\(i, instr) -> putStrLn $ show i <> "\t" <> pprInstr r instr) (zip [0 :: Int ..] $ V.toList xs)
+  solutionRun _ SolutionContext {getInputS, answerShow, terminal} = do
+    (extraOps, rawInput) <- consumeExtraLeadingLines <$> getInputS
+    let prog@(r, xs) = consumeOrDie programP rawInput
+    case extraOps of
+      Nothing -> do
+        when (isJust terminal) $
+          mapM_ (\(i, instr) -> putStrLn $ show i <> "\t" <> pprInstr r instr) (zip [0 :: Int ..] $ V.toList xs)
+        answerShow $ sumOfProperDivisors $ extractInput prog 0
+        answerShow $ sumOfProperDivisors $ extractInput prog 1
+      Just _ ->
+        answerShow $ snd (runProgram prog IS.empty (0, 0, 0, 0, 0, 0))
+
