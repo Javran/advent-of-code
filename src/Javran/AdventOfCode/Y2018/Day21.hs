@@ -1,57 +1,21 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE NumericUnderscores #-}
-{-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE PatternGuards #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# OPTIONS_GHC -Wno-deprecations #-}
-{-# OPTIONS_GHC -Wno-typed-holes #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -fdefer-typed-holes #-}
 
 module Javran.AdventOfCode.Y2018.Day21
   (
   )
 where
 
-{- HLINT ignore -}
-
-import Control.Applicative
-import Control.Lens
 import Control.Monad
 import Control.Monad.State.Strict
-import Control.Monad.Writer.Lazy
 import Data.Bits
-import Data.Char
-import qualified Data.DList as DL
-import Data.Function
-import Data.Function.Memoize (memoFix)
-import qualified Data.IntMap.Strict as IM
 import qualified Data.IntSet as IS
-import Data.List
-import Data.List.Split hiding (sepBy)
-import qualified Data.Map.Strict as M
-import Data.Monoid
-import Data.Semigroup
-import qualified Data.Set as S
-import qualified Data.Text as T
 import qualified Data.Vector as V
-import Debug.Trace
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
-import Javran.AdventOfCode.Y2018.Day16 (BinValueMode (..), OpType (..), ValueMode (..))
+import Javran.AdventOfCode.Y2018.Day16 (OpType (..), ValueMode (..))
 import Javran.AdventOfCode.Y2018.Day19
-import Text.ParserCombinators.ReadP hiding (count, get, many)
 
 data Day21 deriving (Generic)
 
@@ -67,6 +31,7 @@ data Day21 deriving (Generic)
    4    jmp 1
    5    r1 = 0
    6    r2 = r1 | 65536
+  ;; line 7 seens to be the only varying number across inputs.
    7    r1 = 10605201
    8    r5 = r2 & 255
    9    r1 = r1 + r5
@@ -80,7 +45,7 @@ data Day21 deriving (Generic)
   17    r5 = 0
   18    r4 = r5 + 1
   19    r4 = r4 * 256
-  20    r4 = r4 >= r2
+  20    r4 = r4 > r2
   21    jmp r4 + 22
   22    jmp 24
   23    jmp 26
@@ -94,98 +59,61 @@ data Day21 deriving (Generic)
   29    jmp r5 + 30
   30    jmp 6
 
+  This whole program can be refactored into (in C++):
+
+  void simulate(long int r0) {
+    long int r1, r2;
+    r1 = 0;
+    do {
+      r2 = r1 | 0x1'0000;
+      r1 = 10605201; // the only varying line.
+      for (;;) {
+        r1 = r1 + (r2 & 0xFF);
+        r1 &= 0xFF'FFFF;
+        r1 = r1 * 65899;
+        r1 &= 0xFF'FFFF;
+        if (r2 >= 256) {
+          r2 /= 256;
+        } else {
+          break;
+        }
+      }
+      // all we need is r1 value at this point.
+    } while (r1 != r0);
+  }
+
+  Part 1: simulate this function, see what we have in r1, which is our answer.
+  Part 2: due to masking, 0 <= r1 <= 0xFF_FFFF, meaning we got to find r1 value looping.
+    To make the longest loop is to find the r1 value prior to running into the loop.
  -}
 
-interpret :: Program -> Machine -> Maybe Machine
-interpret (ipReg, instrs) (ip, regsPre) =
-  if ip < 0 || ip >= V.length instrs
-    then Nothing
-    else
-      let Instr {sOp, sOperands = (a, b, c)} = instrs V.! ip
-          regs = regsPre & _reg ipReg .~ ip
-          getVal vm i = case vm of
-            Reg ->
-              regs ^. _reg (resolveReg i)
-            Imm -> i
-          -- category0 covers ops with prefix add / mul / ban / bor
-          cat0 mb f =
-            let v0 = getVal Reg a
-                v1 = getVal mb b
-                rOut = resolveReg c
-             in regs & _reg rOut .~ f v0 v1
-          -- category1 covers ops with prefix gt / eq
-          cat1 mab f = do
-            let (ma, mb) = case mab of
-                  ImmReg -> (Imm, Reg)
-                  RegImm -> (Reg, Imm)
-                  RegReg -> (Reg, Reg)
-                v0 = getVal ma a
-                v1 = getVal mb b
-                rOut = resolveReg c
-             in regs & _reg rOut .~ bool 0 1 (f v0 v1)
-          regs' :: (Int, Int, Int, Int, Int, Int)
-          regs' = case sOp of
-            Add mb -> cat0 mb (+)
-            Mul mb -> cat0 mb (*)
-            BitAnd mb -> cat0 mb (.&.)
-            BitOr mb -> cat0 mb (.|.)
-            Assign ma ->
-              let v0 = getVal ma a
-                  rOut = resolveReg c
-               in regs & _reg rOut .~ v0
-            TestGreaterThan mab -> cat1 mab (>)
-            TestEqual mab -> cat1 mab (==)
-          ip' :: Int
-          ip' = regs' ^. _reg ipReg
-       in Just (ip' + 1, regs' & _reg ipReg %~ succ)
+fastSimulate :: Int -> Int -> Int
+fastSimulate c v = evalState sim (c, v .|. 0x1_0000)
   where
-    resolveReg :: Int -> Register
-    resolveReg i =
-      toEnum @Register i
+    sim :: State (Int, Int) Int
+    sim = do
+      modify (\(r1, r2) -> ((r1 + (r2 .&. 0xFF)) .&. 0xFF_FFFF, r2))
+      modify (first \r1 -> r1 * 65899 .&. 0xFF_FFFF)
+      (r1, r2) <- get
+      if r2 >= 256
+        then do
+          modify (second (`quot` 256))
+          sim
+        else pure r1
 
-runProgram :: Program -> IS.IntSet -> Regs -> Writer (DL.DList Regs) Machine
-runProgram prog lps inp = runAux (0, inp)
-  where
-    runAux :: Machine -> Writer (DL.DList Regs) Machine
-    runAux m@(ip, regs) = do
-      when (IS.member ip lps) do
-        tell $ DL.singleton regs
-      case interpret prog m of
-        Nothing ->
-          pure m
-        Just m' ->
-          runAux m'
-
-fastSimulate :: Int -> Int
-fastSimulate v = evalState fastSimulateAux (10605201, v .|. 0x1_0000)
-
-fastSimulateAux :: State (Int, Int) Int
-fastSimulateAux = do
-  fix \loop -> do
-    modify (\(r1, r2) -> ((r1 + (r2 .&. 0xFF)) .&. 0xFF_FFFF, r2))
-    modify (\(r1, r2) -> (r1 * 65899 .&. 0xFF_FFFF, r2))
-    (r1, r2) <- get
-    if r2 >= 256
-      then do
-        modify (second (const (r2 `quot` 256)))
-        loop
-      else pure r1
-
+findFix :: IS.IntSet -> [(Int, Int)] -> Int
 findFix seen ~((x, y) : xs) =
   if IS.member y seen
-    then x
+    then -- note that here we need the value right before running into a loop.
+      x
     else findFix (IS.insert y seen) xs
 
 instance Solution Day21 where
-  solutionSolved _ = False
-  solutionRun _ SolutionContext {getInputS, answerShow} = do
+  solutionRun _ SolutionContext {getInputS, answerShow, terminal} = do
     prog <- consumeOrDie programP <$> getInputS
-    let xs = tail $ iterate fastSimulate 0
-    do
-      let result =
-            runWriter $
-              runProgram prog (IS.singleton 28) (0, 0, 0, 0, 0, 0)
-      let extractInfo (_, r1, _, _, _, _) = r1
-      answerShow (head xs)
-    do
-      answerShow $ findFix IS.empty (zip xs (tail xs))
+    let xs = tail $ iterate (fastSimulate a) 0
+        Instr {sOp = Assign Imm, sOperands = (a, _, _)} = snd prog V.! 7
+    when (isJust terminal) do
+      pprProgram prog
+    answerShow $ head xs
+    answerShow $ findFix IS.empty (zip xs (tail xs))
