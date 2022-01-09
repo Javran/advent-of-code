@@ -48,6 +48,7 @@ library
       Javran.AdventOfCode.Y2018.Day18
       Javran.AdventOfCode.Y2018.Day19
       Javran.AdventOfCode.Y2018.Day2
+      Javran.AdventOfCode.Y2018.Day20
       Javran.AdventOfCode.Y2018.Day3
       Javran.AdventOfCode.Y2018.Day4
       Javran.AdventOfCode.Y2018.Day5
@@ -177,6 +178,7 @@ library
     , raw-strings-qq
     , recursion-schemes
     , semirings
+    , shower
     , split
     , strict
     , system-filepath

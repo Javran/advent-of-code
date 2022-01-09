@@ -63,6 +63,7 @@ library:
     - newtype
     - psqueues
     - transformers
+    - shower
   ghc-options:
     - -Wall
     - -O2
