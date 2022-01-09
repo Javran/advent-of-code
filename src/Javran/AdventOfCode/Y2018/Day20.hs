@@ -27,12 +27,15 @@ where
 
 import Control.Applicative
 import Control.Monad
+import Control.Monad.State.Strict
 import Data.Char
+import Data.Containers.ListUtils
 import Data.Function
 import Data.Function.Memoize (memoFix)
 import qualified Data.IntMap.Strict as IM
 import qualified Data.IntSet as IS
 import Data.List
+import qualified Data.List.NonEmpty as NE
 import Data.List.Split hiding (sepBy)
 import qualified Data.Map.Strict as M
 import Data.Monoid
@@ -42,12 +45,60 @@ import qualified Data.Text as T
 import qualified Data.Vector as V
 import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
-import Text.ParserCombinators.ReadP hiding (count, get, many)
 import Shower
+import Text.ParserCombinators.ReadP hiding (count, get, many)
 
 data Day20 deriving (Generic)
 
-data Dir = N | W | S | E deriving (Show)
+data Dir = N | W | S | E deriving (Show, Eq, Ord)
+
+type Coord = (Int, Int) -- row, col
+
+applyDir :: Dir -> Coord -> Coord
+applyDir = \case
+  N -> first pred
+  S -> first succ
+  W -> second pred
+  E -> second pred
+
+{-
+  smart constructor to make sure we never directly nest ReSeq.
+ -}
+mkReSeq :: [Re] -> Re
+mkReSeq =
+  ReSeq . concatMap \case
+    ReSeq xs -> xs
+    re -> [re]
+
+headTailReAux :: Re -> [(Dir, Re)]
+headTailReAux = \case
+  ReAtom d -> pure (d, ReSeq [])
+  ReSeq [] -> []
+  ReSeq (hd : tl) -> do
+    (d, hd') <- headTailReAux hd
+    pure (d, mkReSeq (hd' : tl))
+  ReAlt xs -> xs >>= headTailReAux
+
+headTailRe :: Re -> [(Dir, Re)]
+headTailRe re = fmap (second ReAlt) $ M.toList m
+  where
+    m = M.fromListWith (<>) do
+      (d, alt) <- headTailReAux re
+      pure (d, [alt])
+
+hdTl :: StateT Re [] Dir
+hdTl = do
+  re <- get
+  (d, re') <- lift $ headTailRe re
+  d <$ put re'
+
+tryDir :: Dir -> StateT Re [] Dir
+tryDir d = do
+  re <- get
+  let alts = filter ((== d) . fst) $ headTailRe re
+  (_, re') <- lift alts
+  put re'
+  pure d
 
 data Re
   = ReAtom Dir
@@ -63,7 +114,7 @@ reP = between (char '^') (char '$') reAltP
 
     {- Parses a regualar expr free of direct `|`s -}
     reSeqP :: ReadP Re
-    reSeqP = ReSeq <$> (many (between (char '(') (char ')') reAltP <++ reAtomP))
+    reSeqP = mkReSeq <$> (many (between (char '(') (char ')') reAltP <++ reAtomP))
 
     reAtomP :: ReadP Re
     reAtomP =
@@ -75,8 +126,58 @@ reP = between (char '^') (char '$') reAltP
         , ReAtom E <$ char 'E'
         ]
 
+type Nfa = IM.IntMap (M.Map (Maybe Dir) IS.IntSet)
+
+freshState ::  State (Int, Nfa) Int
+freshState = state (\(v, nfa) -> (v, (v+1, nfa)))
+
+linkState :: Int -> Maybe Dir -> Int -> State (Int, Nfa) ()
+linkState u ch v =
+  modify
+    (second $
+       IM.alter
+         (\case
+            Nothing -> Just $ M.singleton ch (IS.singleton v)
+            Just m ->
+              Just $
+                M.alter
+                  (\case
+                     Nothing -> Just (IS.singleton v)
+                     Just vs -> Just (IS.insert v vs))
+                  ch
+                  m)
+         u)
+
+buildNfa :: Int -> Re -> Int -> State (Int, Nfa) ()
+buildNfa start re end = case re of
+  ReAtom dir ->
+    linkState start (Just dir) end
+  ReSeq [] ->
+    linkState start Nothing end
+  ReSeq xs -> do
+    ys <- replicateM (length xs -1) freshState
+    let zipped = zip (zip (start : ys) (ys <> [end])) xs
+    forM_ zipped \((u,v), re') ->
+      buildNfa u re' v
+  ReAlt xs ->
+    forM_ xs \re' ->
+      buildNfa start re' end
+
+{-
+  TODO: since we have a very large login input,
+  we probably don't want to explore all inputs that the RE can recognize.
+  Instead, let's try pushing REs to individual cells and expand from there.
+  This will allow those that takes different paths to get to the same coord
+  to be handled at the same time.
+
+  TODO: it's probably difficult to get epsilon-handling right,
+  so let's build NFA instead.
+
+ -}
 instance Solution Day20 where
   solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     re <- consumeOrDie reP . head . lines <$> getInputS
-    printer re
+    -- printer re
+    -- ENNWSWW | SSSEENEENNN
+    printer (runState (buildNfa 0 re 1) (2, IM.empty))
