@@ -1,50 +1,25 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# LANGUAGE NoMonomorphismRestriction #-}
-{-# OPTIONS_GHC -Wno-deprecations #-}
-{-# OPTIONS_GHC -Wno-typed-holes #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -fdefer-typed-holes #-}
 
 module Javran.AdventOfCode.Y2018.Day19
   (
   )
 where
 
-{- HLINT ignore -}
-
 import Control.Applicative
 import Control.Lens
 import Control.Monad
 import Data.Bits
 import Data.Char
-import Data.Function
-import Data.Function.Memoize (memoFix)
-import qualified Data.IntMap.Strict as IM
 import qualified Data.IntSet as IS
-import Data.List
-import Data.List.Split hiding (sepBy)
 import qualified Data.Map.Strict as M
-import Data.Monoid
-import Data.Semigroup
-import qualified Data.Set as S
-import qualified Data.Text as T
 import qualified Data.Vector as V
-import Debug.Trace
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.Y2018.Day16 (BinValueMode (..), OpType (..), ValueMode (..))
 import Math.NumberTheory.Primes
@@ -57,23 +32,31 @@ type Tuple6 a = (a, a, a, a, a, a)
 
 type Regs = Tuple6 Int
 
+data Instr = Instr
+  { sOp :: OpType
+  , sOperands :: (Int, Int, Int)
+  }
+  deriving (Show, Eq)
+
+mkInstr :: OpType -> (Int, Int, Int) -> Instr
+mkInstr sOp (a, bPre, c) = Instr {sOp, sOperands = (a, b, c)}
+  where
+    b = case sOp of
+      Assign _ ->
+        {-
+          for seti / setr, b is completely ignored.
+          we can normalize it to a fixed value so that we don't
+          need to treat this as a special case, and thus Eq can be derived.
+        -}
+        0
+      _ -> bPre
+
 instrP :: ReadP Instr
 instrP = do
   opName <- munch1 isAlpha
   Just sOp <- pure (ops M.!? opName)
-  ~[a, b', c] <- replicateM 3 (char ' ' *> readS_to_P (reads @Int))
-  let b = case sOp of
-        Assign _ ->
-          {-
-            TODO: smart constructor.
-
-            for seti / setr, b is completely ignored.
-            we can normalize it to a fixed value so that we don't
-            need to treat this as a special case, and Eq can be derived.
-           -}
-          0
-        _ -> b'
-  pure Instr {sOp, sOperands = (a, b, c)}
+  ~[a, b, c] <- replicateM 3 (char ' ' *> readS_to_P (reads @Int))
+  pure $ mkInstr sOp (a, b, c)
 
 data Register = R0 | R1 | R2 | R3 | R4 | R5 deriving (Enum, Show)
 
@@ -90,12 +73,6 @@ programP = do
   guard $ 0 <= p && p <= 5
   xs <- many (instrP <* nl)
   pure (toEnum p, V.fromList xs)
-
-data Instr = Instr
-  { sOp :: OpType
-  , sOperands :: (Int, Int, Int)
-  }
-  deriving (Show, Eq)
 
 pprInstr :: Register -> Instr -> String
 pprInstr ipReg Instr {sOp, sOperands = (a, b, c)} = case sOp of
@@ -129,6 +106,12 @@ pprInstr ipReg Instr {sOp, sOperands = (a, b, c)} = case sOp of
           ImmReg -> (Imm, Reg)
           RegImm -> (Reg, Imm)
           RegReg -> (Reg, Reg)
+
+pprProgram :: Program -> IO ()
+pprProgram (r, xs) =
+  mapM_
+    (\(i, instr) -> putStrLn $ show i <> "\t" <> pprInstr r instr)
+    (zip [0 :: Int ..] $ V.toList xs)
 
 ops :: M.Map String OpType
 ops =
@@ -172,7 +155,6 @@ interpret (ipReg, instrs) breakpoints (ip, regsPre) =
             Reg ->
               regs ^. _reg (resolveReg i)
             Imm -> i
-
           -- category0 covers ops with prefix add / mul / ban / bor
           cat0 mb f =
             let v0 = getVal Reg a
@@ -213,9 +195,7 @@ runProgram :: Program -> Breakpoints -> Regs -> Machine
 runProgram prog bps inp = runAux (0, inp)
   where
     runAux :: Machine -> Machine
-    runAux m = case interpret prog bps m of
-      Nothing -> m
-      Just m' -> runAux m'
+    runAux m = maybe m runAux (interpret prog bps m)
 
 -- https://math.stackexchange.com/a/22723/139439
 sumOfProperDivisors :: Int -> Int
@@ -228,11 +208,11 @@ staticAnalysis (ipReg, prog) = do
   let ip = fromEnum ipReg
   unless (V.length prog == 36) do
     Left "unexpected program length"
-  unless (prog V.! 26 == (Instr (Assign Imm) (0, 0, ip))) do
+  unless (prog V.! 26 == Instr (Assign Imm) (0, 0, ip)) do
     Left "expected jump to 0 at 26"
-  unless (prog V.! 35 == (Instr (Assign Imm) (0, 0, ip))) do
+  unless (prog V.! 35 == Instr (Assign Imm) (0, 0, ip)) do
     Left "expected jump to 0 at 35"
-  unless (prog V.! 16 == (Instr (Mul Reg) (ip, ip, ip))) do
+  unless (prog V.! 16 == Instr (Mul Reg) (ip, ip, ip)) do
     Left "expected halt at 16"
   unless (sOp (prog V.! 4) == TestEqual RegReg) do
     Left "expected eqrr at 4"
@@ -251,13 +231,13 @@ instance Solution Day19 where
   solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow, terminal} = do
     (extraOps, rawInput) <- consumeExtraLeadingLines <$> getInputS
-    let prog@(r, xs) = consumeOrDie programP rawInput
+    let prog = consumeOrDie programP rawInput
     case extraOps of
       Nothing -> do
         when (isJust terminal) $
-          mapM_ (\(i, instr) -> putStrLn $ show i <> "\t" <> pprInstr r instr) (zip [0 :: Int ..] $ V.toList xs)
+          pprProgram prog
         answerShow $ sumOfProperDivisors $ extractInput prog 0
         answerShow $ sumOfProperDivisors $ extractInput prog 1
       Just _ ->
+        -- just dump all registers as output if we are running examples.
         answerShow $ snd (runProgram prog IS.empty (0, 0, 0, 0, 0, 0))
-
