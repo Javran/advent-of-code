@@ -8,7 +8,11 @@
 {-# LANGUAGE TypeApplications #-}
 
 module Javran.AdventOfCode.Y2018.Day19
-  (
+  ( Program
+  , Regs
+  , programP
+  , Instr (..)
+  , pprProgram
   )
 where
 
@@ -24,6 +28,7 @@ import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.Y2018.Day16 (BinValueMode (..), OpType (..), ValueMode (..))
 import Math.NumberTheory.Primes
 import Text.ParserCombinators.ReadP hiding (count, get, many)
+import Text.Printf
 
 data Day19 deriving (Generic)
 
@@ -120,9 +125,11 @@ pprInstr ipReg curIp Instr {sOp, sOperands = (a, b, c)} = case sOp of
   Pretty prints the program in a way that helps readability.
  -}
 pprProgram :: Program -> IO ()
-pprProgram (r, xs) =
+pprProgram (r, xs) = do
+  putStrLn $ "IP is bound to " <> show r
+  let maxWidth = length $ show (V.length xs - 1)
   mapM_
-    (\(i, instr) -> putStrLn $ show i <> "\t" <> pprInstr r i instr)
+    (\(i, instr) -> printf "  %*d    %s\n" maxWidth i (pprInstr r i instr))
     (zip [0 :: Int ..] $ V.toList xs)
 
 ops :: M.Map String OpType
