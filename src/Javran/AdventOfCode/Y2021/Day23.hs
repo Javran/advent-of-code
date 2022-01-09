@@ -191,9 +191,6 @@ _pprWorldState roomSize ws pad = do
           | otherwise = [raw !! r !! c]
     putStrLn $ pad <> concatMap render [0 .. length (head raw) -1]
 
-manhattan :: Coord -> Coord -> Int
-manhattan (a, b) (c, d) = abs (a - c) + abs (b - d)
-
 {-
   For amp outside, it's the distance to top of the correct room,
   for amp inside, 0.

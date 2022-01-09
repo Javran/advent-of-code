@@ -9,7 +9,6 @@ module Javran.AdventOfCode.Y2018.Day23
   )
 where
 
-import Control.Lens
 import Data.List
 import Javran.AdventOfCode.Prelude
 import Linear.Affine
@@ -31,17 +30,6 @@ nanobotP = do
     pure (P (V3 a b c))
   r <- decimal1P
   pure (loc, r)
-
-dist :: Loc -> Loc -> Int
-dist = manhattan
-
-{- TODO: move this to prelude. -}
-manhattan :: (Num a, Each s s a a) => s -> s -> a
-manhattan u v = sum $ zipWith (\u' v' -> abs (u' - v')) (u ^.. each) (v ^.. each)
-{-# INLINEABLE manhattan #-}
-{-# SPECIALIZE manhattan :: (Int, Int) -> (Int, Int) -> Int #-}
-{-# SPECIALIZE manhattan :: (Int, Int, Int) -> (Int, Int, Int) -> Int #-}
-{-# SPECIALIZE manhattan :: Point V3 Int -> Point V3 Int -> Int #-}
 
 solve :: [Nanobot] -> Z3 (Loc, (Int, Int))
 solve xs = do
@@ -80,6 +68,6 @@ instance Solution Day23 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     xs <- fmap (consumeOrDie nanobotP) . lines <$> getInputS
     let (maxLoc, rMax) = maximumBy (comparing snd) xs
-    answerShow $ countLength (\(loc, _) -> dist maxLoc loc <= rMax) xs
+    answerShow $ countLength (\(loc, _) -> manhattan maxLoc loc <= rMax) xs
     (_, (_, ans)) <- evalZ3 (solve xs)
     answerShow ans

@@ -17,6 +17,7 @@ module Javran.AdventOfCode.Prelude
   , MinMax2D (..)
   , minMax2D
   , nextCharP
+  , manhattan
   , -- infrastructures
     module Javran.AdventOfCode.Infra
   , module Petbox
@@ -31,6 +32,7 @@ module Javran.AdventOfCode.Prelude
   )
 where
 
+import Control.Lens (Each, each, (^..))
 import Data.Bifunctor
 import Data.Bool
 import Data.Char
@@ -57,6 +59,9 @@ import Javran.AdventOfCode.Infra
   , todo
   , unreachable
   )
+import Linear.Affine (Point)
+import Linear.V2 (V2)
+import Linear.V3 (V3)
 import Petbox
 import qualified Text.ParserCombinators.ReadP as ReadP
 
@@ -104,3 +109,11 @@ minMax2D (u, v) = MinMax2D ((u, u), (v, v))
 
 nextCharP :: ReadP.ReadP Char
 nextCharP = ReadP.get
+
+manhattan :: (Num a, Each s s a a) => s -> s -> a
+manhattan u v = sum $ zipWith (\u' v' -> abs (u' - v')) (u ^.. each) (v ^.. each)
+{-# INLINEABLE manhattan #-}
+{-# SPECIALIZE manhattan :: (Int, Int) -> (Int, Int) -> Int #-}
+{-# SPECIALIZE manhattan :: (Int, Int, Int) -> (Int, Int, Int) -> Int #-}
+{-# SPECIALIZE manhattan :: Point V3 Int -> Point V3 Int -> Int #-}
+{-# SPECIALIZE manhattan :: Point V2 Int -> Point V2 Int -> Int #-}

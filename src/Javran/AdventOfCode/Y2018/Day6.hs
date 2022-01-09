@@ -22,9 +22,6 @@ type Coord = (Int, Int)
 coordP :: ReadP Coord
 coordP = (,) <$> decimal1P <*> (string ", " *> decimal1P)
 
-manhattan :: Coord -> Coord -> Int
-manhattan (x, y) (u, v) = abs (x - u) + abs (y - v)
-
 instance Solution Day6 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     (extraOps, rawInput) <- consumeExtraLeadingLines <$> getInputS
