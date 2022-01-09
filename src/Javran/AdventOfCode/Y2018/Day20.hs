@@ -60,7 +60,7 @@ applyDir = \case
   N -> first pred
   S -> first succ
   W -> second pred
-  E -> second pred
+  E -> second succ
 
 {-
   smart constructor to make sure we never directly nest ReSeq.
@@ -184,6 +184,31 @@ match nfa starts dir = findEps do
             seen' = foldr IS.insert seen nexts
          in findEpsAux seen' $ q1 <> Seq.fromList nexts
 
+buildMap nfa m = \case
+  Seq.Empty -> m
+  (cur, st) Seq.:<| q1 ->
+    let nexts = do
+          dir <- [N, W, S, E]
+          let coord' = applyDir dir cur
+              st' = match nfa st dir
+          guard $ not (IS.null st')
+          pure (coord', st')
+        m' =
+          foldr
+            (\(coord', _) ->
+               linkBoth cur coord')
+            m
+            nexts
+     in buildMap nfa m' (q1 <> Seq.fromList nexts)
+  where
+    linkBoth u v = linkFromTo u v . linkFromTo v u
+    linkFromTo u v =
+      M.alter
+        (\case
+           Nothing -> Just (S.singleton v)
+           Just vs -> Just (S.insert v vs))
+        u
+
 {-
   TODO: since we have a very large login input,
   we probably don't want to explore all inputs that the RE can recognize.
@@ -200,5 +225,18 @@ instance Solution Day20 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     re <- consumeOrDie reP . head . lines <$> getInputS
     let (_, nfa) = execState (buildNfa 0 re 1) (2, IM.empty)
-        result = foldl' (\st ch -> match nfa st ch) (IS.singleton 0) [E,N,N,W,S,W,W,N,E,W,S,S,S,S,E,E,N,E,E,S,W,E,N,N,N,N]
-    printer result
+        m :: M.Map Coord (S.Set Coord)
+        m = buildMap nfa M.empty (Seq.singleton ((0, 0), IS.singleton 0))
+        Just (MinMax2D ((rMin, rMax), (cMin, cMax))) = foldMap (Just . minMax2D) $ M.keys m
+    forM_ [rMin .. rMax] \r -> do
+      let render2 c =
+            ( "#" <> (if up then "-" else "#")
+            , (if left then "|" else "#") <> (if (r, c) == (0, 0) then "X" else ".")
+            )
+            where
+              up = ((m M.!? (r, c)) >>= pure . S.member (r -1, c)) == Just True
+              left = ((m M.!? (r, c)) >>= pure . S.member (r, c -1)) == Just True
+          (l1, l2) = unzip $ fmap render2 [cMin .. cMax]
+      putStrLn $ (concat l1) <> "#"
+      putStrLn $ (concat l2) <> "#"
+    putStrLn $ replicate (1 + 2 * (cMax - cMin + 1)) '#'
