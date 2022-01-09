@@ -66,14 +66,13 @@ mkRegionInfo (depth, target) =
     riskLevel coord = erosionLevel coord `rem` 3
     regionType = toEnum . riskLevel
 
-pprRegion :: (Int, Int) -> (Coord -> Int) -> IO ()
-pprRegion (maxX, maxY) riskLevel = do
+pprRegion :: (Int, Int) -> RegionInfo -> IO ()
+pprRegion (maxX, maxY) RegionInfo{regionType} = do
   forM_ [0 .. maxY] \y -> do
-    let render x = case riskLevel (x, y) of
-          0 -> '.'
-          1 -> '='
-          2 -> '|'
-          _ -> unreachable
+    let render x = case regionType (x, y) of
+          Rocky -> '.'
+          Wet -> '='
+          Narrow -> '|'
     putStrLn (fmap render [0 .. maxX])
 
 data Tool = Torch | ClimbingGear | Neither deriving (Eq, Ord, Enum, Bounded, Show)
@@ -136,12 +135,13 @@ aStar ri goal = fix \search q0 dists -> case PQ.minView q0 of
 instance Solution Day22 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     inp@(_, targetCoord) <- consumeOrDie inputP <$> getInputS
-    let ri@RegionInfo {riskLevel} = mkRegionInfo inp
+    let ri = mkRegionInfo inp
         display = False
     when display do
-      pprRegion targetCoord riskLevel
+        pprRegion targetCoord ri
     answerShow $ sum do
-      let (_, (targetX, targetY)) = inp
+      let RegionInfo {riskLevel} = ri
+          (_, (targetX, targetY)) = inp
       x <- [0 .. targetX]
       y <- [0 .. targetY]
       pure $ riskLevel (x, y)
