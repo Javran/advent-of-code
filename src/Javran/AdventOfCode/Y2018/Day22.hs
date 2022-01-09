@@ -13,10 +13,10 @@ where
 
 import Control.Applicative
 import Control.Monad
-import Control.Monad.State.Strict
 import Data.Function.Memoize (memoFix)
 import qualified Data.Map.Strict as M
 import qualified Data.PSQueue as PQ
+import Data.Semigroup
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (count, get, many)
 
@@ -79,49 +79,52 @@ nextStates riskLevel (coord, tool) =
       1 -> t /= Torch
       ~2 -> t /= ClimbingGear
 
-runSpfa :: (Coord -> Int) -> Coord -> Int
-runSpfa riskLevel targetCoord =
-  evalState
-    (spfaWith
-       (PQ.singleton initState 0))
-    (M.singleton initState 0)
-  where
-    initState = ((0, 0), Torch)
-    spfaWith q0 =
-      case PQ.minView q0 of
-        Nothing -> error "queue exhausted"
-        Just (u PQ.:-> distU, q1) ->
-          if u == (targetCoord, Torch)
-            then pure distU
-            else do
-              curDists <- get
-              let nexts = do
-                    (delta, v) <- nextStates riskLevel u
-                    let distV' = distU + delta
-                        mDistV = curDists M.!? v
-                    guard $ maybe True (distV' <) mDistV
-                    pure (v, distV')
-                  q2 = foldr upd q1 nexts
-                    where
-                      upd (v, distV') = PQ.insert v distV'
-              modify (\d -> foldr (\(v, distV') -> M.insert v distV') d nexts)
-              spfaWith q2
+estimateDist :: SearchState -> SearchState -> Int
+estimateDist ((a, b), t0) ((c, d), t1) = abs (a - c) + abs (b - d) + if t0 == t1 then 0 else 7
 
-{-
-  TODO: could try A*
- -}
+aStar :: (Coord -> Int) -> SearchState -> PQ.PSQ SearchState (Arg Int Int) -> M.Map SearchState Int -> Int
+aStar riskLevel goal q0 dists = case PQ.minView q0 of
+  Nothing -> error "queue exhausted"
+  Just (u PQ.:-> (Arg _fScore distU), q1) ->
+    if u == goal
+      then distU
+      else
+        let nexts = do
+              (delta, v) <- nextStates riskLevel u
+              let mDistV = dists M.!? v
+                  distV' = distU + delta
+                  fScore' = distV' + estimateDist v goal
+              guard $ maybe True (distV' <) mDistV
+              pure (v, distV', Arg fScore' distV')
+            q2 = foldr upd q1 nexts
+              where
+                upd (v, _, prio') = PQ.insert v prio'
+            dists' = foldr upd dists nexts
+              where
+                upd (v, distV', _) = M.insert v distV'
+         in aStar riskLevel goal q2 dists'
+
 instance Solution Day22 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    inp@(depth, tgt) <- consumeOrDie inputP <$> getInputS
+    inp@(depth, targetCoord) <- consumeOrDie inputP <$> getInputS
     let geologicIndex = mkGeologicIndex inp
         erosionLevel coord = (geologicIndex coord + depth) `rem` 20183
         riskLevel coord = erosionLevel coord `rem` 3
         display = False
     when display do
-      pprRegion tgt riskLevel
+      pprRegion targetCoord riskLevel
     answerShow $ sum do
       let (_, (targetX, targetY)) = inp
       x <- [0 .. targetX]
       y <- [0 .. targetY]
       pure $ riskLevel (x, y)
-    answerShow $ runSpfa riskLevel tgt
+    do
+      let initSt = ((0, 0), Torch)
+          goalSt = (targetCoord, Torch)
+          est = estimateDist initSt goalSt
+      answerShow $
+        aStar
+          riskLevel
+          goalSt
+          (PQ.singleton initSt (Arg est 0))
+          (M.singleton initSt 0)
