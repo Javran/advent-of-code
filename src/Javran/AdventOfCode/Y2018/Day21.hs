@@ -6,6 +6,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE RankNTypes #-}
@@ -28,11 +29,12 @@ where
 import Control.Applicative
 import Control.Lens
 import Control.Monad
+import Control.Monad.State.Strict
+import Control.Monad.Writer.Lazy
 import Data.Bits
 import Data.Char
 import qualified Data.DList as DL
 import Data.Function
-import Control.Monad.Writer.Lazy
 import Data.Function.Memoize (memoFix)
 import qualified Data.IntMap.Strict as IM
 import qualified Data.IntSet as IS
@@ -154,11 +156,36 @@ runProgram prog lps inp = runAux (0, inp)
         Just m' ->
           runAux m'
 
+fastSimulate :: Int -> Int
+fastSimulate v = evalState fastSimulateAux (10605201, v .|. 0x1_0000)
+
+fastSimulateAux :: State (Int, Int) Int
+fastSimulateAux = do
+  fix \loop -> do
+    modify (\(r1, r2) -> ((r1 + (r2 .&. 0xFF)) .&. 0xFF_FFFF, r2))
+    modify (\(r1, r2) -> (r1 * 65899 .&. 0xFF_FFFF, r2))
+    (r1, r2) <- get
+    if r2 >= 256
+      then do
+        modify (second (const (r2 `quot` 256)))
+        loop
+      else pure r1
+
+findFix seen ~((x, y) : xs) =
+  if IS.member y seen
+    then x
+    else findFix (IS.insert y seen) xs
+
 instance Solution Day21 where
   solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     prog <- consumeOrDie programP <$> getInputS
-    let result = runWriter $ runProgram prog (IS.singleton 28) (0, 0, 0, 0, 0, 0)
-    pprProgram prog
-    let extractInfo (_, r1, _, _, _, _) = r1
-    answerShow (extractInfo $ head $ DL.toList $ snd result)
+    let xs = tail $ iterate fastSimulate 0
+    do
+      let result =
+            runWriter $
+              runProgram prog (IS.singleton 28) (0, 0, 0, 0, 0, 0)
+      let extractInfo (_, r1, _, _, _, _) = r1
+      answerShow (head xs)
+    do
+      answerShow $ findFix IS.empty (zip xs (tail xs))
