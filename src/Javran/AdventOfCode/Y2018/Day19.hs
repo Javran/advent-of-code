@@ -43,15 +43,19 @@ import Data.Semigroup
 import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Vector as V
+import Debug.Trace
 import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.Y2018.Day16 (BinValueMode (..), OpType (..), ValueMode (..))
+import Math.NumberTheory.Primes
 import Text.ParserCombinators.ReadP hiding (count, get, many)
 import Text.Printf
-import Debug.Trace
-import Math.NumberTheory.Primes
 
 data Day19 deriving (Generic)
+
+type Tuple6 a = (a, a, a, a, a, a)
+
+type Regs = Tuple6 Int
 
 instrP :: ReadP Instr
 instrP = do
@@ -135,9 +139,20 @@ ops =
 
 type Machine = (Int, (Int, Int, Int, Int, Int, Int))
 
-interpret :: Program -> Machine -> Maybe Machine
-interpret (ipReg, instrs) (ip, regsPre) =
-  if ip < 0 || ip >= V.length instrs
+type Breakpoints = IS.IntSet
+
+_reg :: Register -> ALens' Regs Int
+_reg = \case
+  R0 -> _1'
+  R1 -> _2'
+  R2 -> _3'
+  R3 -> _4'
+  R4 -> _5'
+  R5 -> _6'
+
+interpret :: Program -> Breakpoints -> Machine -> Maybe Machine
+interpret (ipReg, instrs) breakpoints (ip, regsPre) =
+  if ip < 0 || ip >= V.length instrs || IS.member ip breakpoints
     then Nothing
     else
       let Instr {sOp, sOperands = (a, b, c)} = instrs V.! ip
@@ -179,40 +194,33 @@ interpret (ipReg, instrs) (ip, regsPre) =
           ip' = regs' ^. _r ipReg
        in Just (ip' + 1, regs')
   where
-    _r = \case
-      R0 -> _1'
-      R1 -> _2'
-      R2 -> _3'
-      R3 -> _4'
-      R4 -> _5'
-      R5 -> _6'
-
+    _r r = cloneLens (_reg r)
     resolveReg :: Int -> Register
     resolveReg i =
       toEnum @Register i
 
-runProgram :: Program -> Machine
-runProgram prog = runAux (0, (0, 0, 0, 0, 0, 0))
+runProgram :: Program -> Breakpoints -> Regs -> Machine
+runProgram prog bps inp = runAux (0, inp)
   where
     runAux :: Machine -> Machine
-    runAux m = traceShow m $ case interpret prog m of
+    runAux m = case interpret prog bps m of
       Nothing -> m
       Just m' -> runAux m'
 
-runProgram2 :: Program -> Machine
-runProgram2 prog = runAux (0, (1, 0, 0, 0, 0, 0))
+-- https://math.stackexchange.com/a/22723/139439
+sumOfProperDivisors :: Int -> Int
+sumOfProperDivisors = product . fmap f . factorise
   where
-    runAux :: Machine -> Machine
-    runAux m = traceShow m $ case interpret prog m of
-      Nothing -> m
-      Just m' -> runAux m'
+    f (p, m) = sum (take (1 + fromIntegral m) $ iterate (* unPrime p) 1)
 
 instance Solution Day19 where
   solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     prog@(r, xs) <- consumeOrDie programP <$> getInputS
-    -- print (runProgram2 prog)
+    let mkInp x = (x, 0, 0, 0, 0, 0)
+    print $ runProgram prog (IS.singleton 1) (mkInp 0)
+    print $ runProgram prog (IS.singleton 1) (mkInp 1)
+
+    answerShow $ sumOfProperDivisors 887
     mapM_ (\(i, instr) -> putStrLn $ show i <> "\t" <> pprInstr r instr) (zip [0 :: Int ..] $ V.toList xs)
-    print (factorise (10551287 :: Int))
-    -- https://math.stackexchange.com/a/22723/139439
-    answerShow $ (1 + 127) * (1 + 251) *(1 + 331)
+    answerShow $ sumOfProperDivisors 10551287
