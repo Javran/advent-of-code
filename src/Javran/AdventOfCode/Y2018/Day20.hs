@@ -185,8 +185,16 @@ match nfa starts dir = findEps do
             seen' = foldr IS.insert seen nexts
          in findEpsAux seen' $ q1 <> Seq.fromList nexts
 
-buildMap nfa m q0 = case PQ.minView q0 of
-  Nothing -> m
+type Graph = M.Map Coord (S.Set Coord)
+
+insertGraph :: Coord -> Coord -> Graph -> Graph
+insertGraph a b =
+  M.insertWith S.union b (S.singleton a)
+    . M.insertWith S.union a (S.singleton b)
+
+buildGraph :: Nfa -> Graph -> PQ.PSQ Coord (Arg () IS.IntSet) -> Graph
+buildGraph nfa g q0 = case PQ.minView q0 of
+  Nothing -> g
   Just ((coord PQ.:-> Arg () st), q1) ->
     let nexts = do
           dir <- [N, W, S, E]
@@ -194,11 +202,10 @@ buildMap nfa m q0 = case PQ.minView q0 of
               st' = match nfa st dir
           guard $ not (IS.null st')
           pure (coord', st')
-        m' =
+        g' =
           foldr
-            (\(coord', _) ->
-               linkBoth coord coord')
-            m
+            (\(coord', _) -> insertGraph coord coord')
+            g
             nexts
         q2 = foldr upd q1 nexts
           where
@@ -208,15 +215,29 @@ buildMap nfa m q0 = case PQ.minView q0 of
                    Nothing -> Just (Arg () st')
                    Just (Arg () s) -> Just (Arg () (IS.union s st')))
                 coord'
-     in buildMap nfa m' q2
+     in buildGraph nfa g' q2
+
+runSpfa :: Graph -> Coord -> M.Map Coord Int
+runSpfa g start = execState (spfaWith (PQ.singleton start 0)) (M.singleton start 0)
   where
-    linkBoth u v = linkFromTo u v . linkFromTo v u
-    linkFromTo u v =
-      M.alter
-        (\case
-           Nothing -> Just (S.singleton v)
-           Just vs -> Just (S.insert v vs))
-        u
+    spfaWith q0 =
+      case PQ.minView q0 of
+        Nothing -> pure ()
+        Just (u PQ.:-> distU, q1) -> do
+          performEnqs <- forM (S.toList (g M.! u)) $ \v -> do
+            let distV' = distU + 1
+            mDistV <- gets (M.!? v)
+            if maybe True (distV' <) mDistV
+              then do
+                modify (M.insert v distV')
+                pure
+                  (PQ.alter
+                     (\case
+                        Nothing -> Just distV'
+                        Just distV -> Just (min distV distV'))
+                     v)
+              else pure id
+          spfaWith $ appEndo (foldMap Endo performEnqs) q1
 
 {-
   TODO: since we have a very large login input,
@@ -230,22 +251,28 @@ buildMap nfa m q0 = case PQ.minView q0 of
 
  -}
 instance Solution Day20 where
-  solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    re <- consumeOrDie reP . head . lines <$> getInputS
-    let (_, nfa) = execState (buildNfa 0 re 1) (2, IM.empty)
-        m :: M.Map Coord (S.Set Coord)
-        m = buildMap nfa M.empty (PQ.singleton (0, 0) (Arg () (IS.singleton 0)))
-        Just (MinMax2D ((rMin, rMax), (cMin, cMax))) = foldMap (Just . minMax2D) $ M.keys m
+    (extraOps, rawInput) <- consumeExtraLeadingLines <$> getInputS
+    let re = consumeOrDie reP . head . lines $ rawInput
+        (_, nfa) = execState (buildNfa 0 re 1) (2, IM.empty)
+        g :: Graph
+        g = buildGraph nfa M.empty (PQ.singleton (0, 0) (Arg () (IS.singleton 0)))
+        Just (MinMax2D ((rMin, rMax), (cMin, cMax))) = foldMap (Just . minMax2D) $ M.keys g
+        part2Limit = case extraOps of
+          Just raw -> read (head raw)
+          Nothing -> 1000
     forM_ [rMin .. rMax] \r -> do
       let render2 c =
             ( "#" <> (if up then "-" else "#")
             , (if left then "|" else "#") <> (if (r, c) == (0, 0) then "X" else ".")
             )
             where
-              up = ((m M.!? (r, c)) >>= pure . S.member (r -1, c)) == Just True
-              left = ((m M.!? (r, c)) >>= pure . S.member (r, c -1)) == Just True
+              up = ((g M.!? (r, c)) >>= pure . S.member (r -1, c)) == Just True
+              left = ((g M.!? (r, c)) >>= pure . S.member (r, c -1)) == Just True
           (l1, l2) = unzip $ fmap render2 [cMin .. cMax]
       putStrLn $ (concat l1) <> "#"
       putStrLn $ (concat l2) <> "#"
     putStrLn $ replicate (1 + 2 * (cMax - cMin + 1)) '#'
+    let shortestDists = runSpfa g (0,0)
+    answerShow $ maximum shortestDists
+    answerShow $ M.size $ M.filter (>= part2Limit) shortestDists
