@@ -36,16 +36,35 @@ inputP =
     y <- decimal1P <* char '\n'
     pure (x, y)
 
-mkGeologicIndex :: Input -> Coord -> Int
-mkGeologicIndex (depth, target) = memoFix \q coord@(x, y) ->
-  if
-      | coord == (0, 0) -> 0
-      | coord == target -> 0
-      | y == 0 -> x * 16807
-      | x == 0 -> y * 48271
-      | otherwise ->
-        let erosionLevel' coord' = (q coord' + depth) `rem` 20183
-         in erosionLevel' (x -1, y) * erosionLevel' (x, y -1)
+data RegionInfo = RegionInfo
+  { geologicIndex :: Coord -> Int
+  , erosionLevel :: Coord -> Int
+  , riskLevel :: Coord -> Int
+  , regionType :: Coord -> RegionType
+  }
+
+mkRegionInfo :: Input -> RegionInfo
+mkRegionInfo (depth, target) =
+  RegionInfo
+    { geologicIndex
+    , erosionLevel
+    , riskLevel
+    , regionType
+    }
+  where
+    erosionLevel' qGeologicInd coord' =
+      (qGeologicInd coord' + depth) `rem` 20183
+    geologicIndex = memoFix \q coord@(x, y) ->
+      if
+          | coord == (0, 0) -> 0
+          | coord == target -> 0
+          | y == 0 -> x * 16807
+          | x == 0 -> y * 48271
+          | otherwise ->
+            erosionLevel' q (x -1, y) * erosionLevel' q (x, y -1)
+    erosionLevel = erosionLevel' geologicIndex
+    riskLevel coord = erosionLevel coord `rem` 3
+    regionType = toEnum . riskLevel
 
 pprRegion :: (Int, Int) -> (Coord -> Int) -> IO ()
 pprRegion (maxX, maxY) riskLevel = do
@@ -61,8 +80,8 @@ data Tool = Torch | ClimbingGear | Neither deriving (Eq, Ord, Enum, Bounded, Sho
 
 type SearchState = (Coord, Tool)
 
-nextStates :: (Coord -> Int) -> SearchState -> [(Int, SearchState)]
-nextStates riskLevel (coord, tool) =
+nextStates :: RegionInfo -> SearchState -> [(Int, SearchState)]
+nextStates RegionInfo {regionType} (coord, tool) =
   (do
      tool' <- universe @Tool
      guard $ tool' /= tool
@@ -74,23 +93,33 @@ nextStates riskLevel (coord, tool) =
            let s = (coord', tool)
            (1, s) <$ guard (isCompatible s))
   where
-    isCompatible (c, t) = case riskLevel c of
-      0 -> t /= Neither
-      1 -> t /= Torch
-      ~2 -> t /= ClimbingGear
+    isCompatible (c, t) = case regionType c of
+      Rocky -> t /= Neither
+      Wet -> t /= Torch
+      Narrow -> t /= ClimbingGear
 
+{-
+  An underestimation between SearchStates,
+  which is just manhattan distance. Plus tool switching cost if tools differ.
+ -}
 estimateDist :: SearchState -> SearchState -> Int
-estimateDist ((a, b), t0) ((c, d), t1) = abs (a - c) + abs (b - d) + if t0 == t1 then 0 else 7
+estimateDist ((a, b), t0) ((c, d), t1) =
+  abs (a - c) + abs (b - d) + if t0 == t1 then 0 else 7
 
-aStar :: (Coord -> Int) -> SearchState -> PQ.PSQ SearchState (Arg Int Int) -> M.Map SearchState Int -> Int
-aStar riskLevel goal q0 dists = case PQ.minView q0 of
+aStar
+  :: RegionInfo
+  -> SearchState
+  -> PQ.PSQ SearchState (Arg Int Int)
+  -> M.Map SearchState Int
+  -> Int
+aStar ri goal = fix \search q0 dists -> case PQ.minView q0 of
   Nothing -> error "queue exhausted"
   Just (u PQ.:-> (Arg _fScore distU), q1) ->
     if u == goal
       then distU
       else
         let nexts = do
-              (delta, v) <- nextStates riskLevel u
+              (delta, v) <- nextStates ri u
               let mDistV = dists M.!? v
                   distV' = distU + delta
                   fScore' = distV' + estimateDist v goal
@@ -102,14 +131,12 @@ aStar riskLevel goal q0 dists = case PQ.minView q0 of
             dists' = foldr upd dists nexts
               where
                 upd (v, distV', _) = M.insert v distV'
-         in aStar riskLevel goal q2 dists'
+         in search q2 dists'
 
 instance Solution Day22 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    inp@(depth, targetCoord) <- consumeOrDie inputP <$> getInputS
-    let geologicIndex = mkGeologicIndex inp
-        erosionLevel coord = (geologicIndex coord + depth) `rem` 20183
-        riskLevel coord = erosionLevel coord `rem` 3
+    inp@(_, targetCoord) <- consumeOrDie inputP <$> getInputS
+    let ri@RegionInfo {riskLevel} = mkRegionInfo inp
         display = False
     when display do
       pprRegion targetCoord riskLevel
@@ -124,7 +151,7 @@ instance Solution Day22 where
           est = estimateDist initSt goalSt
       answerShow $
         aStar
-          riskLevel
+          ri
           goalSt
           (PQ.singleton initSt (Arg est 0))
           (M.singleton initSt 0)
