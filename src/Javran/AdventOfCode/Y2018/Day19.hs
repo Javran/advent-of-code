@@ -334,7 +334,6 @@ extractInput prog r0 = m ^. _reg inpReg
       Left msg -> error $ "static analysis failed: " <> msg
 
 instance Solution Day19 where
-  solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow, terminal} = do
     (extraOps, rawInput) <- consumeExtraLeadingLines <$> getInputS
     let prog = consumeOrDie programP rawInput
