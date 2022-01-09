@@ -61,7 +61,18 @@ instrP :: ReadP Instr
 instrP = do
   opName <- munch1 isAlpha
   Just sOp <- pure (ops M.!? opName)
-  ~[a, b, c] <- replicateM 3 (char ' ' *> readS_to_P (reads @Int))
+  ~[a, b', c] <- replicateM 3 (char ' ' *> readS_to_P (reads @Int))
+  let b = case sOp of
+        Assign _ ->
+          {-
+            TODO: smart constructor.
+
+            for seti / setr, b is completely ignored.
+            we can normalize it to a fixed value so that we don't
+            need to treat this as a special case, and Eq can be derived.
+           -}
+          0
+        _ -> b'
   pure Instr {sOp, sOperands = (a, b, c)}
 
 data Register = R0 | R1 | R2 | R3 | R4 | R5 deriving (Enum, Show)
@@ -84,7 +95,7 @@ data Instr = Instr
   { sOp :: OpType
   , sOperands :: (Int, Int, Int)
   }
-  deriving (Show)
+  deriving (Show, Eq)
 
 pprInstr :: Register -> Instr -> String
 pprInstr ipReg Instr {sOp, sOperands = (a, b, c)} = case sOp of
@@ -141,7 +152,7 @@ type Machine = (Int, (Int, Int, Int, Int, Int, Int))
 
 type Breakpoints = IS.IntSet
 
-_reg :: Register -> ALens' Regs Int
+_reg :: Register -> Lens' Regs Int
 _reg = \case
   R0 -> _1'
   R1 -> _2'
@@ -156,10 +167,10 @@ interpret (ipReg, instrs) breakpoints (ip, regsPre) =
     then Nothing
     else
       let Instr {sOp, sOperands = (a, b, c)} = instrs V.! ip
-          regs = regsPre & _r ipReg .~ ip
+          regs = regsPre & _reg ipReg .~ ip
           getVal vm i = case vm of
             Reg ->
-              regs ^. _r (resolveReg i)
+              regs ^. _reg (resolveReg i)
             Imm -> i
 
           -- category0 covers ops with prefix add / mul / ban / bor
@@ -167,7 +178,7 @@ interpret (ipReg, instrs) breakpoints (ip, regsPre) =
             let v0 = getVal Reg a
                 v1 = getVal mb b
                 rOut = resolveReg c
-             in regs & _r rOut .~ f v0 v1
+             in regs & _reg rOut .~ f v0 v1
           -- category1 covers ops with prefix gt / eq
           cat1 mab f = do
             let (ma, mb) = case mab of
@@ -177,7 +188,7 @@ interpret (ipReg, instrs) breakpoints (ip, regsPre) =
                 v0 = getVal ma a
                 v1 = getVal mb b
                 rOut = resolveReg c
-             in regs & _r rOut .~ bool 0 1 (f v0 v1)
+             in regs & _reg rOut .~ bool 0 1 (f v0 v1)
           regs' :: (Int, Int, Int, Int, Int, Int)
           regs' = case sOp of
             Add mb -> cat0 mb (+)
@@ -187,14 +198,13 @@ interpret (ipReg, instrs) breakpoints (ip, regsPre) =
             Assign ma ->
               let v0 = getVal ma a
                   rOut = resolveReg c
-               in regs & _r rOut .~ v0
+               in regs & _reg rOut .~ v0
             TestGreaterThan mab -> cat1 mab (>)
             TestEqual mab -> cat1 mab (==)
           ip' :: Int
-          ip' = regs' ^. _r ipReg
+          ip' = regs' ^. _reg ipReg
        in Just (ip' + 1, regs')
   where
-    _r r = cloneLens (_reg r)
     resolveReg :: Int -> Register
     resolveReg i =
       toEnum @Register i
@@ -213,14 +223,34 @@ sumOfProperDivisors = product . fmap f . factorise
   where
     f (p, m) = sum (take (1 + fromIntegral m) $ iterate (* unPrime p) 1)
 
+staticAnalysis :: Program -> Either String Register
+staticAnalysis (ipReg, prog) = do
+  let ip = fromEnum ipReg
+  unless (V.length prog == 36) do
+    Left "unexpected program length"
+  unless (prog V.! 26 == (Instr (Assign Imm) (0, 0, ip))) do
+    Left "expected jump to 0 at 26"
+  unless (prog V.! 35 == (Instr (Assign Imm) (0, 0, ip))) do
+    Left "expected jump to 0 at 35"
+  unless (prog V.! 16 == (Instr (Mul Reg) (ip, ip, ip))) do
+    Left "expected halt at 16"
+  unless (sOp (prog V.! 4) == TestEqual RegReg) do
+    Left "expected eqrr at 4"
+  let (_, inpReg, _) = sOperands (prog V.! 4)
+  pure (toEnum inpReg)
+
+extractInput :: Program -> Int -> Int
+extractInput prog r0 = m ^.  _reg inpReg
+  where
+    (1, m) = runProgram prog (IS.singleton 1) (r0, 0, 0, 0, 0, 0)
+    inpReg = case staticAnalysis prog of
+      Right v -> v
+      Left msg -> error $ "static analysis failed: " <> msg
+
 instance Solution Day19 where
   solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    prog@(r, xs) <- consumeOrDie programP <$> getInputS
-    let mkInp x = (x, 0, 0, 0, 0, 0)
-    print $ runProgram prog (IS.singleton 1) (mkInp 0)
-    print $ runProgram prog (IS.singleton 1) (mkInp 1)
-
-    answerShow $ sumOfProperDivisors 887
-    mapM_ (\(i, instr) -> putStrLn $ show i <> "\t" <> pprInstr r instr) (zip [0 :: Int ..] $ V.toList xs)
-    answerShow $ sumOfProperDivisors 10551287
+    prog <- consumeOrDie programP <$> getInputS
+    answerShow $ sumOfProperDivisors $ extractInput prog 0
+    answerShow $ sumOfProperDivisors $ extractInput prog 1
+    -- mapM_ (\(i, instr) -> putStrLn $ show i <> "\t" <> pprInstr r instr) (zip [0 :: Int ..] $ V.toList xs)
