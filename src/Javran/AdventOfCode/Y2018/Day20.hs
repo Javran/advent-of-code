@@ -40,6 +40,7 @@ import Data.List.Split hiding (sepBy)
 import qualified Data.Map.Strict as M
 import Data.Monoid
 import Data.Semigroup
+import qualified Data.Sequence as Seq
 import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Vector as V
@@ -128,8 +129,8 @@ reP = between (char '^') (char '$') reAltP
 
 type Nfa = IM.IntMap (M.Map (Maybe Dir) IS.IntSet)
 
-freshState ::  State (Int, Nfa) Int
-freshState = state (\(v, nfa) -> (v, (v+1, nfa)))
+freshState :: State (Int, Nfa) Int
+freshState = state (\(v, nfa) -> (v, (v + 1, nfa)))
 
 linkState :: Int -> Maybe Dir -> Int -> State (Int, Nfa) ()
 linkState u ch v =
@@ -157,11 +158,31 @@ buildNfa start re end = case re of
   ReSeq xs -> do
     ys <- replicateM (length xs -1) freshState
     let zipped = zip (zip (start : ys) (ys <> [end])) xs
-    forM_ zipped \((u,v), re') ->
+    forM_ zipped \((u, v), re') ->
       buildNfa u re' v
   ReAlt xs ->
     forM_ xs \re' ->
       buildNfa start re' end
+
+match :: Nfa -> IS.IntSet -> Dir -> IS.IntSet
+match nfa starts dir = findEps do
+  start <- IS.toList starts
+  Just ends <- pure $ (nfa IM.!? start) >>= (M.!? (Just dir))
+  IS.toList ends
+  where
+    findEps :: [Int] -> IS.IntSet
+    findEps xs = findEpsAux (IS.fromList xs) (Seq.fromList xs)
+
+    findEpsAux seen = \case
+      Seq.Empty -> seen
+      u Seq.:<| q1 ->
+        let nexts = do
+              Just vs <- pure $ nfa IM.!? u >>= (M.!? Nothing)
+              v <- IS.toList vs
+              guard $ IS.notMember v seen
+              pure v
+            seen' = foldr IS.insert seen nexts
+         in findEpsAux seen' $ q1 <> Seq.fromList nexts
 
 {-
   TODO: since we have a very large login input,
@@ -178,6 +199,6 @@ instance Solution Day20 where
   solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     re <- consumeOrDie reP . head . lines <$> getInputS
-    -- printer re
-    -- ENNWSWW | SSSEENEENNN
-    printer (runState (buildNfa 0 re 1) (2, IM.empty))
+    let (_, nfa) = execState (buildNfa 0 re 1) (2, IM.empty)
+        result = foldl' (\st ch -> match nfa st ch) (IS.singleton 0) [E,N,N,W,S,W,W,N,E,W,S,S,S,S,E,E,N,E,E,S,W,E,N,N,N,N]
+    printer result
