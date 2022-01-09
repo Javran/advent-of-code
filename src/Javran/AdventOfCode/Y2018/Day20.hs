@@ -39,6 +39,7 @@ import qualified Data.List.NonEmpty as NE
 import Data.List.Split hiding (sepBy)
 import qualified Data.Map.Strict as M
 import Data.Monoid
+import qualified Data.PSQueue as PQ
 import Data.Semigroup
 import qualified Data.Sequence as Seq
 import qualified Data.Set as S
@@ -184,22 +185,30 @@ match nfa starts dir = findEps do
             seen' = foldr IS.insert seen nexts
          in findEpsAux seen' $ q1 <> Seq.fromList nexts
 
-buildMap nfa m = \case
-  Seq.Empty -> m
-  (cur, st) Seq.:<| q1 ->
+buildMap nfa m q0 = case PQ.minView q0 of
+  Nothing -> m
+  Just ((coord PQ.:-> Arg () st), q1) ->
     let nexts = do
           dir <- [N, W, S, E]
-          let coord' = applyDir dir cur
+          let coord' = applyDir dir coord
               st' = match nfa st dir
           guard $ not (IS.null st')
           pure (coord', st')
         m' =
           foldr
             (\(coord', _) ->
-               linkBoth cur coord')
+               linkBoth coord coord')
             m
             nexts
-     in buildMap nfa m' (q1 <> Seq.fromList nexts)
+        q2 = foldr upd q1 nexts
+          where
+            upd (coord', st') =
+              PQ.alter
+                (\case
+                   Nothing -> Just (Arg () st')
+                   Just (Arg () s) -> Just (Arg () (IS.union s st')))
+                coord'
+     in buildMap nfa m' q2
   where
     linkBoth u v = linkFromTo u v . linkFromTo v u
     linkFromTo u v =
@@ -226,7 +235,7 @@ instance Solution Day20 where
     re <- consumeOrDie reP . head . lines <$> getInputS
     let (_, nfa) = execState (buildNfa 0 re 1) (2, IM.empty)
         m :: M.Map Coord (S.Set Coord)
-        m = buildMap nfa M.empty (Seq.singleton ((0, 0), IS.singleton 0))
+        m = buildMap nfa M.empty (PQ.singleton (0, 0) (Arg () (IS.singleton 0)))
         Just (MinMax2D ((rMin, rMax), (cMin, cMax))) = foldMap (Just . minMax2D) $ M.keys m
     forM_ [rMin .. rMax] \r -> do
       let render2 c =
