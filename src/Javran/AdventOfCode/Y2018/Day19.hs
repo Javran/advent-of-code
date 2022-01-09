@@ -13,6 +13,9 @@ module Javran.AdventOfCode.Y2018.Day19
   , programP
   , Instr (..)
   , pprProgram
+  , Machine
+  , Register(..)
+  , _reg
   )
 where
 
@@ -86,7 +89,7 @@ pprInstr ipReg curIp Instr {sOp, sOperands = (a, b, c)} = case sOp of
   BitOr m -> ppr0 "|" m
   Assign m -> pprAux c (modeIn a m)
   TestEqual ms -> ppr1 "==" ms
-  TestGreaterThan ms -> ppr1 ">=" ms
+  TestGreaterThan ms -> ppr1 ">" ms
   where
     modeOut x = \case
       Reg -> if x == fromEnum ipReg then "ip" else "r" <> show x
