@@ -1,53 +1,28 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE PatternGuards #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# OPTIONS_GHC -Wno-deprecations #-}
-{-# OPTIONS_GHC -Wno-typed-holes #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -fdefer-typed-holes #-}
 
 module Javran.AdventOfCode.Y2018.Day20
   (
   )
 where
 
-{- HLINT ignore -}
-
 import Control.Applicative
 import Control.Monad
 import Control.Monad.State.Strict
-import Data.Char
-import Data.Containers.ListUtils
-import Data.Function
-import Data.Function.Memoize (memoFix)
+import Data.Functor
 import qualified Data.IntMap.Strict as IM
 import qualified Data.IntSet as IS
-import Data.List
-import qualified Data.List.NonEmpty as NE
-import Data.List.Split hiding (sepBy)
 import qualified Data.Map.Strict as M
 import Data.Monoid
 import qualified Data.PSQueue as PQ
 import Data.Semigroup
 import qualified Data.Sequence as Seq
 import qualified Data.Set as S
-import qualified Data.Text as T
-import qualified Data.Vector as V
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
-import Shower
 import Text.ParserCombinators.ReadP hiding (count, get, many)
 
 data Day20 deriving (Generic)
@@ -63,45 +38,6 @@ applyDir = \case
   W -> second pred
   E -> second succ
 
-{-
-  smart constructor to make sure we never directly nest ReSeq.
- -}
-mkReSeq :: [Re] -> Re
-mkReSeq =
-  ReSeq . concatMap \case
-    ReSeq xs -> xs
-    re -> [re]
-
-headTailReAux :: Re -> [(Dir, Re)]
-headTailReAux = \case
-  ReAtom d -> pure (d, ReSeq [])
-  ReSeq [] -> []
-  ReSeq (hd : tl) -> do
-    (d, hd') <- headTailReAux hd
-    pure (d, mkReSeq (hd' : tl))
-  ReAlt xs -> xs >>= headTailReAux
-
-headTailRe :: Re -> [(Dir, Re)]
-headTailRe re = fmap (second ReAlt) $ M.toList m
-  where
-    m = M.fromListWith (<>) do
-      (d, alt) <- headTailReAux re
-      pure (d, [alt])
-
-hdTl :: StateT Re [] Dir
-hdTl = do
-  re <- get
-  (d, re') <- lift $ headTailRe re
-  d <$ put re'
-
-tryDir :: Dir -> StateT Re [] Dir
-tryDir d = do
-  re <- get
-  let alts = filter ((== d) . fst) $ headTailRe re
-  (_, re') <- lift alts
-  put re'
-  pure d
-
 data Re
   = ReAtom Dir
   | ReSeq [Re]
@@ -116,7 +52,7 @@ reP = between (char '^') (char '$') reAltP
 
     {- Parses a regualar expr free of direct `|`s -}
     reSeqP :: ReadP Re
-    reSeqP = mkReSeq <$> (many (between (char '(') (char ')') reAltP <++ reAtomP))
+    reSeqP = ReSeq <$> many (between (char '(') (char ')') reAltP <++ reAtomP)
 
     reAtomP :: ReadP Re
     reAtomP =
@@ -128,6 +64,13 @@ reP = between (char '^') (char '$') reAltP
         , ReAtom E <$ char 'E'
         ]
 
+{-
+  See: https://en.wikipedia.org/wiki/Nondeterministic_finite_automaton
+
+  Matching directly with RegEx is tricky especially when dealing with
+  nested structures of ReSeq and ReAlt. So instead of direct handling,
+  we build up the equivalent NFA to perform matching.
+ -}
 type Nfa = IM.IntMap (M.Map (Maybe Dir) IS.IntSet)
 
 freshState :: State (Int, Nfa) Int
@@ -137,18 +80,10 @@ linkState :: Int -> Maybe Dir -> Int -> State (Int, Nfa) ()
 linkState u ch v =
   modify
     (second $
-       IM.alter
-         (\case
-            Nothing -> Just $ M.singleton ch (IS.singleton v)
-            Just m ->
-              Just $
-                M.alter
-                  (\case
-                     Nothing -> Just (IS.singleton v)
-                     Just vs -> Just (IS.insert v vs))
-                  ch
-                  m)
-         u)
+       IM.insertWith
+         (M.unionWith IS.union)
+         u
+         (M.singleton ch (IS.singleton v)))
 
 buildNfa :: Int -> Re -> Int -> State (Int, Nfa) ()
 buildNfa start re end = case re of
@@ -166,14 +101,14 @@ buildNfa start re end = case re of
       buildNfa start re' end
 
 match :: Nfa -> IS.IntSet -> Dir -> IS.IntSet
-match nfa starts dir = findEps do
+match nfa starts dir = epsilonClosure nfa do
   start <- IS.toList starts
-  Just ends <- pure $ (nfa IM.!? start) >>= (M.!? (Just dir))
+  Just ends <- pure $ (nfa IM.!? start) >>= (M.!? Just dir)
   IS.toList ends
-  where
-    findEps :: [Int] -> IS.IntSet
-    findEps xs = findEpsAux (IS.fromList xs) (Seq.fromList xs)
 
+epsilonClosure :: Nfa -> [Int] -> IS.IntSet
+epsilonClosure nfa xs = findEpsAux (IS.fromList xs) (Seq.fromList xs)
+  where
     findEpsAux seen = \case
       Seq.Empty -> seen
       u Seq.:<| q1 ->
@@ -192,10 +127,32 @@ insertGraph a b =
   M.insertWith S.union b (S.singleton a)
     . M.insertWith S.union a (S.singleton b)
 
+{-
+  Simply following the NFA works, but it's inefficient.
+  This is because, for this 2d-map setup, it's very likely that two different paths
+  with take us to a exact same location, and we have to explore the same location
+  over and over again for exploring different part of the RegEx.
+
+  So instead of doing that, we keep track of a mapping from coordinates to
+  the set of NFA states that we are in, benefits are:
+
+  - this constraints the size of the queue to the # of coordinates in the map
+  - when the same coord is reached from different paths, we can join NFA states
+    together, so to increase "parallelism".
+
+  Note that we are not really using the priority here - we simply use PSQ
+  as a structure to hold our todo-list.
+ -}
 buildGraph :: Nfa -> Graph -> PQ.PSQ Coord (Arg () IS.IntSet) -> Graph
 buildGraph nfa g q0 = case PQ.minView q0 of
   Nothing -> g
-  Just ((coord PQ.:-> Arg () st), q1) ->
+  Just (coord PQ.:-> Arg () st, q1) ->
+    {-
+      The queue is our todo list:
+      for now we are looking at cordinate `coord`,
+      which is at NFA states `st`,
+      we try all directions and use `match` to get next set of states `st'`.
+     -}
     let nexts = do
           dir <- [N, W, S, E]
           let coord' = applyDir dir coord
@@ -239,40 +196,46 @@ runSpfa g start = execState (spfaWith (PQ.singleton start 0)) (M.singleton start
               else pure id
           spfaWith $ appEndo (foldMap Endo performEnqs) q1
 
-{-
-  TODO: since we have a very large login input,
-  we probably don't want to explore all inputs that the RE can recognize.
-  Instead, let's try pushing REs to individual cells and expand from there.
-  This will allow those that takes different paths to get to the same coord
-  to be handled at the same time.
+pprGraph :: Graph -> IO ()
+pprGraph g = do
+  let Just (MinMax2D ((rMin, rMax), (cMin, cMax))) = foldMap (Just . minMax2D) $ M.keys g
+  forM_ [rMin .. rMax] \r -> do
+    let render2 c =
+          ( "#" <> if up then "-" else "#"
+          , (if left then "|" else "#") <> if (r, c) == (0, 0) then "X" else "."
+          )
+          where
+            up = ((g M.!? (r, c)) <&> S.member (r -1, c)) == Just True
+            left = ((g M.!? (r, c)) <&> S.member (r, c -1)) == Just True
+        (l1, l2) = unzip $ fmap render2 [cMin .. cMax]
+    putStrLn $ concat l1 <> "#"
+    putStrLn $ concat l2 <> "#"
+  putStrLn $ replicate (1 + 2 * (cMax - cMin + 1)) '#'
 
-  TODO: it's probably difficult to get epsilon-handling right,
-  so let's build NFA instead.
-
- -}
 instance Solution Day20 where
-  solutionRun _ SolutionContext {getInputS, answerShow} = do
+  solutionRun _ SolutionContext {getInputS, answerShow, terminal} = do
     (extraOps, rawInput) <- consumeExtraLeadingLines <$> getInputS
     let re = consumeOrDie reP . head . lines $ rawInput
         (_, nfa) = execState (buildNfa 0 re 1) (2, IM.empty)
+        starts = epsilonClosure nfa [0]
         g :: Graph
-        g = buildGraph nfa M.empty (PQ.singleton (0, 0) (Arg () (IS.singleton 0)))
-        Just (MinMax2D ((rMin, rMax), (cMin, cMax))) = foldMap (Just . minMax2D) $ M.keys g
+        g = buildGraph nfa M.empty (PQ.singleton (0, 0) (Arg () starts))
         part2Limit = case extraOps of
           Just raw -> read (head raw)
           Nothing -> 1000
-    forM_ [rMin .. rMax] \r -> do
-      let render2 c =
-            ( "#" <> (if up then "-" else "#")
-            , (if left then "|" else "#") <> (if (r, c) == (0, 0) then "X" else ".")
-            )
-            where
-              up = ((g M.!? (r, c)) >>= pure . S.member (r -1, c)) == Just True
-              left = ((g M.!? (r, c)) >>= pure . S.member (r, c -1)) == Just True
-          (l1, l2) = unzip $ fmap render2 [cMin .. cMax]
-      putStrLn $ (concat l1) <> "#"
-      putStrLn $ (concat l2) <> "#"
-    putStrLn $ replicate (1 + 2 * (cMax - cMin + 1)) '#'
-    let shortestDists = runSpfa g (0,0)
-    answerShow $ maximum shortestDists
-    answerShow $ M.size $ M.filter (>= part2Limit) shortestDists
+    when (isJust terminal) do
+      pprGraph g
+    let shortestDists = runSpfa g (0, 0)
+        Just
+          ( Max ans1
+            , Sum ans2
+            ) =
+            foldMap
+              (\d ->
+                 Just
+                   ( Max d
+                   , if d >= part2Limit then 1 :: Sum Int else 0
+                   ))
+              shortestDists
+    answerShow ans1
+    answerShow ans2
