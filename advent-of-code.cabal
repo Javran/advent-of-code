@@ -36,6 +36,8 @@ library
       Javran.AdventOfCode.Solutions
       Javran.AdventOfCode.Testdata
       Javran.AdventOfCode.TH
+      Javran.AdventOfCode.Y2017.Day1
+      Javran.AdventOfCode.Y2017.Day2
       Javran.AdventOfCode.Y2018.Day1
       Javran.AdventOfCode.Y2018.Day10
       Javran.AdventOfCode.Y2018.Day11
