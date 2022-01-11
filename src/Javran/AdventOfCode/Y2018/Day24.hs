@@ -317,7 +317,6 @@ findMinBoost initSt =
         Nothing -> findBound hi (hi * 2)
 
 instance Solution Day24 where
-  solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow, terminal} = do
     inp@(st, _) <- consumeOrDie inputP <$> getInputS
     when (isJust terminal) do
