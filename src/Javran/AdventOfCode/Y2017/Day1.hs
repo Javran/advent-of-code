@@ -13,7 +13,6 @@ import Javran.AdventOfCode.Prelude
 data Day1 deriving (Generic)
 
 instance Solution Day1 where
-  solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     xs <- head . lines <$> getInputS
     let check x y =

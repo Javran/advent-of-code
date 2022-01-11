@@ -32,7 +32,6 @@ simulate modifier xs = do
     0
 
 instance Solution Day5 where
-  solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     xs <- fmap (read @Int) . lines <$> getInputS
     answerShow $ runST (simulate (const succ) xs)
