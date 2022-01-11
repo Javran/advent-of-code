@@ -17,6 +17,7 @@ import Data.Foldable
 import Data.List.Split hiding (sepBy)
 import qualified Data.Sequence as Seq
 import Javran.AdventOfCode.Prelude
+import Javran.AdventOfCode.TestExtra
 
 data Day14 deriving (Generic)
 
@@ -44,10 +45,9 @@ recipes = 3 : 7 : DL.toList (execWriter (gen initSt))
 
 instance Solution Day14 where
   solutionRun _ SolutionContext {getInputS, answerS, answerShow} = do
-    (extraOps, rawInput) <- consumeExtraLeadingLines <$> getInputS
+    (extraOps, rawInput) <- consumeExtra getInputS
     let rawN = head . lines $ rawInput
-        runPart1 = maybe True ("part1" `elem`) extraOps
-        runPart2 = maybe True ("part2" `elem`) extraOps
+        (runPart1, runPart2) = shouldRun extraOps
     when runPart1 do
       let n = read @Int rawN
       answerS (fmap (\v -> chr (v + ord '0')) $ take 10 $ toList $ drop n recipes)

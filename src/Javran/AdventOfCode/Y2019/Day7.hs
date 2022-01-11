@@ -14,6 +14,7 @@ import Data.List.Split hiding (sepBy)
 import qualified Data.Vector.Unboxed as VU
 import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.Y2019.IntCode
+import Javran.AdventOfCode.TestExtra
 
 data Day7 deriving (Generic)
 
@@ -39,11 +40,10 @@ pipeProgram lProg rProg = do
 
 instance Solution Day7 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    (extraOps, rawInput) <- consumeExtraLeadingLines <$> getInputS
+    (extraOps, rawInput) <- consumeExtra getInputS
     let xs = fmap (read @Int) . splitOn "," . head . lines $ rawInput
         mem = VU.fromList xs
-        runPart1 = maybe True ("part1" `elem`) extraOps
-        runPart2 = maybe True ("part2" `elem`) extraOps
+        (runPart1, runPart2) = shouldRun extraOps
     when
       runPart1
       do

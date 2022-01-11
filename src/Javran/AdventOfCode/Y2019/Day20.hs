@@ -21,6 +21,7 @@ import Data.Monoid
 import qualified Data.PSQueue as PQ
 import qualified Data.Set as S
 import Javran.AdventOfCode.Prelude
+import Javran.AdventOfCode.TestExtra
 
 data Day20 deriving (Generic)
 
@@ -319,12 +320,11 @@ bfs
 
 instance Solution Day20 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    (extraOps, rawInput) <- consumeExtraLeadingLines <$> getInputS
+    (extraOps, rawInput) <- consumeExtra getInputS
     let xs = lines rawInput
         rows = length xs
         cols = length (head xs)
-        runPart1 = maybe True ("part1" `elem`) extraOps
-        runPart2 = maybe True ("part2" `elem`) extraOps
+        (runPart1, runPart2) = shouldRun extraOps
         rawFloor :: Arr.Array Coord Char
         rawFloor = Arr.array
           ((0, 0), (rows -1, cols -1))

@@ -19,6 +19,7 @@ import qualified Data.Map.Strict as M
 import qualified Data.PSQueue as PQ
 import qualified Data.Set as S
 import Javran.AdventOfCode.Prelude
+import Javran.AdventOfCode.TestExtra
 
 data Day18 deriving (Generic)
 
@@ -397,12 +398,11 @@ startBfs mi@MapInfo {miGet, miGraph, miAllKeys} =
 
 instance Solution Day18 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    (extraOps, rawInput) <- consumeExtraLeadingLines <$> getInputS
+    (extraOps, rawInput) <- consumeExtra getInputS
     let xs = lines rawInput
         rows = length xs
         cols = length (head xs)
-        runPart1 = maybe True ("part1" `elem`) extraOps
-        runPart2 = maybe True ("part2" `elem`) extraOps
+        (runPart1, runPart2) = shouldRun extraOps
         floorPlan :: FloorPlan
         floorPlan = Arr.array
           ((0, 0), (rows -1, cols -1))

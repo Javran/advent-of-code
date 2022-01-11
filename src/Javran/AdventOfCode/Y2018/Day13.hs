@@ -14,6 +14,7 @@ import Data.List
 import qualified Data.Map.Strict as M
 import Data.Void
 import Javran.AdventOfCode.Prelude
+import Javran.AdventOfCode.TestExtra
 
 data Day13 deriving (Generic)
 
@@ -272,11 +273,10 @@ simulate stopOnConflict mi =
 
 instance Solution Day13 where
   solutionRun _ SolutionContext {getInputS, answerS} = do
-    (extraOps, rawInput) <- consumeExtraLeadingLines <$> getInputS
+    (extraOps, rawInput) <- consumeExtra getInputS
     let xs = lines rawInput
         mi = parseFromRaw xs
-        runPart1 = maybe True ("part1" `elem`) extraOps
-        runPart2 = maybe True ("part2" `elem`) extraOps
+        (runPart1, runPart2) = shouldRun extraOps
     when runPart1 do
       let (x, y) = simulate True mi
       answerS $ show x <> "," <> show y

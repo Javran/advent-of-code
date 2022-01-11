@@ -13,6 +13,7 @@ import Control.Monad.ST
 import qualified Data.Vector.Unboxed as VU
 import qualified Data.Vector.Unboxed.Mutable as VUM
 import Javran.AdventOfCode.Prelude
+import Javran.AdventOfCode.TestExtra
 
 data Day16 deriving (Generic)
 
@@ -79,11 +80,10 @@ performSndHalfFftRev xs = runST do
 
 instance Solution Day16 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    (extraOps, rawInput) <- consumeExtraLeadingLines <$> getInputS
+    (extraOps, rawInput) <- consumeExtra getInputS
     let xs = fmap chToInt . head . lines $ rawInput
         len = length xs
-        runPart1 = maybe True ("part1" `elem`) extraOps
-        runPart2 = maybe True ("part2" `elem`) extraOps
+        (runPart1, runPart2) = shouldRun extraOps
     when runPart1 do
       answerShow $ digitsToInt @Int (take 8 $ iterate (onePhase len) xs !! 100)
     when runPart2 do
