@@ -287,7 +287,7 @@ extractSection beginMarker endMarker defVal onSuccess xs = fromMaybe defVal $ do
 
 exampleExtraBegin, exampleExtraEnd :: String
 exampleExtraBegin = "# EXAMPLE_EXTRA_BEGIN"
-exampleExtraEnd = "# EXAMPLE_EXTRA_EN"
+exampleExtraEnd = "# EXAMPLE_EXTRA_END"
 
 {-
   Examples could contain smaller examples with smaller extra parameters than
