@@ -1,49 +1,39 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE PatternGuards #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# OPTIONS_GHC -Wno-deprecations #-}
-{-# OPTIONS_GHC -Wno-typed-holes #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -fdefer-typed-holes #-}
 
 module Javran.AdventOfCode.Y2018.Day24
   (
   )
 where
 
-{- HLINT ignore -}
+{-
+  (ranting)
+  I'm not sure what kind of douchebag insists on having another instance
+  of this simulation bullshit, after we've done with day 15.
+  *What* is the fun in reading a lengthy specification (if you can even call it a spec),
+  and implementing it exactly as specified?
+  I'd like to speculate that somebody implemented this the first time and discovered
+  this "stalemate" situation and decided that this would be a great AoC puzzle,
+  which just ends up making us go through all these hassle to get to this realization,
+  which won't even much time to deal with.
+  So, tell me what exactly are we supposed to have fun with this one, if there's any?
+ -}
 
-import Control.Applicative
 import Control.Monad
-import Control.Monad.Loops (untilJust)
+import Control.Monad.Loops
 import Control.Monad.State.Strict
 import Data.Char
 import Data.Coerce
-import Data.Function
-import Data.Function.Memoize (memoFix)
 import qualified Data.IntMap.Strict as IM
 import qualified Data.IntSet as IS
 import Data.List
-import Data.List.Split hiding (sepBy)
 import qualified Data.Map.Strict as M
-import Data.Monoid
-import Data.Semigroup
 import qualified Data.Set as S
-import qualified Data.Text as T
 import qualified Data.Vector as V
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (count, get, many)
 import Text.Printf
@@ -80,9 +70,9 @@ armyGroupP = do
         mconcat
           <$> ((immuneToP <++ weakToP) `sepBy1` string "; ")
       immuneToP =
-        ((,mempty) . S.fromList) <$> (string "immune to " *> dmgTysP)
+        (,mempty) . S.fromList <$> (string "immune to " *> dmgTysP)
       weakToP =
-        ((mempty,) . S.fromList) <$> (string "weak to " *> dmgTysP)
+        (mempty,) . S.fromList <$> (string "weak to " *> dmgTysP)
   immuneWeak@(immunes, weaks) <-
     between (char '(') (string ") ") immuneWeakP
       <++ pure mempty
@@ -125,6 +115,7 @@ inputP = do
     , iToS
     )
 
+pprParsed :: (CombatState, DamageType -> [Char]) -> IO ()
 pprParsed (combat, iToS) = do
   let (xs, ys) =
         bimap (fmap snd) (fmap snd) $
@@ -179,14 +170,16 @@ damageFactor (DamageType dt) (ImmuneWeak (im, wk))
   - Just _: can deal damage
  -}
 dealDamage :: ArmyGroup -> ArmyGroup -> Maybe Int
-dealDamage atkGrp@ArmyGroup {agAttack = (_, atkTy)} ArmyGroup {agImmuneWeak = defImWk} = do
-  let damageDealt = effectivePower atkGrp * damageFactor atkTy defImWk
-  {-
-    Note that it's unclear what to do
-    if a positive amount of damage can be dealt,
-    but it won't result in any unit loss.
-   -}
-  damageDealt <$ guard (damageDealt > 0)
+dealDamage
+  atkGrp@ArmyGroup {agAttack = (_, atkTy)}
+  ArmyGroup {agImmuneWeak = defImWk} = do
+    let damageDealt = effectivePower atkGrp * damageFactor atkTy defImWk
+    {-
+      Note that it's unclear what to do
+      if a positive amount of damage can be dealt,
+      but it won't result in any unit loss.
+     -}
+    damageDealt <$ guard (damageDealt > 0)
 
 selectTarget :: ArmyGroup -> [ArmyGroup] -> Maybe ArmyGroup
 selectTarget atkGrp tgts0 = do
@@ -205,29 +198,30 @@ selectTarget atkGrp tgts0 = do
           tgts1
   snd <$> listToMaybe sortedTgts
 
-targetSelectionPhase :: State CombatState [(Int, Maybe Int)]
-targetSelectionPhase = do
-  allGrps <- get
+targetSelectionPhase :: CombatState -> [(Int, Maybe Int)]
+targetSelectionPhase allGrps =
   let initAtkGrps =
         sortOn
           (\(_side, g) ->
              (Down (effectivePower g), Down (agInit g)))
           (IM.elems allGrps)
-
-  fix
-    (\loop atkGrps selectables selected ->
-       case atkGrps of
-         [] -> pure (sortOn (Down . fst) selected)
-         (atkSide, atkGrp) : atkGrps' ->
-           let defGrps = concatMap (\(s, g) -> [g | s == opposite atkSide]) $ IM.elems selectables
-               sel = selectTarget atkGrp defGrps
-               selectables' = case sel of
-                 Nothing -> selectables
-                 Just ArmyGroup {agInit = i} -> IM.delete i selectables
-            in loop atkGrps' selectables' ((agInit atkGrp, agInit <$> sel) : selected))
-    initAtkGrps
-    allGrps
-    []
+   in fix
+        (\loop atkGrps selectables selected ->
+           case atkGrps of
+             [] -> sortOn (Down . fst) selected
+             (atkSide, atkGrp) : atkGrps' ->
+               let defGrps =
+                     concatMap
+                       (\(s, g) -> [g | s == opposite atkSide])
+                       $ IM.elems selectables
+                   sel = selectTarget atkGrp defGrps
+                   selectables' = case sel of
+                     Nothing -> selectables
+                     Just ArmyGroup {agInit = i} -> IM.delete i selectables
+                in loop atkGrps' selectables' ((agInit atkGrp, agInit <$> sel) : selected))
+        initAtkGrps
+        allGrps
+        []
 
 attack :: ArmyGroup -> ArmyGroup -> Maybe ArmyGroup
 attack atkGrp defGrp@ArmyGroup {agCount = defCnt, agHp = defHp} = do
@@ -239,8 +233,9 @@ attack atkGrp defGrp@ArmyGroup {agCount = defCnt, agHp = defHp} = do
   guard $ agCount' > 0
   pure defGrp {agCount = agCount'}
 
-attackingPhase :: [(Int, Maybe Int)] -> State CombatState (Maybe Side)
+attackingPhase :: [(Int, Maybe Int)] -> State CombatState (Maybe (Either () (Side, Int)))
 attackingPhase actions = do
+  stBefore <- get
   forM_ actions \(atk, mDef) -> do
     st <- get
     let mAtkDef = do
@@ -253,25 +248,83 @@ attackingPhase actions = do
       Just ((_aSide, atkGrp), (dSide, defGrp)) -> do
         let mDefGrp = attack atkGrp defGrp
         modify (IM.update (\_ -> (dSide,) <$> mDefGrp) (agInit defGrp))
+  stAfter <- get
   do
+    -- now, to make a decision on whether we want to stop or this fight should continue.
     st <- get
     let (xs, ys) = partition ((== ImmuneSystem) . fst) $ IM.elems st
+        summarize :: CombatState -> IM.IntMap (Side, Int, Int)
+        summarize = IM.map (\(s, g) -> (s, agCount g, agInit g))
     pure
       if
-          | null xs -> Just Infection
-          | null ys -> Just ImmuneSystem
+          | summarize stBefore == summarize stAfter ->
+            {-
+              it's possible that both armies are too weak to eliminate any unit,
+              in which case we should just abort the simulation.
+             -}
+            Just (Left ())
+          | null xs -> Just (Right (Infection, sum $ fmap (agCount . snd) ys))
+          | null ys -> Just (Right (ImmuneSystem, sum $ fmap (agCount . snd) xs))
           | otherwise -> Nothing
 
-simulate = untilJust (targetSelectionPhase >>= attackingPhase)
+simulate :: State CombatState (Either () (Side, Int))
+simulate = untilJust (gets targetSelectionPhase >>= attackingPhase)
+
+applyBoost :: Int -> CombatState -> CombatState
+applyBoost boost =
+  IM.map
+    (\p@(s, g@ArmyGroup {agAttack = (dmg, dmgTy)}) ->
+       if s == Infection
+         then p
+         else (s, g {agAttack = (dmg + boost, dmgTy)}))
+
+{-
+  Find a minimal positive boost that will allow ImmuneSystem to win.
+ -}
+findMinBoost :: CombatState -> (Int, Int)
+findMinBoost initSt =
+  case eval 1 of
+    Just ans -> (1, ans)
+    Nothing ->
+      let (lo, hi) = findBound 1 2
+       in binSearch lo hi (error "no answer")
+  where
+    eval boost = case evalState simulate (applyBoost boost initSt) of
+      Right (ImmuneSystem, ans) -> Just ans
+      _ -> Nothing
+
+    {-
+      I don't actually believe that this problem would have a property that
+      we can binary search with correctness guarantee on any possible input data,
+
+      So far it seems to be the case for my input and the example,
+      and the linear search approach is a bit slow to my liking,
+      if we were to include it in our tests - so binary search it is.
+     -}
+    binSearch l r curAns =
+      case eval mid of
+        Nothing ->
+          if l == mid then curAns else binSearch mid r curAns
+        Just ans ->
+          if r == mid then (mid, ans) else binSearch l mid (mid, ans)
+      where
+        mid = (l + r) `quot` 2
+
+    -- assuming `eval lo == Nothing`
+    findBound lo hi =
+      case eval hi of
+        Just _ -> (lo, hi)
+        Nothing -> findBound hi (hi * 2)
 
 instance Solution Day24 where
   solutionSolved _ = False
-  solutionRun _ SolutionContext {getInputS, answerShow} = do
+  solutionRun _ SolutionContext {getInputS, answerShow, terminal} = do
     inp@(st, _) <- consumeOrDie inputP <$> getInputS
-    let (r, s) = runState (simulate) st
-    pprParsed inp
-    print r
-    forM_ (IM.elems s) $ \(side, g) -> do
-      print (side, agCount g)
-    let ans = sum $ fmap (agCount . snd) $ IM.elems s
-    answerShow ans
+    when (isJust terminal) do
+      pprParsed inp
+    do
+      let Right (_, ans) = evalState simulate st
+      answerShow ans
+    do
+      let (_, ans) = findMinBoost st
+      answerShow ans
