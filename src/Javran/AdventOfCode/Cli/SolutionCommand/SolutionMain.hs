@@ -37,16 +37,6 @@ import qualified System.IO.Strict
 import Text.Printf
 import qualified Turtle
 
-{-
-  TODO:
-
-  - a function to list all examples
-  - function to attach EXAMPLE_EXTRA_XXX section to an example
-  - getInputAndExtraS as part of a solution context,
-    that seperates extra stuff in one go.
-
- -}
-
 data ExampleName
   = ExName String
   | -- | (only valid for running) special name for running all examples
@@ -62,6 +52,7 @@ data Command
   | CmdSubmit Int String
   | CmdTest
   | CmdAddExtra ExampleName
+  | CmdListExamples
 
 getExampleInputPath :: Int -> Int -> String -> FilePath
 getExampleInputPath year day n =
@@ -125,6 +116,7 @@ parseArgs = \case
           CmdAddExtra <$> do
             mx <- atMostOneExtra args
             maybe (pure defExample) parseExampleName mx
+        | cmd == "ls" -> CmdListExamples <$ expectNoExtra args
         | otherwise -> Left $ "Unrecognized: " <> unwords (cmd : args)
   where
     defExample = ExName "example"
@@ -164,6 +156,7 @@ runMainWith SubCmdContext {cmdHelpPrefix, mTerm, manager} year day args = do
         , "This command should be idempotent that it won't overwrite pre-existing files."
         ]
       mkHelp "add-extra" ["Prepend extra input fields to tests."]
+      mkHelp "ls" ["List all examples."]
       exitFailure
     Right v -> pure v
   case cmd of
@@ -184,7 +177,7 @@ runMainWith SubCmdContext {cmdHelpPrefix, mTerm, manager} year day args = do
                   void $ runSolutionWithInputGetter s (\_ _ -> BSL.readFile inputFilePath) True mTerm
                 ExAll -> do
                   tis <- scanForSolution projectHome (year, day)
-                  forM_ (sortOn tag tis) $ \TestdataInfo {inputFilePath, tag} -> do
+                  forM_ tis $ \TestdataInfo {inputFilePath, tag} -> do
                     putStrLn $ "Running with: " <> tag <> " ..."
                     catch @SomeException
                       (void $
@@ -215,18 +208,27 @@ runMainWith SubCmdContext {cmdHelpPrefix, mTerm, manager} year day args = do
               exitWith =<< Turtle.proc "stack" ["test", "--ta=" <> T.pack filterArg] ""
             CmdAddExtra e -> do
               projectHome <- getEnv "PROJECT_HOME"
-              inputFilePaths <- case e of
-                ExName n -> pure [projectHome </> getExampleInputPath year day n]
+              tagAndInputFilePaths <- case e of
+                ExName n -> pure [(n, projectHome </> getExampleInputPath year day n)]
                 ExAll -> do
                   tis <- scanForSolution projectHome (year, day)
-                  pure $ fmap inputFilePath $ sortOn tag tis
-              forM_ inputFilePaths \inputFilePath -> do
+                  pure $ fmap (\t -> (tag t, inputFilePath t)) $ sortOn tag tis
+              forM_ tagAndInputFilePaths \(tag, inputFilePath) -> do
                 rawContent <- System.IO.Strict.readFile inputFilePath
-                putStr $ "Modifying " <> inputFilePath <> " ... "
+                putStr $ "Modifying " <> tag <> " ... "
                 case consumeExtraLeadingLines rawContent of
                   (Just _, _) -> putStrLn "skipped."
                   (Nothing, _) -> do
                     writeFile inputFilePath (intercalate "\n" [exampleExtraBegin, exampleExtraEnd, rawContent])
                     putStrLn "written."
+            CmdListExamples -> do
+              projectHome <- getEnv "PROJECT_HOME"
+              tis <- scanForSolution projectHome (year, day)
+              forM_ tis \TestdataInfo {tag, inputFilePath, mExpectFilePath} -> do
+                putStrLn $ tag <> ":"
+                putStrLn $ "  " <> inputFilePath
+                case mExpectFilePath of
+                  Just ep -> putStrLn $ "  " <> ep
+                  Nothing -> pure ()
         Nothing ->
           die "No solution available, only `new` command is accepted."
