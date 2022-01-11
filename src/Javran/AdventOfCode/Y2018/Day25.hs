@@ -29,9 +29,7 @@ ptP = do
 countConstellations :: [Pt] -> ST s Int
 countConstellations xs = do
   let pts = V.fromList xs
-  ss <- do
-    ss' <- mapM UF.fresh xs
-    pure (V.fromListN (V.length pts) ss')
+  ss <- V.fromListN (V.length pts) <$> mapM UF.fresh xs
   forM_
     (do
        (i, xs0) <- pickInOrder [0 .. V.length pts - 1]
@@ -49,7 +47,6 @@ countConstellations xs = do
   pure $ countLength not rs
 
 instance Solution Day25 where
-  solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     xs <- fmap (consumeOrDie ptP) . lines <$> getInputS
     answerShow $ runST $ countConstellations xs
