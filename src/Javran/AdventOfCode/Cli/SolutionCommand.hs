@@ -14,33 +14,16 @@ where
 {-
   This module handles all solution-specific commands,
   rather than having each year as a seperated command.
+  note that any integer value (<year>) commits to this subcommand.
+  (in other words, running `<prog> <int> ...` will not go back to the main dispatching logic).
 
   Accepted commands:
 
   - "ls" for listing.
-  - any integer value (<year>) commits to this subcommand.
-  - <year>: list avaliable day solutions for that year
-  - <year> <day> <subcommand> <subcommand args>...: this should preserve
-    the old behavior.
-  - <year> <day> new: create solution from template
-
-  (TODO) Example tooling:
-
-  - <prog> <year> <day> edit-example [<arg>]
-
-    + assume "example" if <arg> is not given
-    + reserve "all" to run all examples (not allowed to edit)
-    + if "+", iterate from 0 until one empty file (or non-existing file), and edit it.
-    + otherwise read from <arg>.input.txt
-
-  - <prog> <year> <day> example [<arg>]
-
-    for determining the input file:
-
-    + assume "example" if <arg> is not given
-    + reserve "all" to run all examples
-    + otherwise read from <arg>.input.txt
-
+  - <year>: list avaliable day solutions for that year.
+  - <year> ls: same as above.
+  - <year> <day> <subcommand> <subcommand args>...: dispatches to a specific solution.
+    note that even if that solution doesn't exist, `new` command will still be available.
  -}
 
 import qualified Data.IntMap.Strict as IM
