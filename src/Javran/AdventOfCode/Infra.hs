@@ -35,6 +35,8 @@ module Javran.AdventOfCode.Infra
   , consumeExtraLeadingLines
   , unreachable
   , todo
+  , exampleExtraBegin
+  , exampleExtraEnd
   )
 where
 
@@ -283,6 +285,10 @@ extractSection beginMarker endMarker defVal onSuccess xs = fromMaybe defVal $ do
   (ys1, em : remaining1) <- pure $ span (/= endMarker) remaining0
   pure $ onSuccess ys0 bm ys1 em remaining1
 
+exampleExtraBegin, exampleExtraEnd :: String
+exampleExtraBegin = "# EXAMPLE_EXTRA_BEGIN"
+exampleExtraEnd = "# EXAMPLE_EXTRA_EN"
+
 {-
   Examples could contain smaller examples with smaller extra parameters than
   the actual input - to allow solutions to deal with this situation,
@@ -300,8 +306,8 @@ extractSection beginMarker endMarker defVal onSuccess xs = fromMaybe defVal $ do
 consumeExtraLeadingLines :: String -> (Maybe [String], String)
 consumeExtraLeadingLines raw =
   extractSection
-    "# EXAMPLE_EXTRA_BEGIN"
-    "# EXAMPLE_EXTRA_END"
+    exampleExtraBegin
+    exampleExtraEnd
     (Nothing, raw)
     (\_pre _bm sec _em post -> (Just sec, unlines post))
     (lines raw)

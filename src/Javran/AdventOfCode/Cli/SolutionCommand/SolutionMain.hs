@@ -30,8 +30,10 @@ import System.Environment
 import System.Exit
 import System.FilePath.Posix
 import System.IO
+import qualified System.IO.Strict
 import Text.Printf
 import qualified Turtle
+import Data.List
 
 {-
   TODO:
@@ -47,6 +49,7 @@ data ExampleName
   = ExName String
   | -- | (only valid for running) special name for running all examples
     ExAll
+  deriving (Show)
 
 data Command
   = CmdRunLogin
@@ -56,6 +59,7 @@ data Command
   | CmdNewSolution
   | CmdSubmit Int String
   | CmdTest
+  | CmdAddExtra ExampleName
 
 exampleNameToName :: ExampleName -> FilePath
 exampleNameToName = \case
@@ -121,6 +125,10 @@ parseArgs = \case
           pure $ CmdSubmit (read whichRaw) answer
         | cmd == "test" ->
           CmdTest <$ expectNoExtra args
+        | cmd == "add-extra" ->
+          CmdAddExtra <$> do
+            mx <- atMostOneExtra args
+            maybe (pure defExample) parseExampleName mx
         | otherwise -> Left $ "Unrecognized: " <> unwords (cmd : args)
   where
     defExample = ExName "example"
@@ -159,6 +167,7 @@ runMainWith SubCmdContext {cmdHelpPrefix, mTerm, manager} year day args = do
         [ "Creates new solution file for a problem."
         , "This command should be idempotent that it won't overwrite pre-existing files."
         ]
+      mkHelp "add-extra" ["Prepend extra input fields to tests."]
       exitFailure
     Right v -> pure v
   case cmd of
@@ -189,5 +198,15 @@ runMainWith SubCmdContext {cmdHelpPrefix, mTerm, manager} year day args = do
                   filterArg = printf "--match=/Y%d/Day%d/" year day
               Turtle.cd (fromString projectHome)
               exitWith =<< Turtle.proc "stack" ["test", "--ta=" <> T.pack filterArg] ""
+            CmdAddExtra e -> do
+              projectHome <- getEnv "PROJECT_HOME"
+              let inputFilePath = projectHome </> getExampleInputPath year day e
+              rawContent <- System.IO.Strict.readFile inputFilePath
+              putStr $ "Modifying " <> inputFilePath <> " ... "
+              case consumeExtraLeadingLines rawContent of
+                (Just _, _) -> putStrLn "skipped."
+                (Nothing, _) -> do
+                  writeFile inputFilePath (intercalate "\n" [exampleExtraBegin, exampleExtraEnd, rawContent])
+                  putStrLn "written."
         Nothing ->
           die "No solution available, only `new` command is accepted."
