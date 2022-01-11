@@ -192,6 +192,7 @@ library
     , time
     , transformers
     , turtle
+    , union-find
     , unordered-containers
     , vector
     , vector-algorithms

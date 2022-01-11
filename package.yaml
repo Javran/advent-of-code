@@ -64,6 +64,7 @@ library:
     - psqueues
     - transformers
     - shower
+    - union-find
   ghc-options:
     - -Wall
     - -O2
