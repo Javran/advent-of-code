@@ -5,15 +5,18 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Javran.AdventOfCode.Cli.SolutionCommand.SolutionMain
   ( runMainWith
   )
 where
 
+import Control.Exception
 import Control.Monad
 import qualified Data.ByteString.Char8 as BSC
 import qualified Data.ByteString.Lazy as BSL
+import Data.List
 import Data.String
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
@@ -33,7 +36,6 @@ import System.IO
 import qualified System.IO.Strict
 import Text.Printf
 import qualified Turtle
-import Data.List
 
 {-
   TODO:
@@ -61,15 +63,9 @@ data Command
   | CmdTest
   | CmdAddExtra ExampleName
 
-exampleNameToName :: ExampleName -> FilePath
-exampleNameToName = \case
-  ExName n -> n
-  _ -> error "unsupported"
-
-getExampleInputPath :: Int -> Int -> ExampleName -> FilePath
-getExampleInputPath year day = \case
-  e@ExName {} -> subPath </> (exampleNameToName e <> ".input.txt")
-  ExAll -> todo
+getExampleInputPath :: Int -> Int -> String -> FilePath
+getExampleInputPath year day n =
+  subPath </> (n <> ".input.txt")
   where
     subPath = "data" </> "testdata" </> show year </> "day" </> show day
 
@@ -182,10 +178,29 @@ runMainWith SubCmdContext {cmdHelpPrefix, mTerm, manager} year day args = do
             CmdRunLogin -> void $ runSolutionWithLoginInput s manager True mTerm
             CmdRunExample e -> do
               projectHome <- getEnv "PROJECT_HOME"
-              let inputFilePath = projectHome </> getExampleInputPath year day e
-              void $ runSolutionWithInputGetter s (\_ _ -> BSL.readFile inputFilePath) True mTerm
+              case e of
+                ExName n -> do
+                  let inputFilePath = projectHome </> getExampleInputPath year day n
+                  void $ runSolutionWithInputGetter s (\_ _ -> BSL.readFile inputFilePath) True mTerm
+                ExAll -> do
+                  tis <- scanForSolution projectHome (year, day)
+                  forM_ (sortOn tag tis) $ \TestdataInfo {inputFilePath, tag} -> do
+                    putStrLn $ "Running with: " <> tag <> " ..."
+                    catch @SomeException
+                      (void $
+                         runSolutionWithInputGetter
+                           s
+                           (\_ _ -> BSL.readFile inputFilePath)
+                           True
+                           mTerm)
+                      $ \exc ->
+                        putStrLn $ "Exception caught: " <> displayException exc
             CmdEditExample e ->
-              editExampleWithName year day (exampleNameToName e)
+              case e of
+                ExName n ->
+                  editExampleWithName year day n
+                ExAll ->
+                  die "edit-example does not support `all`."
             CmdWriteExampleExpect ->
               runSolutionWithExampleAndWriteExpect s
             CmdSubmit part answer -> do
@@ -200,13 +215,18 @@ runMainWith SubCmdContext {cmdHelpPrefix, mTerm, manager} year day args = do
               exitWith =<< Turtle.proc "stack" ["test", "--ta=" <> T.pack filterArg] ""
             CmdAddExtra e -> do
               projectHome <- getEnv "PROJECT_HOME"
-              let inputFilePath = projectHome </> getExampleInputPath year day e
-              rawContent <- System.IO.Strict.readFile inputFilePath
-              putStr $ "Modifying " <> inputFilePath <> " ... "
-              case consumeExtraLeadingLines rawContent of
-                (Just _, _) -> putStrLn "skipped."
-                (Nothing, _) -> do
-                  writeFile inputFilePath (intercalate "\n" [exampleExtraBegin, exampleExtraEnd, rawContent])
-                  putStrLn "written."
+              inputFilePaths <- case e of
+                ExName n -> pure [projectHome </> getExampleInputPath year day n]
+                ExAll -> do
+                  tis <- scanForSolution projectHome (year, day)
+                  pure $ fmap inputFilePath $ sortOn tag tis
+              forM_ inputFilePaths \inputFilePath -> do
+                rawContent <- System.IO.Strict.readFile inputFilePath
+                putStr $ "Modifying " <> inputFilePath <> " ... "
+                case consumeExtraLeadingLines rawContent of
+                  (Just _, _) -> putStrLn "skipped."
+                  (Nothing, _) -> do
+                    writeFile inputFilePath (intercalate "\n" [exampleExtraBegin, exampleExtraEnd, rawContent])
+                    putStrLn "written."
         Nothing ->
           die "No solution available, only `new` command is accepted."
