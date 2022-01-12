@@ -12,6 +12,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE ViewPatterns #-}
 {-# OPTIONS_GHC -Wno-deprecations #-}
 {-# OPTIONS_GHC -Wno-typed-holes #-}
@@ -60,8 +61,29 @@ progP = do
       <++ (pure [])
   pure ((pg, w), xs)
 
+{-
+  Finds the unique value, returns its index and diffs against others.
+
+  would throw if assumptions are broken.
+ -}
+findImbalance :: forall e. e ~ Int => [(Int, e)] -> Maybe (Int, e)
+findImbalance xs = case groupped of
+  [_] -> Nothing
+  [ls, rs] ->
+    -- N.B. element's nonemptiness is irrefutable.
+    case (ls, rs) of
+      ([(i, x)], ~((_, y) : _)) ->
+        -- unique val on left
+        Just (i, y - x)
+      (~((_, y) : _), [(i, x)]) ->
+        -- unique val on right
+        Just (i, y - x)
+      _ -> error "no unique value present."
+  _ -> error "supposed to have 1 or 2 distinct values."
+  where
+    groupped = groupBy ((==) `on` snd) $ sortOn snd xs
+
 instance Solution Day7 where
-  solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow, answerS} = do
     xs <- fmap (consumeOrDie progP) . lines <$> getInputS
     let (graph, nodeFromVertex, vertexFromKey) = graphFromEdges do
@@ -74,13 +96,10 @@ instance Solution Day7 where
         childrenWeights v = (fmap (getWeight . fromJust . vertexFromKey) vs)
           where
             (_, _, vs) = nodeFromVertex v
-        v ~> ith = graph Arr.! v !! ith
-        infixl 4 ~>
+        findWrongWeight v wDiff = case findImbalance $ zip [0 ..] (childrenWeights v) of
+          Nothing -> let (w, _, _) = nodeFromVertex v in w + wDiff
+          Just (ind, wDiff') ->
+            findWrongWeight (graph Arr.! v !! ind) wDiff'
+
     answerS (let (_, n, _) = nodeFromVertex $ head $ topSort graph in n)
-    print (childrenWeights rootV)
-    print (childrenWeights $ rootV ~> 2)
-    print (childrenWeights $ rootV ~> 2 ~> 4)
-    print (childrenWeights $ rootV ~> 2 ~> 4 ~> 2)
-    let problematic = rootV ~> 2 ~> 4 ~> 2
-    -- 5 units heavy.
-    answerShow (let (w, _, _) = nodeFromVertex problematic in w - 5)
+    answerShow $ findWrongWeight rootV (error "no imbalances found")
