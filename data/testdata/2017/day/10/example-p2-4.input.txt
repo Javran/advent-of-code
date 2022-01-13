@@ -1,5 +1,4 @@
 # EXAMPLE_EXTRA_BEGIN
-part1
-5
+part2
 # EXAMPLE_EXTRA_END
-3,4,1,5
+1,2,4

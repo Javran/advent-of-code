@@ -1,50 +1,22 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE PatternGuards #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# OPTIONS_GHC -Wno-deprecations #-}
-{-# OPTIONS_GHC -Wno-typed-holes #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -fdefer-typed-holes #-}
 
 module Javran.AdventOfCode.Y2017.Day10
   (
   )
 where
 
-{- HLINT ignore -}
-
-import Control.Applicative
 import Control.Monad
+import Data.Bits
 import Data.Char
-import Data.Function
-import Data.Function.Memoize (memoFix)
-import qualified Data.IntMap.Strict as IM
-import qualified Data.IntSet as IS
 import Data.List
 import Data.List.Split hiding (sepBy)
-import qualified Data.Map.Strict as M
-import Data.Monoid
-import Data.Semigroup
-import qualified Data.Set as S
-import qualified Data.Text as T
-import qualified Data.Vector as V
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.TestExtra
 import Javran.AdventOfCode.Y2017.Day6 (rotateLeftBy, rotateRightBy)
-import Text.ParserCombinators.ReadP hiding (count, get, many)
+import Text.Printf
 
 data Day10 deriving (Generic)
 
@@ -64,17 +36,36 @@ step n len skipSize (xs0, offset) = (xs2, (offset + offset') `rem` n)
     offset' = len + skipSize
     xs2 = rotateLeftBy n (len + skipSize) xs1
 
+viaCircle :: Int -> (Circle -> Circle) -> [Int] -> [Int]
+viaCircle n f xs = rotateRightBy n offset ys
+  where
+    (ys, offset) = f (xs, 0)
+
+knotHash :: Int -> [Int] -> [Int]
+knotHash n lenSeq =
+  viaCircle
+    n
+    (\c0 ->
+       foldl' (\cir (len, skipSize) -> step n len skipSize cir) c0 $
+         zip lenSeq [0 ..])
+    [0 .. n -1]
+
 instance Solution Day10 where
-  solutionSolved _ = False
-  solutionRun _ SolutionContext {getInputS, answerShow} = do
-    (extraOps, rawInput) <- consumeExtra getInputS
-    let xs = fmap (read @Int) . splitOn "," . head . lines $ rawInput
-        n = case extraOps of
-          Just raw -> read $ head raw
-          Nothing -> 256
-        initSt = ([0 .. n -1], 0)
-        (fin, finOffset) = foldl' (\cir (len, skipSize) -> step n len skipSize cir) initSt $ zip xs [0 ..]
-        fin' = rotateRightBy n finOffset fin
-    do
-      let x:y:_ = fin'
+  solutionRun _ SolutionContext {getInputS, answerShow, answerS} = do
+    (extraOps, rawContent) <- consumeExtra getInputS
+    let [raw] = lines rawContent
+        (runPart1, runPart2) = shouldRun extraOps
+    when runPart1 do
+      let lenSeq = fmap (read @Int) . splitOn "," $ raw
+          n = case extraOps of
+            Just ~("part1" : rawN : _) -> read rawN
+            Nothing -> 256
+          x : y : _ = knotHash n lenSeq
       answerShow $ x * y
+    when runPart2 do
+      let lenSeq = fmap ord raw <> [17, 31, 73, 47, 23]
+          sparse = knotHash 256 (concat $ replicate 64 lenSeq)
+          dense = fmap (foldl1' xor) $ chunksOf 16 sparse
+          hexStr :: Int -> String
+          hexStr v = printf "%02x" v
+      answerS (concatMap hexStr dense)
