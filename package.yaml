@@ -65,6 +65,7 @@ library:
     - transformers
     - shower
     - union-find
+    - mono-traversable
   ghc-options:
     - -Wall
     - -O2

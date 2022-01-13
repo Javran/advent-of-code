@@ -10,7 +10,7 @@ where
 
 import Control.Monad
 import Control.Monad.ST
-import Data.UnionFind.ST as UF
+import Javran.AdventOfCode.UnionFind.ST as UF
 import qualified Data.Vector as V
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (count, get, many)
@@ -41,10 +41,8 @@ countConstellations xs = do
         do
           repI <- UF.repr (ss V.! i)
           repJ <- UF.repr (ss V.! j)
-          unless (repI == repJ) do
-            UF.union repI repJ
-  rs <- mapM UF.redundant ss
-  pure $ countLength not rs
+          UF.union repI repJ
+  countClusters ss
 
 instance Solution Day25 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
