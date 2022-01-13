@@ -45,6 +45,10 @@ solve pgs cs = do
       -- as repr might change due to compression.
       pRep <- UF.repr (pgMap IM.! p)
       qRep <- UF.repr (pgMap IM.! q)
+      {-
+        TODO: re-export UnionFind with some more useful functions,
+        this is sort of stupid that we have to do union conditionally.
+       -}
       unless (pRep == qRep) do
         UF.union pRep qRep
   let p0 = pgMap IM.! 0
