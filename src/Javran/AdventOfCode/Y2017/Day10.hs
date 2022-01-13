@@ -4,7 +4,7 @@
 {-# LANGUAGE TypeApplications #-}
 
 module Javran.AdventOfCode.Y2017.Day10
-  (
+  ( knotHash
   )
 where
 
@@ -13,6 +13,7 @@ import Data.Bits
 import Data.Char
 import Data.List
 import Data.List.Split hiding (sepBy)
+import Data.Word
 import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.TestExtra
 import Javran.AdventOfCode.Y2017.Day6 (rotateLeftBy, rotateRightBy)
@@ -27,7 +28,7 @@ data Day10 deriving (Generic)
   - the list is rotated to left by `offset` positions,
     so that we can recover the underlying list by rotating to right the same amount.
  -}
-type Circle = ([Int], Int)
+type Circle = ([Word8], Int)
 
 step :: Int -> Int -> Int -> Circle -> Circle
 step n len skipSize (xs0, offset) = (xs2, (offset + offset') `rem` n)
@@ -36,19 +37,25 @@ step n len skipSize (xs0, offset) = (xs2, (offset + offset') `rem` n)
     offset' = len + skipSize
     xs2 = rotateLeftBy n (len + skipSize) xs1
 
-viaCircle :: Int -> (Circle -> Circle) -> [Int] -> [Int]
+viaCircle :: Int -> (Circle -> Circle) -> [Word8] -> [Word8]
 viaCircle n f xs = rotateRightBy n offset ys
   where
     (ys, offset) = f (xs, 0)
 
-knotHash :: Int -> [Int] -> [Int]
-knotHash n lenSeq =
+knotHashInternal :: Int -> [Int] -> [Word8]
+knotHashInternal n lenSeq =
   viaCircle
     n
     (\c0 ->
        foldl' (\cir (len, skipSize) -> step n len skipSize cir) c0 $
          zip lenSeq [0 ..])
-    [0 .. n -1]
+    [0 .. fromIntegral (n -1)]
+
+knotHash :: String -> [Word8]
+knotHash xs = fmap (foldl1' xor) $ chunksOf 16 sparse
+  where
+    lenSeq = fmap (fromIntegral . ord) xs <> [17, 31, 73, 47, 23]
+    sparse = knotHashInternal 256 (concat $ replicate 64 lenSeq)
 
 instance Solution Day10 where
   solutionRun _ SolutionContext {getInputS, answerShow, answerS} = do
@@ -60,12 +67,10 @@ instance Solution Day10 where
           n = case extraOps of
             Just ~("part1" : rawN : _) -> read rawN
             Nothing -> 256
-          x : y : _ = knotHash n lenSeq
+          x : y : _ = knotHashInternal n lenSeq
       answerShow $ x * y
     when runPart2 do
-      let lenSeq = fmap ord raw <> [17, 31, 73, 47, 23]
-          sparse = knotHash 256 (concat $ replicate 64 lenSeq)
-          dense = fmap (foldl1' xor) $ chunksOf 16 sparse
-          hexStr :: Int -> String
+      let ans = knotHash raw
+          hexStr :: Word8 -> String
           hexStr v = printf "%02x" v
-      answerS (concatMap hexStr dense)
+      answerS (concatMap hexStr ans)
