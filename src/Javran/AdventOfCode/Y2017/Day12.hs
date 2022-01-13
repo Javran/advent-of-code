@@ -14,7 +14,6 @@ import qualified Data.IntSet as IS
 import qualified Javran.AdventOfCode.UnionFind.ST as UF
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (count, get, many)
-import Javran.AdventOfCode.UnionFind.ST (snapshotClusters)
 
 data Day12 deriving (Generic)
 
@@ -25,10 +24,10 @@ commInfoP =
   (,) <$> (decimal1P <* string " <-> ")
     <*> (decimal1P `sepBy1` string ", ")
 
-solve :: IS.IntSet -> [CommInfo] -> ST s (Int, M.Map Int [Int])
+solve :: IS.IntSet -> [CommInfo] -> ST s (Int, Int)
 solve pgs cs = do
   let ps = IS.toAscList pgs
-  pts <- mapM UF.fresh ps
+  pts <- mapM (\i -> UF.fresh (IS.singleton i)) ps
   let pgMap = M.fromList $ zip ps pts
   forM_ cs \(p, qs) ->
     forM_ qs \q -> do
@@ -36,17 +35,17 @@ solve pgs cs = do
       -- as repr might change due to compression.
       pRep <- UF.repr (pgMap M.! p)
       qRep <- UF.repr (pgMap M.! q)
-      UF.union pRep qRep
+      UF.union' pRep qRep (\x y -> pure $ IS.union x y)
   let p0 = pgMap M.! 0
-  cnt <- mapM (UF.equivalent p0) (M.elems pgMap)
-  c <- snapshotClusters $ zip pts ps
-  pure (countLength id cnt, c)
+  s <- UF.descriptor p0
+  ccnt <- UF.countClusters pts
+  pure (IS.size s, ccnt)
 
 instance Solution Day12 where
   solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     xs <- fmap (consumeOrDie commInfoP) . lines <$> getInputS
     let pgs = IS.fromList (fmap fst xs)
-        (ans1, clusters) = runST $ solve pgs xs
+        (ans1, ans2) = runST $ solve pgs xs
     answerShow ans1
-    answerShow (M.size clusters)
+    answerShow ans2
