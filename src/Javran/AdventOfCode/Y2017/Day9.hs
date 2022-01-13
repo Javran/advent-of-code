@@ -25,9 +25,9 @@ garbageP =
       (char '<')
       (char '>')
       (sum <$> many (escaped <++ normal))
-   where
-     escaped = 0 <$ (char '!' >> nextCharP)
-     normal = Sum . length <$> munch1 (`notElem` "!>")
+  where
+    escaped = 0 <$ (char '!' >> nextCharP)
+    normal = Sum . length <$> munch1 (`notElem` "!>")
 
 groupP :: ReadP Thing
 groupP = Group <$> between (char '{') (char '}') (thingP `sepBy` char ',')
@@ -45,6 +45,6 @@ countScore myScore = \case
 instance Solution Day9 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     v <- consumeOrDie (thingP <* char '\n') <$> getInputS
-    let ((), (Sum ans1, Sum ans2)) = runWriter $ countScore 1 v
+    let (Sum ans1, Sum ans2) = execWriter $ countScore 1 v
     answerShow ans1
     answerShow ans2
