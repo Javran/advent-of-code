@@ -1,47 +1,21 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE PatternGuards #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# OPTIONS_GHC -Wno-deprecations #-}
-{-# OPTIONS_GHC -Wno-typed-holes #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -fdefer-typed-holes #-}
 
 module Javran.AdventOfCode.Y2017.Day8
   (
   )
 where
 
-{- HLINT ignore -}
-
-import Control.Applicative
-import Control.Monad
 import Control.Monad.State.Strict
+import Control.Monad.Writer.CPS
 import Data.Char
-import Data.Function
-import Data.Function.Memoize (memoFix)
-import qualified Data.IntMap.Strict as IM
-import qualified Data.IntSet as IS
-import Data.List
-import Data.List.Split hiding (sepBy)
 import qualified Data.Map.Strict as M
-import Data.Monoid
 import Data.Semigroup
-import qualified Data.Set as S
-import qualified Data.Text as T
-import qualified Data.Vector as V
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (count, get, many)
 
@@ -63,33 +37,57 @@ instrP = do
   r1 <- regP
   _ <- char ' '
   op <-
-    ((>=) <$ string ">=")
-      <++ ((==) <$ string "==")
-      <++ ((<=) <$ string "<=")
-      <++ ((/=) <$ string "!=")
-      <++ ((>) <$ string ">")
-      <++ ((<) <$ string "<")
+    let lit ~> f = f <$ string lit
+     in foldr1
+          (<++)
+          [ ">=" ~> (>=)
+          , "==" ~> (==)
+          , "!=" ~> (/=)
+          , "<=" ~> (<=)
+          , ">" ~> (>)
+          , "<" ~> (<)
+          ]
   _ <- char ' '
   n <- intP
   pure ((r0, incr), (r1, \val -> val `op` n))
 
-interpret :: Instr -> M.Map String Int -> M.Map String Int
-interpret ((mutReg, mutIncr), (condReg, predicate)) mem =
-  if predicate condVal
+type Memory = M.Map String Int
+
+type KeepMax = Writer (Maybe (Max Int))
+
+{-
+  Here we can:
+
+  - use alterF with a writer,
+    drawback being now we are in a writer monad.
+  - or just write the value and retrive it again afterwards,
+    drawback being having to do lookup twice.
+
+  taking first approach, but I don't think either is clearly better.
+ -}
+interpret :: Instr -> Memory -> KeepMax Memory
+interpret ((mutReg, mutIncr), (condReg, p)) mem =
+  if p condVal
     then
-      M.alter
+      M.alterF
         (\case
-           Nothing -> Just mutIncr
-           Just v -> Just (v + mutIncr))
+           Nothing -> upd mutIncr
+           Just v -> upd $ v + mutIncr)
         mutReg
         mem
-    else mem
+    else pure mem
   where
+    upd newVal = Just newVal <$ tell (Just (Max newVal))
     condVal = fromMaybe 0 $ mem M.!? condReg
 
+interpret2 :: Instr -> StateT Memory KeepMax ()
+interpret2 instr = StateT (fmap ((),) . interpret instr)
+
 instance Solution Day8 where
-  solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     xs <- fmap (consumeOrDie instrP) . lines <$> getInputS
-    let m = execState (mapM (\x -> modify (interpret x)) xs) M.empty
-    answerShow (maximum m)
+    let (ans1, Just (Max ans2)) =
+          runWriter $
+            evalStateT (mapM_ interpret2 xs >> gets maximum) M.empty
+    answerShow ans1
+    answerShow ans2
