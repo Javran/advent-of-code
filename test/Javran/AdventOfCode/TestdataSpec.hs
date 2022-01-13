@@ -35,7 +35,7 @@ import Test.Hspec
 {- ORMOLU_DISABLE -}
 hashForForceRecompliation :: String
 -- FORCE_RECOMP_HASH_BEGIN
-hashForForceRecompliation = "d57adb01fa19cd1e13c772c4742d56e968b83243d05d3d91fb089b046d8ec8a9"
+hashForForceRecompliation = "684be7a3cf54b11822c1aef8d77320cd26ab79926060cdec5c6a80dbaae9ba29"
 -- FORCE_RECOMP_HASH_END
 {- ORMOLU_ENABLE -}
 
