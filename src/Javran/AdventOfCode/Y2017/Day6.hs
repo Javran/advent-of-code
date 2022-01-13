@@ -4,7 +4,8 @@
 {-# LANGUAGE TypeApplications #-}
 
 module Javran.AdventOfCode.Y2017.Day6
-  (
+  ( rotateLeftBy
+  , rotateRightBy
   )
 where
 
@@ -18,6 +19,9 @@ data Day6 deriving (Generic)
 {-
   Rotates a known-length list to left or right.
   n > 0, 0 <= offset <= n.
+
+  TODO: QuickCheck, make this accept nums in other ranges.
+
  -}
 rotateLeftBy, rotateRightBy :: Int -> Int -> [a] -> [a]
 rotateLeftBy n offset xs = take n $ drop offset $ cycle xs
