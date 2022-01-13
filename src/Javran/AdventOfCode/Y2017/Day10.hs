@@ -42,6 +42,9 @@ viaCircle n f xs = rotateRightBy n offset ys
   where
     (ys, offset) = f (xs, 0)
 
+{-
+  TODO: try a ST-based approach.
+ -}
 knotHashInternal :: Int -> [Int] -> [Word8]
 knotHashInternal n lenSeq =
   viaCircle
