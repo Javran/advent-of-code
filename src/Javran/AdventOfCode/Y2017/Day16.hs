@@ -6,6 +6,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE RankNTypes #-}
@@ -44,7 +45,7 @@ import qualified Data.Vector as V
 import Data.Word
 import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
-import Javran.AdventOfCode.TestExtra (consumeExtra)
+import Javran.AdventOfCode.TestExtra
 import Text.ParserCombinators.ReadP hiding (count, get, many)
 
 data Day16 deriving (Generic)
@@ -68,10 +69,14 @@ moveP = spinP <++ exchangeP <++ partnerP
       v <- satisfy (\ch -> ch >= 'a' && ch <= 'p')
       pure $ Prog $ fromIntegral $ ord v - ord 'a'
 
+{-
+  TODO: now that we've done it the stupid way, let's speed this up.
+ -}
 data Programs = Programs
   { pgToInd :: IM.IntMap Int
   , indToPg :: IM.IntMap Prog
-  } deriving Show
+  }
+  deriving (Show)
 
 mkPrograms :: Int -> Programs
 mkPrograms n = Programs {pgToInd = m, indToPg = coerce m}
@@ -110,8 +115,22 @@ ppr Programs {indToPg} = fmap render $ IM.elems indToPg
   where
     render (Prog v) = chr $ ord 'a' + v
 
+findFix :: Ord a => M.Map a Int -> [(Int, a)] -> (Int, Int)
+findFix seen ~((j, x) : xs) = case seen M.!? x of
+  Just i -> (i, j)
+  Nothing -> findFix (M.insert x j seen) xs
+
+{-
+  Note for part 2: At first this seems to be just a permutation
+  that we can speed up through matrix multiplication, which isn't actually the case.
+  In particular, operation `Partner` doesn't do a consistent permutation as what it does
+  depends on where those elements are.
+
+  I don't think simulation all the way is gonna fly, so we'll probably looking
+  at finding a fixpoint.
+ -}
+
 instance Solution Day16 where
-  solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerS} = do
     (extraOps, rawInput) <- consumeExtra getInputS
     let xs = consumeOrDie ((moveP `sepBy` char ',') <* char '\n') $ rawInput
@@ -119,6 +138,11 @@ instance Solution Day16 where
           Just ~[rawN] -> read @Int rawN
           Nothing -> 16
         initSt = mkPrograms n
-        finSt = foldl' (\cur move -> applyMove n move cur) initSt xs
+        applyAll z = foldl' (\cur move -> applyMove n move cur) z xs
+        finSt = applyAll initSt
     answerS (ppr finSt)
-
+    do
+      let progression = iterate applyAll initSt
+          (0, period) = findFix mempty (zip [0 ..] $ fmap pgToInd progression)
+          r = 1_000_000_000 `rem` period
+      answerS $ ppr $ progression !! r
