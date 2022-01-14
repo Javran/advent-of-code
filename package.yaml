@@ -66,6 +66,7 @@ library:
     - shower
     - union-find
     - mono-traversable
+    - hmatrix
   ghc-options:
     - -Wall
     - -O2
