@@ -42,7 +42,6 @@ solve pgs cs = do
   pure (IS.size s, ccnt)
 
 instance Solution Day12 where
-  solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     xs <- fmap (consumeOrDie commInfoP) . lines <$> getInputS
     let pgs = IS.fromList (fmap fst xs)
