@@ -10,9 +10,9 @@ where
 
 import Control.Monad
 import Control.Monad.ST
-import qualified Javran.AdventOfCode.UnionFind.ST as UF
 import qualified Data.Vector as V
 import Javran.AdventOfCode.Prelude
+import qualified Javran.AdventOfCode.UnionFind.ST as UF
 import Text.ParserCombinators.ReadP hiding (count, get, many)
 
 data Day25 deriving (Generic)
@@ -39,9 +39,7 @@ countConstellations xs = do
       when
         (manhattan (pts V.! i) (pts V.! j) <= 3)
         do
-          repI <- UF.repr (ss V.! i)
-          repJ <- UF.repr (ss V.! j)
-          UF.union repI repJ
+          UF.union (ss V.! i) (ss V.! j)
   UF.countClusters ss
 
 instance Solution Day25 where

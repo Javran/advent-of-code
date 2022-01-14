@@ -9,10 +9,10 @@ where
 
 import Control.Monad
 import Control.Monad.ST
-import qualified Data.Map.Strict as M
 import qualified Data.IntSet as IS
-import qualified Javran.AdventOfCode.UnionFind.ST as UF
+import qualified Data.Map.Strict as M
 import Javran.AdventOfCode.Prelude
+import qualified Javran.AdventOfCode.UnionFind.ST as UF
 import Text.ParserCombinators.ReadP hiding (count, get, many)
 
 data Day12 deriving (Generic)
@@ -33,9 +33,10 @@ solve pgs cs = do
     forM_ qs \q -> do
       -- choose to compute pRep in inner loop,
       -- as repr might change due to compression.
-      pRep <- UF.repr (pgMap M.! p)
-      qRep <- UF.repr (pgMap M.! q)
-      UF.union' pRep qRep (\x y -> pure $ IS.union x y)
+      UF.union'
+        (pgMap M.! p)
+        (pgMap M.! q)
+        (\x y -> pure $ IS.union x y)
   let p0 = pgMap M.! 0
   s <- UF.descriptor p0
   ccnt <- UF.countClusters pts
