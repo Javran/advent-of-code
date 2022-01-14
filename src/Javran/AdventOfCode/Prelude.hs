@@ -42,7 +42,6 @@ import Data.Ix (inRange)
 import Data.List
 import Data.List.Split
 import Data.Maybe
-import Data.Monoid
 import Data.Ord
 import Data.Semigroup
 import Data.Tuple
@@ -69,7 +68,8 @@ universe :: (Enum a, Bounded a) => [a]
 universe = [minBound .. maxBound]
 
 countLength :: Foldable f => (a -> Bool) -> f a -> Int
-countLength p = getSum . foldMap (\x -> if p x then 1 else 0)
+countLength p = foldl' (\acc x -> if p x then acc + 1 else acc) 0
+{-# INLINEABLE countLength #-}
 
 decodeBinary :: (Foldable t, Num a) => t Bool -> a
 decodeBinary = foldl (\acc i -> acc * 2 + bool 0 1 i) 0
@@ -86,6 +86,7 @@ udlrOfCoord c =
     , second pred
     , second succ
     ]
+{-# INLINEABLE udlrOfCoord #-}
 
 errInvalid :: a
 errInvalid = error "invalid input"
