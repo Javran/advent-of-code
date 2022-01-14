@@ -2,7 +2,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE NumericUnderscores #-}
-{-# LANGUAGE PartialTypeSignatures #-}
 
 module Javran.AdventOfCode.Y2017.Day15
   (
@@ -30,8 +29,8 @@ parkMiller factor inp = x1
     prod :: Word64
     prod = fromIntegral inp * factor
     x0, x1 :: Word32
-    x0 = fromIntegral (prod .&. 0x7FFF_FFFF) + fromIntegral (shift prod (-31))
-    x1 = (x0 .&. 0x7FFF_FFFF) + shift x0 (-31)
+    x0 = fromIntegral (prod .&. 0x7FFF_FFFF) + fromIntegral (unsafeShiftR prod 31)
+    x1 = (x0 .&. 0x7FFF_FFFF) + unsafeShiftR x0 31
 
 genSeq :: Word64 -> Word32 -> [Word32]
 genSeq factor seed = tail $ iterate (parkMiller factor) seed
