@@ -54,7 +54,7 @@ Solutions, scripting, and templates - all in one repo.
 | ☑ [Day 1](src/Javran/AdventOfCode/Y2017/Day1.hs) | ☑ [Day 2](src/Javran/AdventOfCode/Y2017/Day2.hs) | ☑ [Day 3](src/Javran/AdventOfCode/Y2017/Day3.hs) | ☑ [Day 4](src/Javran/AdventOfCode/Y2017/Day4.hs) | ☑ [Day 5](src/Javran/AdventOfCode/Y2017/Day5.hs) |
 | ☑ [Day 6](src/Javran/AdventOfCode/Y2017/Day6.hs) | ☑ [Day 7](src/Javran/AdventOfCode/Y2017/Day7.hs) | ☑ [Day 8](src/Javran/AdventOfCode/Y2017/Day8.hs) | ☑ [Day 9](src/Javran/AdventOfCode/Y2017/Day9.hs) | ☑ [Day 10](src/Javran/AdventOfCode/Y2017/Day10.hs) |
 | ☑ [Day 11](src/Javran/AdventOfCode/Y2017/Day11.hs) | ☑ [Day 12](src/Javran/AdventOfCode/Y2017/Day12.hs) | ☑ [Day 13](src/Javran/AdventOfCode/Y2017/Day13.hs) | ☑ [Day 14](src/Javran/AdventOfCode/Y2017/Day14.hs) | ☑ [Day 15](src/Javran/AdventOfCode/Y2017/Day15.hs) |
-| ☑ [Day 16](src/Javran/AdventOfCode/Y2017/Day16.hs) | ☑ [Day 17](src/Javran/AdventOfCode/Y2017/Day17.hs) |  |  |  |
+| ☑ [Day 16](src/Javran/AdventOfCode/Y2017/Day16.hs) | ☑ [Day 17](src/Javran/AdventOfCode/Y2017/Day17.hs) | ☐ [Day 18](src/Javran/AdventOfCode/Y2017/Day18.hs) |  |  |
 
 
 [//]: # (PROGRESS_AUTOGEN_END)
