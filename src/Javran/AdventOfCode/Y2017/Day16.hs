@@ -27,6 +27,7 @@ where
 {- HLINT ignore -}
 
 import Control.Applicative
+import Control.Lens
 import Control.Monad
 import Data.Char
 import Data.Coerce
@@ -46,11 +47,12 @@ import Data.Word
 import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.TestExtra
+import Javran.AdventOfCode.Y2017.Day6 (rotateRightBy)
 import Text.ParserCombinators.ReadP hiding (count, get, many)
 
 data Day16 deriving (Generic)
 
-newtype Prog = Prog Int deriving (Show)
+newtype Prog = Prog Int deriving (Show, Eq, Ord)
 
 data Move
   = Spin Int
@@ -115,10 +117,42 @@ ppr Programs {indToPg} = fmap render $ IM.elems indToPg
   where
     render (Prog v) = chr $ ord 'a' + v
 
+ppr2 = fmap render
+  where
+    render (Prog v) = chr $ ord 'a' + v
+
 findFix :: Ord a => M.Map a Int -> [(Int, a)] -> (Int, Int)
 findFix seen ~((j, x) : xs) = case seen M.!? x of
   Just i -> (i, j)
   Nothing -> findFix (M.insert x j seen) xs
+
+type Programs2 = [Prog]
+
+mkPrograms2 :: Int -> Programs2
+mkPrograms2 n = coerce [0 .. n -1]
+
+spin2 :: Int -> Int -> Programs2 -> Programs2
+spin2 n d = rotateRightBy n d
+
+exchange2 :: Int -> Int -> Programs2 -> Programs2
+exchange2 i j xs = xs & ix i .~ pJ & ix j .~ pI
+  where
+    pI = xs !! i
+    pJ = xs !! j
+
+partner2 :: Prog -> Prog -> Programs2 -> Programs2
+partner2 pI pJ xs = xs & ix i .~ pJ & ix j .~ pI
+  where
+    tracedXs = zip [0 ..] xs
+    firstMatch :: Prog -> (Int, Prog) -> Alt Maybe Int
+    firstMatch needle (ind, x) = Alt $ ind <$ guard (needle == x)
+    (Alt (Just i), Alt (Just j)) =
+      foldMap (\x' -> (firstMatch pI x', firstMatch pJ x')) tracedXs
+
+applyMove2 n = \case
+  Spin v -> spin2 n v
+  Exchange i j -> exchange2 i j
+  Partner i j -> partner2 i j
 
 {-
   Note for part 2: At first this seems to be just a permutation
@@ -140,9 +174,12 @@ instance Solution Day16 where
         initSt = mkPrograms n
         applyAll z = foldl' (\cur move -> applyMove n move cur) z xs
         finSt = applyAll initSt
-    answerS (ppr finSt)
+    let s0 = mkPrograms2 n
+        applyAll2 z = foldl' (\cur move -> applyMove2 n move cur) z xs
+        sFin = applyAll2 s0
+    answerS (ppr2 sFin)
     do
-      let progression = iterate applyAll initSt
-          (0, period) = findFix mempty (zip [0 ..] $ fmap pgToInd progression)
+      let progression = iterate applyAll2 s0
+          (0, period) = findFix mempty (zip [0 ..] $ progression)
           r = 1_000_000_000 `rem` period
-      answerS $ ppr $ progression !! r
+      answerS $ ppr2 $ progression !! r
