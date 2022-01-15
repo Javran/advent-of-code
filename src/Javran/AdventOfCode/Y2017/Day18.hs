@@ -51,12 +51,12 @@ data Reg = Reg Int deriving (Show)
 type ReadVal = Either Int Reg
 
 data Instr
-  = Sound ReadVal
+  = Send ReadVal
   | Assign Reg ReadVal
   | Add Reg ReadVal
   | Mul Reg ReadVal
   | Mod Reg ReadVal
-  | Recover Reg
+  | Recv Reg
   | JumpGtZero ReadVal ReadVal
   deriving (Show)
 
@@ -64,12 +64,12 @@ instrP :: ReadP Instr
 instrP =
   foldl1'
     (<++)
-    [ string "snd " *> (Sound <$> readValP)
+    [ string "snd " *> (Send <$> readValP)
     , string "set " *> (Assign <$> regP <*> readValP)
     , string "add " *> (Add <$> regP <*> readValP)
     , string "mul " *> (Mul <$> regP <*> readValP)
     , string "mod " *> (Mod <$> regP <*> readValP)
-    , string "rcv " *> (Recover <$> regP)
+    , string "rcv " *> (Recv <$> regP)
     , string "jgz " *> (JumpGtZero <$> readValP <*> readValP)
     ]
   where
@@ -79,37 +79,42 @@ instrP =
         <$> (satisfy isAsciiLower <* skipSpaces)
     readValP = (Right <$> (regP <* skipSpaces)) <++ (Left <$> intP)
 
-{- ((pc, regs), last sound) -}
+{- ((pc, regs), last sent) -}
 type Machine = ((Int, IM.IntMap Int), Maybe Int)
 
 interpret :: V.Vector Instr -> Machine -> Maybe Machine
-interpret instrs ((pc, regs), lastSound) = do
+interpret instrs ((pc, regs), lastSent) = do
   when (pc < 0 || pc >= V.length instrs) do Nothing
   let getVal :: ReadVal -> Int
       getVal = \case
         Left v -> v
         Right (Reg i) -> fromMaybe 0 (regs IM.!? i)
-      liftOp op rx@(Reg x) y = ((pc + 1, IM.insert x (op (getVal (Right rx)) (getVal y)) regs), lastSound)
+      liftOp op rx@(Reg x) y =
+        ( ( pc + 1
+          , IM.insert x (op (getVal (Right rx)) (getVal y)) regs
+          )
+        , lastSent
+        )
   pure case instrs V.! pc of
-    Sound x -> ((pc + 1, regs), Just (getVal x))
+    Send x -> ((pc + 1, regs), Just (getVal x))
     Assign rx y -> liftOp (\_ y' -> y') rx y
     Add rx y -> liftOp (+) rx y
     Mul rx y -> liftOp (*) rx y
     Mod rx y -> liftOp rem rx y
-    Recover rx ->
+    Recv rx ->
       if getVal (Right rx) == 0
-        then ((pc + 1, regs), lastSound)
-        else liftOp (\_ _ -> fromJust lastSound) rx (error "unused")
+        then ((pc + 1, regs), lastSent)
+        else liftOp (\_ _ -> fromJust lastSent) rx (error "unused")
     JumpGtZero x y ->
       let x' = getVal x
           y' = getVal y
-       in if x' > 0 then ((pc + y', regs), lastSound) else ((pc + 1, regs), lastSound)
+       in if x' > 0 then ((pc + y', regs), lastSent) else ((pc + 1, regs), lastSent)
 
 solve :: V.Vector Instr -> Machine -> Int
 solve instrs st@((pc, _), _) = case interpret instrs st of
   Nothing -> error "no recover instr"
-  Just st'@(_, sound) -> case instrs V.! pc of
-    Recover _ -> fromJust sound
+  Just st'@(_, sent) -> case instrs V.! pc of
+    Recv _ -> fromJust sent
     _ -> solve instrs st'
 
 instance Solution Day18 where
