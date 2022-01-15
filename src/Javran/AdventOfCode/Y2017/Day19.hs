@@ -92,7 +92,7 @@ step = do
                 nextL = applyDir dL next
                 nextR = applyDir dR next
             case (mapQuery nextL, mapQuery nextR) of
-              (Nothing, Nothing) -> error "no where to go"
+              (Nothing, Nothing) -> error "nowhere to go"
               (Just _, Just _) -> error "crossing ambiguous"
               (Just _, Nothing) -> put (next, dL)
               (Nothing, Just _) -> put (next, dR)
