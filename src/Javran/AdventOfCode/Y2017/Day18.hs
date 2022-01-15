@@ -1,52 +1,24 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE PatternGuards #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# OPTIONS_GHC -Wno-deprecations #-}
-{-# OPTIONS_GHC -Wno-typed-holes #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -fdefer-typed-holes #-}
 
 module Javran.AdventOfCode.Y2017.Day18
   (
   )
 where
 
-{- HLINT ignore -}
-
-import Control.Applicative
 import Control.Monad
 import Control.Monad.Writer.CPS
 import Data.Char
-import Data.Function
-import Data.Function.Memoize (memoFix)
 import qualified Data.IntMap.Strict as IM
-import qualified Data.IntSet as IS
 import Data.List
-import Data.List.Split hiding (sepBy)
-import qualified Data.Map.Strict as M
-import Data.Monoid
-import Data.Semigroup
 import qualified Data.Sequence as Seq
-import qualified Data.Set as S
-import qualified Data.Text as T
 import qualified Data.Vector as V
 import Data.Void
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.TestExtra
 import Text.ParserCombinators.ReadP hiding (count, get, many)
@@ -55,6 +27,10 @@ data Day18 deriving (Generic)
 
 data Reg = Reg Int deriving (Show)
 
+mkReg :: Char -> Reg
+mkReg ch = Reg $ ord ch - ord 'a'
+
+-- immediate value or a value from register
 type ReadVal = Either Int Reg
 
 data Instr
@@ -71,37 +47,49 @@ instrP :: ReadP Instr
 instrP =
   foldl1'
     (<++)
-    [ string "snd " *> (Send <$> readValP)
-    , string "set " *> (Assign <$> regP <*> readValP)
-    , string "add " *> (Add <$> regP <*> readValP)
-    , string "mul " *> (Mul <$> regP <*> readValP)
-    , string "mod " *> (Mod <$> regP <*> readValP)
-    , string "rcv " *> (Recv <$> regP)
-    , string "jgz " *> (JumpGtZero <$> readValP <*> readValP)
+    [ unary "snd" Send readValP
+    , binary "set" Assign regP readValP
+    , binary "add" Add regP readValP
+    , binary "mul" Mul regP readValP
+    , binary "mod" Mod regP readValP
+    , unary "rcv" Recv regP
+    , binary "jgz" JumpGtZero readValP readValP
     ]
   where
-    intP = readS_to_P (reads @Int)
-    regP =
-      (\v -> Reg $ ord v - ord 'a')
-        <$> (satisfy isAsciiLower <* skipSpaces)
-    readValP = (Right <$> (regP <* skipSpaces)) <++ (Left <$> intP)
+    sp = char ' '
+    unary lit builder pa =
+      string lit *> sp *> (builder <$> pa)
+    binary lit builder pa pb =
+      unary lit builder pa <*> (sp *> pb)
 
-registerP :: Reg
-registerP = Reg $ ord 'p' - ord 'a'
+    -- below are basic parsers that won't consume extra spaces afterwards.
+    intP = readS_to_P (reads @Int)
+    regP = mkReg <$> satisfy isAsciiLower
+    readValP = (Right <$> regP) <++ (Left <$> intP)
+
+type Regs = IM.IntMap Int
 
 {- ((pc, regs), last sent) -}
-type Machine = ((Int, IM.IntMap Int), Maybe Int)
+type Machine = ((Int, Regs), Maybe Int)
+
+valGetter :: Regs -> ReadVal -> Int
+valGetter regs = \case
+  Left v -> v
+  Right (Reg i) -> fromMaybe 0 (regs IM.!? i)
+
+updateRegsWith :: (Int -> Int -> Int) -> Reg -> ReadVal -> Regs -> Regs
+updateRegsWith op rx@(Reg x) y regs =
+  IM.insert x (op (getVal (Right rx)) (getVal y)) regs
+  where
+    getVal = valGetter regs
 
 interpret :: V.Vector Instr -> Machine -> Maybe Machine
 interpret instrs ((pc, regs), lastSent) = do
   when (pc < 0 || pc >= V.length instrs) do Nothing
-  let getVal :: ReadVal -> Int
-      getVal = \case
-        Left v -> v
-        Right (Reg i) -> fromMaybe 0 (regs IM.!? i)
-      liftOp op rx@(Reg x) y =
+  let getVal = valGetter regs
+      liftOp op rx y =
         ( ( pc + 1
-          , IM.insert x (op (getVal (Right rx)) (getVal y)) regs
+          , updateRegsWith op rx y regs
           )
         , lastSent
         )
@@ -118,80 +106,116 @@ interpret instrs ((pc, regs), lastSent) = do
     JumpGtZero x y ->
       let x' = getVal x
           y' = getVal y
-       in if x' > 0 then ((pc + y', regs), lastSent) else ((pc + 1, regs), lastSent)
+       in ((pc + if x' > 0 then y' else 1, regs), lastSent)
 
 solve :: V.Vector Instr -> Machine -> Int
 solve instrs st@((pc, _), _) = case interpret instrs st of
   Nothing -> error "no recover instr"
   Just st'@(_, sent) -> case instrs V.! pc of
-    Recv _ -> fromJust sent
+    Recv _ -> fromMaybe (error "nothing is sent") sent
     _ -> solve instrs st'
 
+-- below are for part 2.
+
+{-
+  machinery for tagging results with either internal or external.
+ -}
 data ExtInt = External | Internal
 
-type family InternalOnly ei where
+type family InternalOnly (ei :: ExtInt) where
   InternalOnly 'Internal = ()
   InternalOnly 'External = Void
 
 data Result (ei :: ExtInt)
-  = Done Machine2
-  | Paused (InternalOnly ei) (Result ei)
-  | NeedInput (Int -> Result ei)
-  | SentOutput Int (Result ei)
+  = -- | Done with execution
+    Done Machine2
+  | -- | Machine is paused but can be resumed without affecting input / output
+    Paused (InternalOnly ei) (Result ei)
+  | -- | Needs an input value to proceed
+    NeedInput (Int -> Result ei)
+  | -- | An output value is sent and machine itself paused
+    SentOutput Int (Result ei)
 
-type Machine2 = (Int, IM.IntMap Int)
+type Machine2 = (Int, Regs)
 
-tick :: V.Vector Instr -> Machine2 -> Result 'Internal
-tick instrs m@(pc, regs) =
-  if (pc < 0 || pc >= V.length instrs)
+start :: V.Vector Instr -> Machine2 -> Result 'Internal
+start instrs = fix \go m@(pc, regs) ->
+  if pc < 0 || pc >= V.length instrs
     then Done m
     else
-      let getVal :: ReadVal -> Int
-          getVal = \case
-            Left v -> v
-            Right (Reg i) -> fromMaybe 0 (regs IM.!? i)
-          liftOp op rx@(Reg x) y =
-            Paused
-              ()
-              (tick
-                 instrs
-                 ( pc + 1
-                 , IM.insert x (op (getVal (Right rx)) (getVal y)) regs
-                 ))
+      let getVal = valGetter regs
+          liftOp op rx y =
+            Paused () $ go (pc + 1, updateRegsWith op rx y regs)
        in case instrs V.! pc of
-            Send x -> SentOutput (getVal x) $ tick instrs (pc + 1, regs)
+            Send x -> SentOutput (getVal x) $ go (pc + 1, regs)
             Assign rx y -> liftOp (\_ y' -> y') rx y
             Add rx y -> liftOp (+) rx y
             Mul rx y -> liftOp (*) rx y
             Mod rx y -> liftOp rem rx y
             Recv (Reg r) -> NeedInput \inp ->
-              tick instrs (pc + 1, IM.insert r inp regs)
+              go (pc + 1, IM.insert r inp regs)
             JumpGtZero x y ->
-              let x' = getVal x
-                  y' = getVal y
-               in Paused () (tick instrs $ if x' > 0 then (pc + y', regs) else (pc + 1, regs))
+              Paused () $ go (pc + if getVal x > 0 then getVal y else 1, regs)
 
-ticks :: Result 'Internal -> Result 'External
-ticks = \case
+{-
+  Keeps the machine ticking until it's done or would affect input / output.
+  By doing so we eliminated the `Paused` internal state from external API.
+ -}
+keepGoing :: Result 'Internal -> Result 'External
+keepGoing = \case
   Done m -> Done m
-  Paused () k -> ticks k
-  NeedInput k -> NeedInput (ticks . k)
-  SentOutput o k -> SentOutput o (ticks k)
+  Paused () k -> keepGoing k
+  NeedInput k -> NeedInput (keepGoing . k)
+  SentOutput o k -> SentOutput o (keepGoing k)
 
-type System = ((Result 'External, Seq.Seq Int), (Result 'External, Seq.Seq Int))
+type ResultWithMsgQueue = (Result 'External, Seq.Seq Int)
 
+type System = (ResultWithMsgQueue, ResultWithMsgQueue)
+
+{-
+  Manually ticks the external system as a whole, and keeps track of
+  how many times did program 1 send an output.
+
+  Notes:
+
+  It's a bit on the noisy side, but my intention is to implement
+  this duet system in a way that it reads like a machine proof.
+
+  Now it's easy to see that:
+  - at first we deal with impossible cases
+    as those are eliminated from external API.
+  - the only work for this impl is to carry one's output to another's input.
+  - all the other cases are either full system termination or deadlock situation.
+
+ -}
 runDuet :: System -> Writer (Sum Int) ()
 runDuet = \case
   ((Paused v _, _), _) -> absurd v
   (_, (Paused v _, _)) -> absurd v
-  ((SentOutput o r0', q0), (r1', q1)) -> runDuet ((r0', q0), (r1', q1 Seq.|> o))
-  ((r0', q0), (SentOutput o r1', q1)) -> tell 1 >> runDuet ((r0', q0 Seq.|> o), (r1', q1))
-  ((Done {}, _), (Done {}, _)) -> pure ()
-  ((NeedInput k0, i Seq.:<| q0'), st1) -> runDuet ((k0 i, q0'), st1)
-  (st0, (NeedInput k1, i Seq.:<| q1')) -> runDuet (st0, (k1 i, q1'))
-  ((NeedInput {}, Seq.Empty), (Done {}, _)) -> pure ()
-  ((Done {}, _), (NeedInput {}, Seq.Empty)) -> pure ()
-  ((NeedInput {}, Seq.Empty), (NeedInput {}, Seq.Empty)) -> pure ()
+  ((SentOutput o r0', q0), (r1', q1)) ->
+    -- sending output from p0 to p1's msg queue
+    runDuet ((r0', q0), (r1', q1 Seq.|> o))
+  ((r0', q0), (SentOutput o r1', q1)) ->
+    -- increase counter, sending output from p1 to p0's msg queue
+    tell 1 >> runDuet ((r0', q0 Seq.|> o), (r1', q1))
+  ((NeedInput k0, i Seq.:<| q0'), st1) ->
+    -- feed p0 input if its msg queue isn't empty
+    runDuet ((k0 i, q0'), st1)
+  (st0, (NeedInput k1, i Seq.:<| q1')) ->
+    -- feed p1 input if its msg queue isn't empty
+    runDuet (st0, (k1 i, q1'))
+  ((Done {}, _), (Done {}, _)) ->
+    -- both are done, system terminated.
+    pure ()
+  ((NeedInput {}, Seq.Empty), (Done {}, _)) ->
+    -- p0 starving, with p1 terminated.
+    pure ()
+  ((Done {}, _), (NeedInput {}, Seq.Empty)) ->
+    -- p1 starving, with p0 terminated.
+    pure ()
+  ((NeedInput {}, Seq.Empty), (NeedInput {}, Seq.Empty)) ->
+    -- both needs input but there isn't any, deadlocked.
+    pure ()
 
 instance Solution Day18 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
@@ -200,12 +224,12 @@ instance Solution Day18 where
         initSt = ((0, IM.empty), Nothing)
         (runPart1, runPart2) = shouldRun extraOps
     when runPart1 do
-     answerShow $ solve instrs initSt
+      answerShow $ solve instrs initSt
     when runPart2 do
-      let Reg p = registerP
-          m0 = (ticks (tick instrs (0, IM.singleton p 0)), Seq.empty)
-          m1 = (ticks (tick instrs (0, IM.singleton p 1)), Seq.empty)
+      let Reg p = mkReg 'p'
+          mkMachine which =
+            (keepGoing (start instrs (0, IM.singleton p which)), Seq.empty)
           initSys :: System
-          initSys = (m0, m1)
+          initSys = (mkMachine 0, mkMachine 1)
           Sum ans = execWriter (runDuet initSys)
       answerShow ans
