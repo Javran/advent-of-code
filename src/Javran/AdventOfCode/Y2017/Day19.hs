@@ -78,24 +78,23 @@ step = do
   case mapQuery next of
     Just pt -> do
       newStep
-      Nothing
-        <$ case pt of
-          Normal -> do
-            modify (first (\_ -> next))
-          Letter ch -> do
-            tell (DL.singleton ch, mempty)
-            modify (first (\_ -> next))
-          Crossing -> do
-            d <- gets snd
-            let dL = turnLeft d
-                dR = turnRight d
-                nextL = applyDir dL next
-                nextR = applyDir dR next
-            case (mapQuery nextL, mapQuery nextR) of
-              (Nothing, Nothing) -> error "nowhere to go"
-              (Just _, Just _) -> error "crossing ambiguous"
-              (Just _, Nothing) -> put (next, dL)
-              (Nothing, Just _) -> put (next, dR)
+      Nothing <$ case pt of
+        Normal -> do
+          modify (first (\_ -> next))
+        Letter ch -> do
+          tell (DL.singleton ch, mempty)
+          modify (first (\_ -> next))
+        Crossing -> do
+          d <- gets snd
+          let dL = turnLeft d
+              dR = turnRight d
+              nextL = applyDir dL next
+              nextR = applyDir dR next
+          case (mapQuery nextL, mapQuery nextR) of
+            (Nothing, Nothing) -> error "nowhere to go"
+            (Just _, Just _) -> error "crossing ambiguous"
+            (Just _, Nothing) -> put (next, dL)
+            (Nothing, Just _) -> put (next, dR)
     Nothing -> pure $ Just ()
 
 instance Solution Day19 where
