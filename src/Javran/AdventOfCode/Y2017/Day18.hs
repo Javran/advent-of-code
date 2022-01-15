@@ -180,14 +180,14 @@ ticks = \case
 type System = ((Result 'External, Seq.Seq Int), (Result 'External, Seq.Seq Int))
 
 runDuet :: System -> Writer (Sum Int) ()
-runDuet ((r0, q0), (r1, q1)) = case ((r0, q0), (r1, q1)) of
+runDuet = \case
   ((Paused v _, _), _) -> absurd v
   (_, (Paused v _, _)) -> absurd v
-  ((SentOutput o r0', _), (r1', _)) -> runDuet ((r0', q0), (r1', q1 Seq.|> o))
-  ((r0', _), (SentOutput o r1', _)) -> tell 1 >> runDuet ((r0', q0 Seq.|> o), (r1', q1))
+  ((SentOutput o r0', q0), (r1', q1)) -> runDuet ((r0', q0), (r1', q1 Seq.|> o))
+  ((r0', q0), (SentOutput o r1', q1)) -> tell 1 >> runDuet ((r0', q0 Seq.|> o), (r1', q1))
   ((Done {}, _), (Done {}, _)) -> pure ()
-  ((NeedInput k0, i Seq.:<| q0'), _) -> runDuet ((k0 i, q0'), (r1, q1))
-  (_, (NeedInput k1, i Seq.:<| q1')) -> runDuet ((r0, q0), (k1 i, q1'))
+  ((NeedInput k0, i Seq.:<| q0'), st1) -> runDuet ((k0 i, q0'), st1)
+  (st0, (NeedInput k1, i Seq.:<| q1')) -> runDuet (st0, (k1 i, q1'))
   ((NeedInput {}, Seq.Empty), (Done {}, _)) -> pure ()
   ((Done {}, _), (NeedInput {}, Seq.Empty)) -> pure ()
   ((NeedInput {}, Seq.Empty), (NeedInput {}, Seq.Empty)) -> pure ()
@@ -198,3 +198,11 @@ instance Solution Day18 where
     instrs <- V.fromList . fmap (consumeOrDie instrP) . lines <$> getInputS
     let initSt = ((0, IM.empty), Nothing)
     answerShow $ solve instrs initSt
+    do
+      let Reg p = registerP
+          m0 = (ticks (tick instrs (0, IM.singleton p 0)), Seq.empty)
+          m1 = (ticks (tick instrs (0, IM.singleton p 1)), Seq.empty)
+          initSys :: System
+          initSys = (m0, m1)
+          Sum ans = execWriter (runDuet initSys)
+      answerShow ans
