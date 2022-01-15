@@ -48,6 +48,7 @@ import qualified Data.Vector as V
 import Data.Void
 import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
+import Javran.AdventOfCode.TestExtra
 import Text.ParserCombinators.ReadP hiding (count, get, many)
 
 data Day18 deriving (Generic)
@@ -193,12 +194,14 @@ runDuet = \case
   ((NeedInput {}, Seq.Empty), (NeedInput {}, Seq.Empty)) -> pure ()
 
 instance Solution Day18 where
-  solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    instrs <- V.fromList . fmap (consumeOrDie instrP) . lines <$> getInputS
-    let initSt = ((0, IM.empty), Nothing)
-    answerShow $ solve instrs initSt
-    do
+    (extraOps, rawInput) <- consumeExtra getInputS
+    let instrs = V.fromList . fmap (consumeOrDie instrP) . lines $ rawInput
+        initSt = ((0, IM.empty), Nothing)
+        (runPart1, runPart2) = shouldRun extraOps
+    when runPart1 do
+     answerShow $ solve instrs initSt
+    when runPart2 do
       let Reg p = registerP
           m0 = (ticks (tick instrs (0, IM.singleton p 0)), Seq.empty)
           m1 = (ticks (tick instrs (0, IM.singleton p 1)), Seq.empty)

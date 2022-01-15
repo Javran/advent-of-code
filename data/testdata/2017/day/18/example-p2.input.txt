@@ -1,0 +1,10 @@
+# EXAMPLE_EXTRA_BEGIN
+part2
+# EXAMPLE_EXTRA_END
+snd 1
+snd 2
+snd p
+rcv a
+rcv b
+rcv c
+rcv d
