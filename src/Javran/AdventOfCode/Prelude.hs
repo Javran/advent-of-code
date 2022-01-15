@@ -1,5 +1,6 @@
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Javran.AdventOfCode.Prelude
   ( -- helper functions
@@ -18,6 +19,7 @@ module Javran.AdventOfCode.Prelude
   , minMax2D
   , nextCharP
   , manhattan
+  , checkedDecimal1P
   , -- infrastructures
     module Javran.AdventOfCode.Infra
   , module Petbox
@@ -34,6 +36,7 @@ where
 
 import Control.Lens (Each, each, (^..))
 import Data.Bifunctor
+import Data.Bits (Bits, toIntegralSized)
 import Data.Bool
 import Data.Char
 import Data.Either
@@ -118,3 +121,11 @@ manhattan u v = sum $ zipWith (\u' v' -> abs (u' - v')) (u ^.. each) (v ^.. each
 {-# SPECIALIZE manhattan :: (Int, Int, Int) -> (Int, Int, Int) -> Int #-}
 {-# SPECIALIZE manhattan :: Point V3 Int -> Point V3 Int -> Int #-}
 {-# SPECIALIZE manhattan :: Point V2 Int -> Point V2 Int -> Int #-}
+
+checkedDecimal1P :: (Read i, Integral i, Bits i) => ReadP.ReadP i
+checkedDecimal1P = do
+  v <- decimal1P @Integer
+  pure $
+    fromMaybe
+      (error $ "value out of range for target type: " <> show v)
+      (toIntegralSized v)

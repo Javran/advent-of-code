@@ -96,6 +96,14 @@ consumeAllWithReadPDebugShow p xs = case readP_to_S (p <* eof) xs of
     Left $
       "Parsing is ambiguious. Alternatives: " <> show ys
 
+{-
+  Note that this parser does not guarantee correctness over boundary values.
+
+  An alternative `checkedDecimal1P` is available utilizing `toIntegralSized`.
+  In case input value gets tricky.
+
+  See: https://github.com/haskell/bytestring/issues/144#issuecomment-699482045
+ -}
 decimal1P :: (Read i, Integral i) => ReadP i
 decimal1P = read <$> munch1 isDigit
 
