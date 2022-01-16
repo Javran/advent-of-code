@@ -14,6 +14,8 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE ViewPatterns #-}
 {-# OPTIONS_GHC -Wno-deprecations #-}
 {-# OPTIONS_GHC -Wno-typed-holes #-}
@@ -44,6 +46,7 @@ import Data.Semigroup
 import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Vector as V
+import qualified Data.Vector.Mutable as VM
 import GHC.Generics (Generic)
 import GHC.TypeNats
 import Javran.AdventOfCode.Prelude
@@ -51,13 +54,14 @@ import Text.ParserCombinators.ReadP hiding (count, get, many)
 
 data Day21 deriving (Generic)
 
-data Grid (n :: Nat) = Grid Int
+data Grid (n :: Nat) = Grid Int deriving (Eq, Ord)
 
-type Grid2 = Grid 2
-
-type Grid3 = Grid 3
-
-type Grid4 = Grid 4
+instance (KnownNat n, 1 <= n, n <= 5) => Bounded (Grid n) where
+  minBound = Grid 0
+  maxBound =
+    Grid
+      let sz = fromIntegral $ natVal (Proxy @n)
+       in foldl' setBit 0 [0 .. sz * sz -1]
 
 type Coord = (Int, Int) -- row, col
 
@@ -82,16 +86,88 @@ allTransforms len f0 = do
   f1 <- [f0, flipVert f0]
   take 4 (iterate rotateCwQt f1)
 
+allTransformsOf :: forall n. KnownNat n => Grid n -> [Grid n]
+allTransformsOf g = fmap (encodeGrid (Proxy @n)) reps
+  where
+    rep = decodeGrid g
+    reps :: [] [[Bool]]
+    reps = fmap viewerToRep allViewers
+    viewer (r, c) = rep !! r !! c
+    viewerToRep :: (Coord -> Bool) -> [[Bool]]
+    viewerToRep v = do
+      r <- [0 .. sz -1]
+      pure [v (r, c) | c <- [0 .. sz -1]]
+    allViewers = allTransforms sz viewer
+    sz :: Int
+    sz = fromIntegral $ natVal (Proxy @n)
+
+type ParsedRule n = (Grid n, Grid (n + 1))
+
+gridP :: KnownNat n => proxy n -> ReadP (Grid n)
+gridP pSz = do
+  r0 <- rowP
+  rs <- replicateM (sz -1) (char '/' *> rowP)
+  pure $ encodeGrid pSz (r0 : rs)
+  where
+    rowP = replicateM sz cellP
+    cellP = (False <$ char '.') <++ (True <$ char '#')
+    sz = fromIntegral $ natVal pSz
+
+ruleP :: forall n proxy. (KnownNat n, KnownNat (n + 1)) => proxy n -> ReadP (ParsedRule n)
+ruleP pSz = do
+  lhs <- gridP pSz
+  _ <- string " => "
+  rhs <- gridP (Proxy @(n + 1))
+  pure (lhs, rhs)
+
+inputP :: ReadP ([ParsedRule 2], [ParsedRule 3])
+inputP = do
+  let nl = char '\n'
+  rs0 <- many (ruleP (Proxy @2) <* nl)
+  rs1 <- many (ruleP (Proxy @3) <* nl)
+  pure (rs0, rs1)
+
+renderGrid :: KnownNat n => Grid n -> [String]
+renderGrid = (fmap . fmap) (bool '.' '#') . decodeGrid
+
+type RuleTable n = V.Vector (Maybe (Grid (n + 1)))
+
+buildRuleTable :: forall n. (KnownNat n, 1 <= n, n <= 5) => [ParsedRule n] -> RuleTable n
+buildRuleTable ps = V.create do
+  let Grid mx = maxBound `asTypeOf` (fst $ head ps)
+  vec <- VM.replicate (mx + 1) Nothing
+  -- first, make sure all explicitly stated rules are there.
+  forM_ ps \(Grid lhs, rhs) -> do
+    VM.unsafeWrite vec lhs (Just rhs)
+  -- then populate derived rules.
+  forM_ ps \(l, rhs@(Grid rr)) ->
+    forM_ (allTransformsOf l) \(Grid lhs) -> do
+      mOldRule <- VM.unsafeRead vec lhs
+      case mOldRule of
+        Nothing -> VM.unsafeWrite vec lhs (Just rhs)
+        Just rhs'@(Grid rr') ->
+          -- should be safe to assume overall consistency
+          when (rhs' /= rhs) do
+            error $ "rule inconsistency: lhs: " <> show lhs <> " rhs: " <> show (rr, rr')
+  pure vec
+
 instance Solution Day21 where
   solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    xs <- fmap id . lines <$> getInputS
-    mapM_ print xs
-    let grid = words "ABC DEF GHI"
-        view (r,c) = grid !! r !! c
-        allViews = allTransforms 3 view
-        ppr v = forM_ [0..2] \r ->
-          putStrLn (fmap (\c -> v( r,c)) [0..2])
-    forM_ allViews \v -> do
-      ppr v
-      putStrLn ""
+    (xs, ys) <- consumeOrDie inputP <$> getInputS
+    let rs0 = buildRuleTable xs
+        rs1 = buildRuleTable ys
+    print
+      (concatMap
+         (\case
+            Nothing -> []
+            Just (Grid v) -> [v])
+         rs0)
+    print
+      (concatMap
+         (\case
+            Nothing -> []
+            Just (Grid v) -> [v])
+         rs1)
+    print (length rs0)
+    print (length rs1)
