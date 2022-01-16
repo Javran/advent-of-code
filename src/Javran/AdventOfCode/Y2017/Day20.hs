@@ -42,11 +42,11 @@ import qualified Data.Text as T
 import qualified Data.Vector as V
 import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
+import Javran.AdventOfCode.TestExtra
 import Linear.Affine
 import Linear.V3
 import Linear.Vector
 import Text.ParserCombinators.ReadP hiding (count, get, many)
-import Javran.AdventOfCode.TestExtra
 
 data Day20 deriving (Generic)
 
@@ -86,11 +86,24 @@ step (m, t) = (IM.withoutKeys m (IS.fromList collisions), t')
            _ -> vs)
         $ M.toList locs
 
+allEqual :: Eq a => [a] -> Bool
+allEqual = \case
+  [] -> True
+  x : xs -> all (== x) xs
+
+dropUntilStable :: ([a] -> Bool) -> [a] -> [(Int, a)]
+dropUntilStable isStable = go . zip [0 ..]
+  where
+    go xs@(~(_ : tl)) =
+      if isStable (fmap snd xs)
+        then xs
+        else go tl
+
 instance Solution Day20 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     (extraOps, rawInput) <- consumeExtra getInputS
     let xs = fmap (consumeOrDie ptP) . lines $ rawInput
-        (runPart1 , runPart2 ) = shouldRun extraOps
+        (runPart1, runPart2) = shouldRun extraOps
     {-
       I have no idea how to do this correctly,
       my intuition says simulating that long enough we'll get the system to stablize,
@@ -99,12 +112,20 @@ instance Solution Day20 where
      -}
     let tracedXs :: [(Int, Pt)]
         tracedXs = zip [0 :: Int ..] xs
-
     when runPart1 do
-      let guess = 200000
-          ys = fmap (second (\x -> manhattan 0 $ locAtTime x guess)) tracedXs
-          (ans, _) = minimumBy (comparing snd) ys
+      let stepLen = 100
+          progression :: [Int]
+          progression =
+            fmap
+              (\t ->
+                 fst . minimumBy (comparing snd) $
+                   fmap (second \x -> manhattan 0 $ locAtTime x t) tracedXs)
+              [0, stepLen ..]
+          isStable = allEqual . take 20
+          (_, ans) : _ = dropUntilStable isStable progression
       answerShow ans
     when runPart2 do
-      let progression = iterate step (IM.fromList tracedXs, 0)
-      answerShow $ last $ take 200 (fmap (IM.size . fst) progression)
+      let progression = fmap (IM.size . fst) $ iterate step (IM.fromList tracedXs, 0)
+          isStable = allEqual . take 20
+          (_, ans) : _ = dropUntilStable isStable progression
+      answerShow ans
