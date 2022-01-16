@@ -179,12 +179,12 @@ toPlainGrid = concatMap convert
   This representation is chosen so that rule appication
   can simply be mapped onto each individual elements.
  -}
-type GGrids = Either [[Grid 2]] [[Grid 3]]
+type GGrids m n = Either [[Grid m]] [[Grid n]]
 
-toPlainGrid' :: GGrids -> PlainGrid
+toPlainGrid' :: (KnownNat m, KnownNat n) => Either [[Grid m]] [[Grid n]] -> PlainGrid
 toPlainGrid' = either toPlainGrid toPlainGrid
 
-fromPlainGrid :: PlainGrid -> GGrids
+fromPlainGrid :: PlainGrid -> GGrids 2 3
 fromPlainGrid pg
   | even len = Left $ divideGrid (Proxy @2)
   | len `rem` 3 == 0 = Right $ divideGrid (Proxy @3)
@@ -206,12 +206,12 @@ applyRuleTable rt (Grid v) = case rt V.! v of
   Nothing -> error $ "no rule for lhs " <> show v
   Just rhs -> rhs
 
-applyRules :: AllRules -> GGrids -> GGrids
+applyRules :: AllRules -> GGrids 2 3 -> GGrids 2 3
 applyRules (rt2, rt3) =
-  fromPlainGrid
-    . either
-      (toPlainGrid . (fmap . fmap) (applyRuleTable rt2))
-      (toPlainGrid . (fmap . fmap) (applyRuleTable rt3))
+  fromPlainGrid . toPlainGrid'
+    . bimap
+      ((fmap . fmap) (applyRuleTable rt2))
+      ((fmap . fmap) (applyRuleTable rt3))
 
 instance Solution Day21 where
   solutionRun _ SolutionContext {getInputS, answerShow, answerS} = do
