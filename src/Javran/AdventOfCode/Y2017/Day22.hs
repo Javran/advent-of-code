@@ -1,11 +1,8 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE NumericUnderscores #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Javran.AdventOfCode.Y2017.Day22
@@ -19,6 +16,7 @@ import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.Y2017.Day19 (Coord, Dir (..), applyDir)
+import Javran.AdventOfCode.TestExtra (consumeExtra)
 
 data Day22 deriving (Generic)
 
@@ -109,12 +107,16 @@ burst2 = do
 
 instance Solution Day22 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    ns <- parseFromRaw . lines <$> getInputS
-    let vc = ((0, 0), U)
+    (extraOps, rawInput) <- consumeExtra getInputS
+    let ns = parseFromRaw . lines $ rawInput
+        vc = ((0, 0), U)
     do
       let (_, _, Sum ans) = runRWS (replicateM 10000 burst) () (ns, vc)
       answerShow ans
     do
       let m = M.fromSet (\_ -> Infected) ns
-          (_, _, Sum ans) = runRWS (replicateM 10_000_000 burst2) () (m, vc)
+          iters = case extraOps of
+                    Nothing -> 10_000_000
+                    Just _ -> 10000
+          (_, _, Sum ans) = runRWS (replicateM iters burst2) () (m, vc)
       answerShow ans

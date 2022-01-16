@@ -1,3 +1,5 @@
+# EXAMPLE_EXTRA_BEGIN
+# EXAMPLE_EXTRA_END
 ..#
 #..
 ...
