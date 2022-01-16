@@ -1,46 +1,20 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE PatternGuards #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# OPTIONS_GHC -Wno-deprecations #-}
-{-# OPTIONS_GHC -Wno-typed-holes #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -fdefer-typed-holes #-}
 
 module Javran.AdventOfCode.Y2017.Day20
   (
   )
 where
 
-{- HLINT ignore -}
-
-import Control.Applicative
 import Control.Monad
-import Data.Char
-import Data.Function
-import Data.Function.Memoize (memoFix)
 import qualified Data.IntMap.Strict as IM
 import qualified Data.IntSet as IS
 import Data.List
-import Data.List.Split hiding (sepBy)
 import qualified Data.Map.Strict as M
-import Data.Monoid
-import Data.Semigroup
-import qualified Data.Set as S
-import qualified Data.Text as T
-import qualified Data.Vector as V
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.TestExtra
 import Linear.Affine
@@ -66,6 +40,12 @@ ptP =
       [a, b, c] <- intP `sepBy1` char ','
       pure $ V3 a b c
 
+{-
+  t=0: a, v, p
+  t=1: a, v + a, p + (v + a)
+  t=2: a, v + 2a, p + (v + a) + (v + 2a)
+  ...
+ -}
 locAtTime :: Pt -> Int -> Loc
 locAtTime (p, v, a) t = p .+^ (v ^* t) .+^ (a ^* ((t + 1) * t `quot` 2))
 
@@ -91,6 +71,13 @@ allEqual = \case
   [] -> True
   x : xs -> all (== x) xs
 
+{-
+  Takes as input a predicate `isStable` and an infinite list of observations over time,
+  dropping leading observations until it is considered stable.
+
+  It is expected that `isStable` works on infinite list
+  (which is to allow the predicate to take a sliding window of arbitrary len as it wishes)
+ -}
 dropUntilStable :: ([a] -> Bool) -> [a] -> [(Int, a)]
 dropUntilStable isStable = go . zip [0 ..]
   where
@@ -99,33 +86,68 @@ dropUntilStable isStable = go . zip [0 ..]
         then xs
         else go tl
 
+{-
+  The gist of my solution to both part 1 and part 2 is just simulation.
+  The correctness is not guaranteed, but it looks good enough.
+
+  For part 1, after working out an algebratic way of computing particle locations
+  at any time, we can fast forward the system efficiently,
+  and stop when the point closest to origin,
+  no longer changes over a sliding window (the system is considered stable at this point).
+  (here the magic value chosen is 100 for step length, 10 for sliding window)
+
+  For part 2, we just simulate the system - for this problem, particle locations
+  are only defined over discrete time units, meaning we don't have to think about
+  issues like "what if two particles collide at t = 1.5", or any non-integer value of t.
+  Now to solve this part, we just do the exact same thing we did to part 1: simulate until
+  the system stablizes over a sliding window.
+
+  It probably doesn't matter much, but the guess can be slight educated:
+  notice in part 1, we've established a timestamp (I call it `guessedStableIter`),
+  beyond which the system is considered stable.
+  It should then be a fair assumption that we don't actually need to examine
+  the system prior to this timestamp for part 2 - by skipping over the "unstable"
+  part of time, we can avoid running into some false stable points.
+
+ -}
+
 instance Solution Day20 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     (extraOps, rawInput) <- consumeExtra getInputS
     let xs = fmap (consumeOrDie ptP) . lines $ rawInput
         (runPart1, runPart2) = shouldRun extraOps
-    {-
-      I have no idea how to do this correctly,
-      my intuition says simulating that long enough we'll get the system to stablize,
-      and thanks to the algebra we do have an efficient way to compute particle's
-      location at any time.
-     -}
     let tracedXs :: [(Int, Pt)]
         tracedXs = zip [0 :: Int ..] xs
-    when runPart1 do
-      let stepLen = 100
-          progression :: [Int]
-          progression =
-            fmap
-              (\t ->
-                 fst . minimumBy (comparing snd) $
-                   fmap (second \x -> manhattan 0 $ locAtTime x t) tracedXs)
-              [0, stepLen ..]
-          isStable = allEqual . take 20
-          (_, ans) : _ = dropUntilStable isStable progression
-      answerShow ans
+    guessedStableIter <-
+      if runPart1
+        then do
+          let stepLen =
+                {-
+                  We can afford to fast forward as computing location
+                  at specific times is cheap.
+                 -}
+                100
+              observations =
+                fmap
+                  (\t ->
+                     -- observe current candidate
+                     fst . minimumBy (comparing snd) $
+                       -- computes the system at time t.
+                       fmap (second \x -> manhattan 0 $ locAtTime x t) tracedXs)
+                  [0, stepLen ..]
+              isStable = allEqual . take 10
+              (stable', ans) : _ = dropUntilStable isStable observations
+          answerShow ans
+          pure (stable' * stepLen)
+        else pure 50
     when runPart2 do
-      let progression = fmap (IM.size . fst) $ iterate step (IM.fromList tracedXs, 0)
-          isStable = allEqual . take 20
-          (_, ans) : _ = dropUntilStable isStable progression
+      let observations =
+            -- observe number of particles.
+            fmap (IM.size . fst) $
+              -- step the system
+              iterate step (IM.fromList tracedXs, 0)
+          isStable = allEqual . take 10
+          (_, ans) : _ =
+            dropUntilStable isStable $
+              drop guessedStableIter observations
       answerShow ans
