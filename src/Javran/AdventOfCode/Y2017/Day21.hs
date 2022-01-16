@@ -1,54 +1,31 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# OPTIONS_GHC -Wno-deprecations #-}
-{-# OPTIONS_GHC -Wno-typed-holes #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
 
 module Javran.AdventOfCode.Y2017.Day21
   (
   )
 where
 
-{- HLINT ignore -}
-
 import Control.Applicative
 import Control.Monad
 import Data.Bits
-import Data.Char
-import Data.Function
-import Data.Function.Memoize (memoFix)
-import qualified Data.IntMap.Strict as IM
-import qualified Data.IntSet as IS
 import Data.List
 import Data.List.Split hiding (sepBy)
-import qualified Data.Map.Strict as M
-import Data.Monoid
 import Data.Proxy
-import Data.Semigroup
-import qualified Data.Set as S
-import qualified Data.Text as T
 import qualified Data.Vector as V
 import qualified Data.Vector.Mutable as VM
-import GHC.Generics (Generic)
 import GHC.TypeNats
 import Javran.AdventOfCode.Prelude
+import Javran.AdventOfCode.TestExtra
 import Text.ParserCombinators.ReadP hiding (count, get, many)
 
 data Day21 deriving (Generic)
@@ -128,14 +105,11 @@ inputP = do
   rs1 <- many (ruleP (Proxy @3) <* nl)
   pure (rs0, rs1)
 
-renderGrid :: KnownNat n => Grid n -> [String]
-renderGrid = (fmap . fmap) (bool '.' '#') . decodeGrid
-
 type RuleTable n = V.Vector (Maybe (Grid (n + 1)))
 
 buildRuleTable :: forall n. (KnownNat n, 1 <= n, n <= 5) => [ParsedRule n] -> RuleTable n
 buildRuleTable ps = V.create do
-  let Grid mx = maxBound `asTypeOf` (fst $ head ps)
+  let Grid mx = maxBound @(Grid n)
   vec <- VM.replicate (mx + 1) Nothing
   -- first, make sure all explicitly stated rules are there.
   forM_ ps \(Grid lhs, rhs) -> do
@@ -152,24 +126,66 @@ buildRuleTable ps = V.create do
             error $ "rule inconsistency: lhs: " <> show lhs <> " rhs: " <> show (rr, rr')
   pure vec
 
+type AllRules = (RuleTable 2, RuleTable 3)
+
 toPlainGrid :: forall n. KnownNat n => [[Grid n]] -> PlainGrid
 toPlainGrid = concatMap convert
   where
     convert :: [Grid n] -> PlainGrid
     convert = fmap concat . transpose . fmap decodeGrid
 
+type GGrids = Either [[Grid 2]] [[Grid 3]]
+
+fromPlainGrid :: PlainGrid -> GGrids
+fromPlainGrid pg
+  | even len = Left $ divideGrid (Proxy @2)
+  | len `rem` 3 == 0 = Right $ divideGrid (Proxy @3)
+  | otherwise = error $ "unexpected length: " <> show len
+  where
+    divideGrid :: forall n. KnownNat n => Proxy n -> [[Grid n]]
+    divideGrid pN =
+      fmap
+        (fmap (encodeGrid pN)
+           . transpose
+           . fmap (chunksOf n))
+        $ chunksOf n pg
+      where
+        n = fromIntegral $ natVal pN
+    len = length pg
+
+applyRuleTable :: RuleTable n -> Grid n -> Grid (n + 1)
+applyRuleTable rt (Grid v) = case rt V.! v of
+  Nothing -> error $ "no rule for lhs " <> show v
+  Just rhs -> rhs
+
+applyRules :: AllRules -> GGrids -> GGrids
+applyRules (rt2, rt3) =
+  fromPlainGrid
+    . either
+      (toPlainGrid . (fmap . fmap) (applyRuleTable rt2))
+      (toPlainGrid . (fmap . fmap) (applyRuleTable rt3))
+
 instance Solution Day21 where
-  solutionSolved _ = False
-  solutionRun _ SolutionContext {getInputS, answerShow} = do
-    (xs, ys) <- consumeOrDie inputP <$> getInputS
-    let rs0 = buildRuleTable xs
-        rs1 = buildRuleTable ys
-        demo :: [[Grid 3]]
-        demo =
-          [ [Grid 341, Grid 7, Grid 292]
-          , [Grid 84, Grid 56, Grid 341]
-          , [Grid 56, Grid 292, Grid 84]
-          ]
-        pg = toPlainGrid demo
-    forM_ pg \row ->
-      putStrLn (fmap (bool '.' '#') row)
+  solutionRun _ SolutionContext {getInputS, answerShow, answerS} = do
+    (extraOps, rawInput) <- consumeExtra getInputS
+    let (pr2, pr3) = consumeOrDie inputP rawInput
+        rt2 = buildRuleTable pr2
+        rt3 = buildRuleTable pr3
+        step = applyRules (rt2, rt3)
+        g0 = Right [[consumeOrDie (gridP (Proxy @3)) ".#./..#/###"]]
+        progression = iterate step g0
+    case extraOps of
+      Nothing -> do
+        do
+          let pg = either toPlainGrid toPlainGrid (progression !! 5)
+          answerShow $ countLength id (concat pg)
+        do
+          let pg = either toPlainGrid toPlainGrid (progression !! 18)
+          answerShow $ countLength id (concat pg)
+      Just ~[rawN] -> do
+        let n = read @Int rawN
+        forM_ (zip [0 .. n] progression) \(i, gg) -> do
+          let pg = either toPlainGrid toPlainGrid gg
+          answerShow i
+          forM_ pg \row ->
+            answerS (fmap (bool '.' '#') row)

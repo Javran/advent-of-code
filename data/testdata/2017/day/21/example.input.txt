@@ -1,2 +1,5 @@
+# EXAMPLE_EXTRA_BEGIN
+2
+# EXAMPLE_EXTRA_END
 ../.# => ##./#../...
 .#./..#/### => #..#/..../..../#..#
