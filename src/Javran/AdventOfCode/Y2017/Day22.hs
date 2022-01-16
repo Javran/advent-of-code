@@ -82,22 +82,29 @@ type WorldState2 = (M.Map Coord NodeState2, (Coord, Dir))
 
 burst2 :: Sim2 ()
 burst2 = do
-  curNode <- gets (\(ns, (cur, _)) -> ns M.!? cur)
+  curNode <-
+    state
+      (\(ns, vc@(cur, _)) ->
+         let (old, ns') =
+               M.alterF
+                 (\mOldVal ->
+                    ( mOldVal
+                    , case mOldVal of
+                        Nothing -> Just Weakened
+                        Just Weakened -> Just Infected
+                        Just Infected -> Just Flagged
+                        Just Flagged -> Nothing
+                    ))
+                 cur
+                 ns
+          in (old, (ns', vc)))
   modify
     (second . second $ case curNode of
        Nothing -> turnLeft
        Just Weakened -> id
        Just Infected -> turnRight
        Just Flagged -> oppositeDir)
-  do
-    cur <- gets (fst . snd)
-    modify
-      (first case curNode of
-         Nothing -> M.insert cur Weakened
-         Just Weakened -> M.insert cur Infected
-         Just Infected -> M.insert cur Flagged
-         Just Flagged -> M.delete cur)
-    when (curNode == Just Weakened) do tell 1
+  when (curNode == Just Weakened) do tell 1
   modify (second (\(cur, d) -> (applyDir d cur, d)))
 
 instance Solution Day22 where
