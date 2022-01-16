@@ -8,7 +8,6 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE NoMonomorphismRestriction #-}
 
 module Javran.AdventOfCode.Y2017.Day21
   (
@@ -30,10 +29,26 @@ import Text.ParserCombinators.ReadP hiding (count, get, many)
 
 data Day21 deriving (Generic)
 
+{-
+  This solution is unnecessarily complicated - it is my intention
+  to experiment with some type-level programming.
+ -}
+
+{-
+  A Grid with size `n` is a compact representation using `Int`
+  as bit vectors.
+
+  Elements are arranged in row-major order from LSB to MSB.
+ -}
 data Grid (n :: Nat) = Grid Int deriving (Eq, Ord)
 
 type PlainGrid = [[Bool]]
 
+{-
+  Haskell Report 2010 (section 6.4 "Numbers") requires that
+  Int at least can cover 2^29 -1 in positive range,
+  so we don't want to go anywhere beyond 5, which uses 5*5 = 25 bits.
+ -}
 instance (KnownNat n, 1 <= n, n <= 5) => Bounded (Grid n) where
   minBound = Grid 0
   maxBound =
@@ -57,10 +72,29 @@ decodeGrid (Grid v) = chunksOf sz $ fmap (testBit v) [0 .. sz * sz -1]
   where
     sz = fromIntegral $ natVal (Proxy @n)
 
-allTransforms :: Int -> (Coord -> a) -> [Coord -> a]
+{-
+  We've used the same trick in Y2020 Day 20:
+  a viewer returns some information regarding a Coord.
+  When we want to flip or rotate a matrix, we don't actually do it,
+  instead, the viewer is pre-composed to transform input Coord
+  into corresponding Coord of the original matrix.
+ -}
+type Viewer a = Coord -> a
+
+{-
+  We should have 12 unique transformations in total, using
+  only flip (no matter which kind: flipping horizontally, vertically,
+  or even diagonally keeps us in the closure)
+  and rotation.
+ -}
+allTransforms :: Int -> Viewer a -> [Viewer a]
 allTransforms len f0 = do
-  let flipVert f (r, c) = f (len -1 - r, c)
-      rotateCwQt f (r, c) = f (len -1 - c, r)
+  let flipVert f (r, c) =
+        -- flip vertically
+        f (len -1 - r, c)
+      rotateCwQt f (r, c) =
+        -- rotate counterclockwise a quarter of tau.
+        f (len -1 - c, r)
   f1 <- [f0, flipVert f0]
   take 4 (iterate rotateCwQt f1)
 
@@ -116,6 +150,11 @@ buildRuleTable ps = V.create do
     VM.unsafeWrite vec lhs (Just rhs)
   -- then populate derived rules.
   forM_ ps \(l, rhs@(Grid rr)) ->
+    {-
+     Note that here we don't skip the first (original) Grid,
+     this is intentional as we want to make sure explicitly stated rules
+     don't contradict each other.
+    -}
     forM_ (allTransformsOf l) \(Grid lhs) -> do
       mOldRule <- VM.unsafeRead vec lhs
       case mOldRule of
@@ -134,7 +173,15 @@ toPlainGrid = concatMap convert
     convert :: [Grid n] -> PlainGrid
     convert = fmap concat . transpose . fmap decodeGrid
 
+{-
+  Generalized Grid of Grids.
+  This representation is chosen so that rule appication
+  can simply be mapped onto each individual elements.
+ -}
 type GGrids = Either [[Grid 2]] [[Grid 3]]
+
+toPlainGrid' :: GGrids -> PlainGrid
+toPlainGrid' = either toPlainGrid toPlainGrid
 
 fromPlainGrid :: PlainGrid -> GGrids
 fromPlainGrid pg
@@ -168,24 +215,22 @@ applyRules (rt2, rt3) =
 instance Solution Day21 where
   solutionRun _ SolutionContext {getInputS, answerShow, answerS} = do
     (extraOps, rawInput) <- consumeExtra getInputS
-    let (pr2, pr3) = consumeOrDie inputP rawInput
-        rt2 = buildRuleTable pr2
-        rt3 = buildRuleTable pr3
-        step = applyRules (rt2, rt3)
+    let allRules =
+          bimap buildRuleTable buildRuleTable $
+            consumeOrDie inputP rawInput
+        step = applyRules allRules
         g0 = Right [[consumeOrDie (gridP (Proxy @3)) ".#./..#/###"]]
         progression = iterate step g0
     case extraOps of
       Nothing -> do
-        do
-          let pg = either toPlainGrid toPlainGrid (progression !! 5)
-          answerShow $ countLength id (concat pg)
-        do
-          let pg = either toPlainGrid toPlainGrid (progression !! 18)
+        forM_ [5,18] \i -> do
+          let pg = toPlainGrid' (progression !! i)
           answerShow $ countLength id (concat pg)
       Just ~[rawN] -> do
+        -- just printing out progression for tests.
         let n = read @Int rawN
         forM_ (zip [0 .. n] progression) \(i, gg) -> do
-          let pg = either toPlainGrid toPlainGrid gg
+          let pg = toPlainGrid' gg
           answerShow i
           forM_ pg \row ->
             answerS (fmap (bool '.' '#') row)
