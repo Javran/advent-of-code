@@ -41,7 +41,7 @@ data Day21 deriving (Generic)
 
   Elements are arranged in row-major order from LSB to MSB.
  -}
-data Grid (n :: Nat) = Grid Int deriving (Eq, Ord)
+newtype Grid (n :: Nat) = Grid Int deriving (Eq, Ord)
 
 type PlainGrid = [[Bool]]
 
