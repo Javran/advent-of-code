@@ -182,6 +182,7 @@ library
     , dlist
     , filepath
     , foldl
+    , ghc-typelits-knownnat
     , hashable
     , hashtables
     , hmatrix

@@ -67,6 +67,7 @@ library:
     - union-find
     - mono-traversable
     - hmatrix
+    - ghc-typelits-knownnat
   ghc-options:
     - -Wall
     - -O2

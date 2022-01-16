@@ -8,6 +8,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
+{-# OPTIONS_GHC -fplugin GHC.TypeLits.KnownNat.Solver #-}
 
 module Javran.AdventOfCode.Y2017.Day21
   (
@@ -125,7 +126,7 @@ gridP pSz = do
     cellP = (False <$ char '.') <++ (True <$ char '#')
     sz = fromIntegral $ natVal pSz
 
-ruleP :: forall n proxy. (KnownNat n, KnownNat (n + 1)) => proxy n -> ReadP (ParsedRule n)
+ruleP :: forall n proxy. KnownNat n => proxy n -> ReadP (ParsedRule n)
 ruleP pSz = do
   lhs <- gridP pSz
   _ <- string " => "
@@ -223,7 +224,7 @@ instance Solution Day21 where
         progression = iterate step g0
     case extraOps of
       Nothing -> do
-        forM_ [5,18] \i -> do
+        forM_ [5, 18] \i -> do
           let pg = toPlainGrid' (progression !! i)
           answerShow $ countLength id (concat pg)
       Just ~[rawN] -> do
