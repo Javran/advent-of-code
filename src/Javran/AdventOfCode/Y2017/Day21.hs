@@ -20,7 +20,6 @@
 {-# OPTIONS_GHC -Wno-deprecations #-}
 {-# OPTIONS_GHC -Wno-typed-holes #-}
 {-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -fdefer-typed-holes #-}
 
 module Javran.AdventOfCode.Y2017.Day21
   (
@@ -56,6 +55,8 @@ data Day21 deriving (Generic)
 
 data Grid (n :: Nat) = Grid Int deriving (Eq, Ord)
 
+type PlainGrid = [[Bool]]
+
 instance (KnownNat n, 1 <= n, n <= 5) => Bounded (Grid n) where
   minBound = Grid 0
   maxBound =
@@ -65,7 +66,7 @@ instance (KnownNat n, 1 <= n, n <= 5) => Bounded (Grid n) where
 
 type Coord = (Int, Int) -- row, col
 
-encodeGrid :: KnownNat n => proxy n -> [[Bool]] -> Grid n
+encodeGrid :: KnownNat n => proxy n -> PlainGrid -> Grid n
 encodeGrid pSz xss =
   if sz * sz == length xs
     then Grid $ foldl' (\acc (i, v) -> if v then setBit acc i else acc) 0 (zip [0 ..] xs)
@@ -74,7 +75,7 @@ encodeGrid pSz xss =
     sz = fromIntegral $ natVal pSz
     xs = concat xss
 
-decodeGrid :: forall n. KnownNat n => Grid n -> [[Bool]]
+decodeGrid :: forall n. KnownNat n => Grid n -> PlainGrid
 decodeGrid (Grid v) = chunksOf sz $ fmap (testBit v) [0 .. sz * sz -1]
   where
     sz = fromIntegral $ natVal (Proxy @n)
@@ -90,10 +91,10 @@ allTransformsOf :: forall n. KnownNat n => Grid n -> [Grid n]
 allTransformsOf g = fmap (encodeGrid (Proxy @n)) reps
   where
     rep = decodeGrid g
-    reps :: [] [[Bool]]
+    reps :: [] PlainGrid
     reps = fmap viewerToRep allViewers
     viewer (r, c) = rep !! r !! c
-    viewerToRep :: (Coord -> Bool) -> [[Bool]]
+    viewerToRep :: (Coord -> Bool) -> PlainGrid
     viewerToRep v = do
       r <- [0 .. sz -1]
       pure [v (r, c) | c <- [0 .. sz -1]]
@@ -151,23 +152,24 @@ buildRuleTable ps = V.create do
             error $ "rule inconsistency: lhs: " <> show lhs <> " rhs: " <> show (rr, rr')
   pure vec
 
+toPlainGrid :: forall n. KnownNat n => [[Grid n]] -> PlainGrid
+toPlainGrid = concatMap convert
+  where
+    convert :: [Grid n] -> PlainGrid
+    convert = fmap concat . transpose . fmap decodeGrid
+
 instance Solution Day21 where
   solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     (xs, ys) <- consumeOrDie inputP <$> getInputS
     let rs0 = buildRuleTable xs
         rs1 = buildRuleTable ys
-    print
-      (concatMap
-         (\case
-            Nothing -> []
-            Just (Grid v) -> [v])
-         rs0)
-    print
-      (concatMap
-         (\case
-            Nothing -> []
-            Just (Grid v) -> [v])
-         rs1)
-    print (length rs0)
-    print (length rs1)
+        demo :: [[Grid 3]]
+        demo =
+          [ [Grid 341, Grid 7, Grid 292]
+          , [Grid 84, Grid 56, Grid 341]
+          , [Grid 56, Grid 292, Grid 84]
+          ]
+        pg = toPlainGrid demo
+    forM_ pg \row ->
+      putStrLn (fmap (bool '.' '#') row)
