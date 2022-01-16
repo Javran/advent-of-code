@@ -6,7 +6,11 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Javran.AdventOfCode.Y2017.Day19
-  (
+  ( Coord
+  , Dir (..)
+  , turnLeft
+  , turnRight
+  , applyDir
   )
 where
 
@@ -21,6 +25,7 @@ import Javran.AdventOfCode.Prelude
 
 data Day19 deriving (Generic)
 
+-- TODO: we have those UDLR or NSWE thing often enough that we should have some utils around.
 type Coord = (Int, Int) -- row, col
 
 data Dir = U | L | D | R deriving (Enum, Show)
