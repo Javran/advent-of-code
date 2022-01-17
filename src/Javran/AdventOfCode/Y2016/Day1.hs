@@ -8,13 +8,14 @@ module Javran.AdventOfCode.Y2016.Day1
 where
 
 import Control.Monad
+import qualified Data.Map.Strict as M
 import Control.Monad.Writer.Lazy
 import qualified Data.DList as DL
-import qualified Data.Set as S
 import Javran.AdventOfCode.GridSystem.RowThenCol.Nwse
 import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.TestExtra
 import Text.ParserCombinators.ReadP hiding (count, get, many)
+import Javran.AdventOfCode.Fixpoint
 
 data Day1 deriving (Generic)
 
@@ -41,12 +42,6 @@ applyInstr (turn, n) (loc0, d) = do
   loc' <- foldM (\loc () -> applyDir' d' loc) loc0 (replicate n ())
   pure (loc', d')
 
-findFix :: Ord a => S.Set a -> [a] -> a
-findFix seen ~(x : xs) =
-  if S.member x seen
-    then x
-    else findFix (S.insert x seen) xs
-
 instance Solution Day1 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     (extraOps, rawInput) <- consumeExtra getInputS
@@ -57,4 +52,5 @@ instance Solution Day1 where
     when runPart1 do
       answerShow $ dist loc
     when runPart2 do
-      answerShow $ dist $ findFix S.empty (DL.toList path)
+      let (_, (loc', _)) = findFix M.empty (zip [0..] $ DL.toList path)
+      answerShow $ dist loc'

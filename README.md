@@ -61,7 +61,7 @@ Solutions, scripting, and templates - all in one repo.
 
 | `<++++++++>` | `<++++++++>` | `<++++++++>` | `<++++++++>` | `<++++++++>` |
 | :-: | :-: | :-: | :-: | :-: |
-| ☐ [Day 1](src/Javran/AdventOfCode/Y2016/Day1.hs) |  |  |  |  |
+| ☑ [Day 1](src/Javran/AdventOfCode/Y2016/Day1.hs) | ☑ [Day 2](src/Javran/AdventOfCode/Y2016/Day2.hs) |  |  |  |
 
 
 [//]: # (PROGRESS_AUTOGEN_END)
