@@ -27,7 +27,7 @@ jobs:
         uses: mstksg/setup-stack@v1
 
       - name: Install z3
-        run: sudo apt-get install -y z3 libz3-dev
+        run: './ci-install-z3.sh'
 
       - name: Cache Key
         id: cache_key
