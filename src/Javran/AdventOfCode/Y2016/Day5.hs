@@ -10,7 +10,6 @@ module Javran.AdventOfCode.Y2016.Day5
   )
 where
 
-
 import Control.Monad
 import qualified Crypto.Hash.MD5 as Md5
 import Data.Bits
@@ -20,17 +19,26 @@ import qualified Data.IntMap.Strict as IM
 import Data.List
 import Data.Word
 import Javran.AdventOfCode.Prelude
+import Javran.AdventOfCode.TestExtra
 import Numeric
 
 data Day5 deriving (Generic)
 
+{-
+  This is one of those garbage puzzles that serves absolutely no purpose:
+  you learn nothing except for calling an external library,
+  and there's no clear method of optimization.
+  And in addition, those digests are expensive to compute,
+  what is even the point?
+ -}
+
 chHex :: Word8 -> Char
 chHex v = head $ showHex v ""
 
-extractDigit3 :: BS.ByteString -> Maybe (Char, Maybe (Int, Char))
-extractDigit3 h = do
+extractDigit3 :: (BS.ByteString -> Bool) -> BS.ByteString -> Maybe (Char, Maybe (Int, Char))
+extractDigit3 isUsable h = do
   let a = BS.index h 2
-  guard $ BS.index h 0 == 0 && BS.index h 1 == 0 && (0xF0 .&. a) == 0
+  guard $ isUsable h
   let pos = 0x0F .&. a
       part2 = do
         guard $ pos >= 0 && pos <= 7
@@ -49,11 +57,22 @@ buildCode missing assigned ~((pos, ch) : xs)
   | pos `elem` missing = buildCode (delete pos missing) (IM.insert pos ch assigned) xs
   | otherwise = buildCode missing assigned xs
 
+{-
+  For tests, relax the condition to just two prefixing zeroes.
+ -}
+isHashUsable :: Bool -> BS.ByteString -> Bool
+isHashUsable relaxedForTest h =
+  if relaxedForTest
+    then BS.index h 0 == 0
+    else BS.index h 0 == 0 && BS.index h 1 == 0 && (0xF0 .&. BS.index h 2) == 0
+
 instance Solution Day5 where
-  solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerS} = do
-    inp <- head . lines <$> getInputS
-    let ss = searchSpace inp
-        usables = mapMaybe extractDigit3 ss
+    (extraOps, rawInput) <- consumeExtra getInputS
+    let inp = head . lines $ rawInput
+        ss = searchSpace inp
+        relaxed = isJust extraOps
+        isUsable = isHashUsable relaxed
+        usables = mapMaybe (extractDigit3 isUsable) ss
     answerS $ take 8 $ fmap fst usables
     answerS $ buildCode [0 .. 7] IM.empty (mapMaybe snd usables)
