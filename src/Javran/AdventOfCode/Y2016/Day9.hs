@@ -11,8 +11,6 @@ where
 
 import Control.Applicative
 import Control.Monad
-import Data.Fix
-import Data.Functor.Foldable
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (count, get, many)
 
@@ -25,19 +23,29 @@ data ChunkF r
 
 type SimpleChunk = ChunkF String
 
-type Chunk = Fix ChunkF
-
 chunkP :: ReadP SimpleChunk
 chunkP = repeatedP <++ (Plain <$> munch1 (`notElem` "(\n"))
   where
     repeatedP = do
-      (m, n) <- between (char '(') (char ')') do
-        m <- decimal1P
-        _ <- char 'x'
-        n <- decimal1P
-        pure (m, n)
-      xs <- replicateM m nextCharP
-      pure $ Repeated n xs
+      m <- char '(' *> decimal1P
+      Repeated <$> (char 'x' *> decimal1P <* char ')')
+        <*> replicateM m nextCharP
+
+{-
+  TODO: We could use some rercursion-schemes stuff here,
+  but the problem is we have two layers:
+
+  parseString :: String -> [SimpleChunk]
+
+  in which
+
+  String -> [SimpleChunk]
+  ==> String -> [] (ChunkF String)
+  ==> String -> (Compose [] ChunkF) String
+
+  so we do have a co-algebra at hand, but there isn't
+  a Base (Compose [] ChunkF) that we can use ...
+ -}
 
 parseInput :: String -> [SimpleChunk]
 parseInput = consumeOrDie (many chunkP <* skipSpaces)
