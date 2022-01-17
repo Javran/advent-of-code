@@ -45,6 +45,7 @@ import Data.Semigroup
 import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Vector as V
+import Data.Word
 import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Numeric
@@ -52,21 +53,19 @@ import Text.ParserCombinators.ReadP hiding (count, get, many)
 
 data Day5 deriving (Generic)
 
-extractDigit :: Builder.Builder -> Maybe Char
-extractDigit d = do
-  let h = Md5.hashlazy (Builder.toLazyByteString d)
-  let a = BS.index h 2
-  guard $ BS.index h 0 == 0 && BS.index h 1 == 0 && (0xF0 .&. a) == 0
-  pure $ head $ showHex (0x0F .&. a) ""
+chHex :: Word8 -> Char
+chHex v = head $ showHex v ""
 
-extractDigit2 :: Builder.Builder -> Maybe (Int, Char)
-extractDigit2 d = do
+extractDigit3 :: Builder.Builder -> Maybe (Char, Maybe (Int, Char))
+extractDigit3 d = do
   let h = Md5.hashlazy (Builder.toLazyByteString d)
   let a = BS.index h 2
   guard $ BS.index h 0 == 0 && BS.index h 1 == 0 && (0xF0 .&. a) == 0
   let pos = 0x0F .&. a
-  guard $ pos >= 0 && pos <= 7
-  pure $ (fromIntegral pos, head $ showHex (unsafeShiftR (BS.index h 3) 4) "")
+      part2 = do
+        guard $ pos >= 0 && pos <= 7
+        pure (fromIntegral pos, chHex (unsafeShiftR (BS.index h 3) 4))
+  pure (chHex pos, part2)
 
 searchSpace :: String -> [Builder.Builder]
 searchSpace p = fmap gen [0 :: Int ..]
@@ -84,10 +83,7 @@ instance Solution Day5 where
   solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerS} = do
     inp <- head . lines <$> getInputS
-    let runPart1 = False
     let ss = searchSpace inp
-    when runPart1 do
-      answerS (take 8 $ mapMaybe extractDigit ss)
-    do
-      let code = buildCode [0..7] IM.empty (mapMaybe extractDigit2 ss)
-      answerS code
+        usables = mapMaybe extractDigit3 ss
+    answerS $ take 8 $ fmap fst usables
+    answerS $ buildCode [0 .. 7] IM.empty (mapMaybe snd usables)
