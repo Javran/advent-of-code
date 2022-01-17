@@ -1,4 +1,5 @@
 {-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
@@ -10,17 +11,21 @@ where
 
 import Control.Applicative
 import Control.Monad
+import Data.Fix
+import Data.Functor.Foldable
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (count, get, many)
 
 data Day9 deriving (Generic)
 
-data Chunk r
+data ChunkF r
   = Plain String
   | Repeated Int r
-  deriving (Show)
+  deriving (Show, Functor)
 
-type SimpleChunk = Chunk String
+type SimpleChunk = ChunkF String
+
+type Chunk = Fix ChunkF
 
 chunkP :: ReadP SimpleChunk
 chunkP = repeatedP <++ (Plain <$> munch1 (`notElem` "(\n"))
@@ -37,12 +42,12 @@ chunkP = repeatedP <++ (Plain <$> munch1 (`notElem` "(\n"))
 parseInput :: String -> [SimpleChunk]
 parseInput = consumeOrDie (many chunkP <* skipSpaces)
 
-decompressLen :: (r -> Int) -> Chunk r -> Int
+decompressLen :: (r -> Int) -> ChunkF r -> Int
 decompressLen rToLen = \case
   Plain xs -> length xs
   Repeated n r -> n * rToLen r
 
-decompressLen2 :: Chunk String -> Int
+decompressLen2 :: ChunkF String -> Int
 decompressLen2 =
   decompressLen (sum . fmap decompressLen2 . parseInput)
 

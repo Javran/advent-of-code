@@ -69,6 +69,7 @@ library:
     - hmatrix
     - ghc-typelits-knownnat
     - cryptohash-md5
+    - data-fix
   ghc-options:
     - -Wall
     - -O2

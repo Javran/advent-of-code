@@ -195,6 +195,7 @@ library
     , containers
     , cryptohash-md5
     , cryptohash-sha256
+    , data-fix
     , data-ordlist
     , directory
     , dlist
