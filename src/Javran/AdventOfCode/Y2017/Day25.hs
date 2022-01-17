@@ -1,53 +1,31 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# OPTIONS_GHC -Wno-deprecations #-}
-{-# OPTIONS_GHC -Wno-typed-holes #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -fdefer-typed-holes #-}
 
 module Javran.AdventOfCode.Y2017.Day25
   (
   )
 where
 
-{- HLINT ignore -}
-
-import Control.Applicative
 import Control.Monad
+import Control.Monad.State.Strict
 import qualified Data.Array as Arr
 import Data.Char
-import Data.Function
-import Data.Function.Memoize (memoFix)
-import qualified Data.IntMap.Strict as IM
-import qualified Data.IntSet as IS
-import Data.List
-import Data.List.Split hiding (sepBy)
-import qualified Data.Map.Strict as M
-import Data.Monoid
 import Data.Semigroup
-import qualified Data.Set as S
-import qualified Data.Text as T
-import qualified Data.Vector as V
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (count, get, many)
 
 data Day25 deriving (Generic)
 
-newtype MState = MState Int deriving (Eq, Ord)
+newtype MState = MState Int
+  deriving stock (Eq, Ord)
+  deriving (Enum) via Int
 
 instance Show MState where
   show (MState v) = "MState " <> [chr (ord 'A' + v)]
@@ -59,6 +37,10 @@ type WriteMoveTransit = (Bool, Move, MState)
 type Rules = Arr.Array (Int, Int) WriteMoveTransit
 
 type Input = ((MState, Int), Rules)
+
+type TapeMemory = (Bool, ([Bool], [Bool]))
+
+type TapeMachine = (MState, TapeMemory)
 
 inputP :: ReadP Input
 inputP = do
@@ -90,8 +72,34 @@ inputP = do
         [((lhs, 0), c0), ((lhs, 1), c1)]
   pure (v0, rules)
 
+type Sim = State TapeMachine
+
+moveLeft, moveRight :: TapeMemory -> TapeMemory
+moveLeft (foc, (ls, rs)) = case ls of
+  [] -> (False, (ls, rs'))
+  (l : ls') -> (l, (ls', rs'))
+  where
+    rs' = foc : rs
+moveRight (foc, (ls, rs)) = case rs of
+  [] -> (False, (ls', rs))
+  (r : rs') -> (r, (ls', rs'))
+  where
+    ls' = foc : ls
+
+step :: Rules -> Sim ()
+step rules = do
+  (w, m, t) <- gets (\(st, (foc, _)) -> rules Arr.! (fromEnum st, fromEnum foc))
+  modify
+    (bimap
+       (\_ -> t)
+       ((case m of
+           ML -> moveLeft
+           MR -> moveRight)
+          . first (\_ -> w)))
+
 instance Solution Day25 where
-  solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    xs <- consumeOrDie inputP <$> getInputS
-    print xs
+    ((s0, cnt), rules) <- consumeOrDie inputP <$> getInputS
+    let (_, (foc, (ls, rs))) =
+          execState (replicateM_ cnt (step rules)) (s0, (False, ([], [])))
+    answerShow $ countLength id ls + countLength id (foc:rs)
