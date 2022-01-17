@@ -12,6 +12,15 @@ import Data.Hashable
 import qualified Data.IntMap.Strict as IM
 import qualified Data.Map.Strict as M
 
+{-
+  Fixpoint finding util.
+
+  Use `iterate` to generate an infinite list of values,
+  `zip [0..]` to tag each value, then this function would find
+  the first reoccuring value and
+  return related info along with the `seen` dictionary built.
+
+ -}
 findFix
   :: forall m k.
   (C.IsMap m, C.MapValue m ~ Int, C.ContainerKey m ~ k)
