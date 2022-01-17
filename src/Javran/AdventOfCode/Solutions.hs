@@ -15,6 +15,7 @@ import Javran.AdventOfCode.TH
 import Javran.AdventOfCode.Y2016.Day1 ()
 import Javran.AdventOfCode.Y2016.Day2 ()
 import Javran.AdventOfCode.Y2016.Day3 ()
+import Javran.AdventOfCode.Y2016.Day4 ()
 import Javran.AdventOfCode.Y2017.Day1 ()
 import Javran.AdventOfCode.Y2017.Day2 ()
 import Javran.AdventOfCode.Y2017.Day3 ()
