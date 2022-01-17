@@ -11,6 +11,7 @@ import qualified Javran.AdventOfCode.Cli.New as CliNew
 import qualified Javran.AdventOfCode.Cli.ProgressReport as CliReport
 import qualified Javran.AdventOfCode.Cli.SolutionCommand as SolutionCommand
 import qualified Javran.AdventOfCode.Cli.Sync as CliSync
+import qualified Javran.AdventOfCode.Cli.TestAll as CliTestAll
 import Javran.AdventOfCode.Infra
 import Network.HTTP.Client
 import Network.HTTP.Client.TLS
@@ -38,7 +39,7 @@ main = do
     _ -> do
       forM_ subCmdHandlers $ \(sub, _) ->
         putStrLn $ cmdHelpPrefix ctxt <> sub <> " ..."
-      putStrLn $  cmdHelpPrefix ctxt <> "<year> <day> ..."
+      putStrLn $ cmdHelpPrefix ctxt <> "<year> <day> ..."
       putStrLn "For listing what <year> and <day> are available, use `report` subcommand."
       exitFailure
   where
@@ -46,5 +47,6 @@ main = do
       [ ("sync", CliSync.syncCommand)
       , ("new", CliNew.newCommand)
       , ("report", CliReport.progressReportCommand)
+      , ("test-all", CliTestAll.testAllCommand)
       , ("_dev", const (pure ()))
       ]
