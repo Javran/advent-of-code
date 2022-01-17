@@ -25,7 +25,6 @@ where
 import Control.Applicative
 import Control.Monad
 import Control.Monad.State.Strict
-import Data.Char
 import Data.List
 import qualified Data.Map.Strict as M
 import qualified Data.Sequence as Seq
@@ -165,7 +164,7 @@ moveToSecurityCheckpoint = do
       (Seq.singleton (Just esLocation, []))
   forM_ (reverse planRev) \d -> do
     AsciiNeedCommand k0 <- liftIO =<< gets esProg
-    AsciiOutput out1 k1 <- liftIO $ k0 (fmap toLower $ show d)
+    AsciiOutput out1 k1 <- liftIO $ k0 (dirToCmd d)
     let Just [RespRoomInfo RoomInfo {riName = riName'}] =
           consumeAllWithReadP responsesP out1
     modify (\es -> es {esProg = k1, esLocation = riName'})
@@ -245,14 +244,14 @@ explore = do
                      -- known steps to execute.
                      forM_ (reverse knownStepsRev) \d -> do
                        AsciiNeedCommand k0 <- liftIO =<< gets esProg
-                       AsciiOutput out1 k1 <- liftIO $ k0 (fmap toLower $ show d)
+                       AsciiOutput out1 k1 <- liftIO $ k0 (dirToCmd d)
                        let Just [RespRoomInfo RoomInfo {riName = riName'}] =
                              consumeAllWithReadP responsesP out1
                        modify (\es -> es {esProg = k1, esLocation = riName'})
 
                      AsciiNeedCommand k0 <- liftIO =<< gets esProg
                      curRoom <- gets esLocation
-                     r@(AsciiOutput out1 _k1) <- liftIO $ k0 (fmap toLower $ show lastStep)
+                     r@(AsciiOutput out1 _k1) <- liftIO $ k0 (dirToCmd lastStep)
                      let Just [RespRoomInfo RoomInfo {riName = newRoom}] =
                            consumeAllWithReadP responsesP out1
                      -- update knowledge

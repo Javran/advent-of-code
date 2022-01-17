@@ -20,21 +20,11 @@ import qualified Data.Map.Strict as M
 import Data.Monoid
 import qualified Data.PSQueue as PQ
 import qualified Data.Set as S
+import Javran.AdventOfCode.GridSystem.RowThenCol.Uldr
 import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.TestExtra
 
 data Day20 deriving (Generic)
-
-type Coord = (Int, Int)
-
-data Dir = U | D | L | R deriving (Eq, Show)
-
-applyDir :: Dir -> Coord -> Coord
-applyDir = \case
-  U -> first pred
-  D -> first succ
-  L -> second pred
-  R -> second succ
 
 data PortalSide = PsInner | PsOuter deriving (Show)
 

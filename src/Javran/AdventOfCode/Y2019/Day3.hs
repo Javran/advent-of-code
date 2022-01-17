@@ -13,14 +13,11 @@ import Control.Monad
 import Control.Monad.State.Strict
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
+import Javran.AdventOfCode.GridSystem.RowThenCol.Uldr
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (count, get, many)
 
 data Day3 deriving (Generic)
-
-type Coord = (Int, Int)
-
-data Dir = U | D | L | R deriving (Show)
 
 type Instr = (Dir, Int)
 
@@ -33,13 +30,6 @@ instrP = do
       <++ (R <$ char 'R')
   n <- decimal1P
   pure (d, n)
-
-applyDir :: Dir -> Coord -> Coord
-applyDir = \case
-  U -> first succ
-  D -> first pred
-  L -> second pred
-  R -> second succ
 
 applyInstr :: Instr -> State ((Coord, Int), M.Map Coord Int) ()
 applyInstr (d, n) = replicateM_ n do

@@ -1,32 +1,22 @@
 {-# LANGUAGE BlockArguments #-}
+{-# LANGUAGE LambdaCase #-}
 
 module Javran.AdventOfCode.Y2019.Day25.Common
   ( Dir (..)
-  , oppositeDir
   , PressureAnalysisResult (..)
   , RoomInfo (..)
   , SimpleResponse (..)
   , Response (..)
   , AsciiResult (..)
   , asciiRun
+  , dirToCmd
+  , module Javran.AdventOfCode.GridSystem.RowThenCol.Nwse
   )
 where
 
 import Data.Char
-import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.Y2019.IntCode
-
-data Dir
-  = North
-  | West
-  | South
-  | East
-  deriving (Bounded, Enum, Show, Eq, Ord)
-
-oppositeDir :: Dir -> Dir
-oppositeDir d = allDirs !! (fromEnum d + 2)
-  where
-    allDirs = cycle universe
+import Javran.AdventOfCode.GridSystem.RowThenCol.Nwse
 
 data PressureAnalysisResult
   = ParFailure {parFailureShouldBeLighter :: Bool}
@@ -57,6 +47,13 @@ data Response
   = RespRoomInfo RoomInfo
   | RespSimple SimpleResponse
   deriving (Show)
+
+dirToCmd :: Dir -> String
+dirToCmd = \case
+  North -> "north"
+  West -> "west"
+  South -> "south"
+  East -> "east"
 
 {-
   TODO: backport those to IntCode module.

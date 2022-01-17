@@ -18,33 +18,11 @@ import Data.List
 import Data.List.Split hiding (sepBy)
 import Data.Monoid
 import qualified Data.Set as S
+import Javran.AdventOfCode.GridSystem.RowThenCol.Uldr
 import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.Y2019.IntCode
 
 data Day17 deriving (Generic)
-
-type Coord = (Int, Int)
-
--- alters rotate counter-clockwise
-data Dir
-  = U
-  | L
-  | D
-  | R
-  deriving (Show, Enum, Bounded)
-
-turnLeft :: Dir -> Dir
-turnLeft d = cycle universe !! (fromEnum d + 1)
-
-turnRight :: Dir -> Dir
-turnRight d = cycle universe !! (fromEnum d + 3)
-
-applyDir :: Dir -> Coord -> Coord
-applyDir = \case
-  U -> first pred
-  D -> first succ
-  L -> second pred
-  R -> second succ
 
 type Robot = (Dir, Coord)
 

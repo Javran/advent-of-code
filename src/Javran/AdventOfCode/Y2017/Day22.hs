@@ -1,6 +1,5 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE NumericUnderscores #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -14,8 +13,8 @@ import Control.Monad
 import Control.Monad.RWS.CPS
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
+import Javran.AdventOfCode.GridSystem.RowThenCol.Uldr
 import Javran.AdventOfCode.Prelude
-import Javran.AdventOfCode.Y2017.Day19 (Coord, Dir (..), applyDir)
 import Javran.AdventOfCode.TestExtra (consumeExtra)
 
 data Day22 deriving (Generic)
@@ -52,27 +51,6 @@ burst = do
   modify (second (\(cur, d) -> (applyDir d cur, d)))
 
 data NodeState2 = Weakened | Infected | Flagged deriving (Eq)
-
-oppositeDir :: Dir -> Dir
-oppositeDir = \case
-  U -> D
-  D -> U
-  L -> R
-  R -> L
-
-turnLeft :: Dir -> Dir
-turnLeft = \case
-  U -> L
-  L -> D
-  D -> R
-  R -> U
-
-turnRight :: Dir -> Dir
-turnRight = \case
-  U -> R
-  R -> D
-  D -> L
-  L -> U
 
 type Sim2 = RWS () (Sum Int) WorldState2
 
@@ -116,7 +94,7 @@ instance Solution Day22 where
     do
       let m = M.fromSet (\_ -> Infected) ns
           iters = case extraOps of
-                    Nothing -> 10_000_000
-                    Just _ -> 10000
+            Nothing -> 10_000_000
+            Just _ -> 10000
           (_, _, Sum ans) = runRWS (replicateM iters burst2) () (m, vc)
       answerShow ans

@@ -18,6 +18,7 @@ import qualified Data.Map.Strict as M
 import qualified Data.Sequence as Seq
 import qualified Data.Set as S
 import Javran.AdventOfCode.ColorfulTerminal
+import Javran.AdventOfCode.GridSystem.RowThenCol.Nwse
 import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.Y2019.IntCode
 
@@ -34,21 +35,7 @@ data Day15 deriving (Generic)
 
  -}
 
-type Coord = (Int, Int) -- row and col
-
 data Cell = CEmpty | CWall deriving (Show, Eq)
-
-data Dir = N | S | W | E deriving (Show, Bounded, Enum)
-
-allDirs :: [Dir]
-allDirs = universe
-
-applyDir :: Dir -> Coord -> Coord
-applyDir = \case
-  N -> first pred
-  S -> first succ
-  W -> second pred
-  E -> second succ
 
 type FloorInfo = M.Map Coord Cell
 

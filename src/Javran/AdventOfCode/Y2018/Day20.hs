@@ -22,21 +22,11 @@ import qualified Data.PSQueue as PQ
 import Data.Semigroup
 import qualified Data.Sequence as Seq
 import qualified Data.Set as S
+import Javran.AdventOfCode.GridSystem.RowThenCol.Nwse
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (count, get, many)
 
 data Day20 deriving (Generic)
-
-data Dir = N | W | S | E deriving (Show, Eq, Ord)
-
-type Coord = (Int, Int) -- row, col
-
-applyDir :: Dir -> Coord -> Coord
-applyDir = \case
-  N -> first pred
-  S -> first succ
-  W -> second pred
-  E -> second succ
 
 data Re
   = ReAtom Dir

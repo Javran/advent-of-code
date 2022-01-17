@@ -1,6 +1,5 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -21,26 +20,10 @@ import Data.Char
 import qualified Data.DList as DL
 import qualified Data.Map.Strict as M
 import Data.Semigroup
+import Javran.AdventOfCode.GridSystem.RowThenCol.Uldr
 import Javran.AdventOfCode.Prelude
 
 data Day19 deriving (Generic)
-
--- TODO: we have those UDLR or NSWE thing often enough that we should have some utils around.
-type Coord = (Int, Int) -- row, col
-
-data Dir = U | L | D | R deriving (Enum, Show)
-
-turnLeft, turnRight :: Dir -> Dir
-(turnLeft, turnRight) = (turn 1, turn 3)
-  where
-    turn dd d = toEnum $ (fromEnum d + dd) `rem` 4
-
-applyDir :: Dir -> Coord -> Coord
-applyDir = \case
-  U -> first pred
-  D -> first succ
-  L -> second pred
-  R -> second succ
 
 data Point
   = Normal

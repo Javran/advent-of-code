@@ -14,7 +14,6 @@ where
 
 import Control.Monad
 import Control.Monad.State.Strict
-import Data.Char
 import Data.List
 import qualified Data.Set as S
 import Javran.AdventOfCode.Prelude
@@ -78,7 +77,7 @@ crack psfDir = do
   modify \cs -> cs {csInventory = tryInv}
   p0 <- gets csProg
   AsciiNeedCommand k0 <- liftIO p0
-  AsciiOutput out k1 <- liftIO $ k0 (fmap toLower $ show psfDir)
+  AsciiOutput out k1 <- liftIO $ k0 (dirToCmd psfDir)
   modify \cs -> cs {csProg = k1}
   case consumeAllWithReadP responsesP out of
     Just

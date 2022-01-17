@@ -1,6 +1,5 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE TypeApplications #-}
 
@@ -13,20 +12,10 @@ import Control.Monad
 import Control.Monad.Loops
 import Control.Monad.State.Strict
 import qualified Data.Map.Strict as M
+import Javran.AdventOfCode.GridSystem.RowThenCol.Uldr
 import Javran.AdventOfCode.Prelude
 
 data Day3 deriving (Generic)
-
-type Coord = (Int, Int) -- row, col
-
-data Dir = U | D | L | R
-
-applyDir :: Dir -> Coord -> Coord
-applyDir = \case
-  U -> first pred
-  D -> first succ
-  L -> second pred
-  R -> second succ
 
 spiral :: [Dir]
 spiral = concat $ zipWith (\d t -> replicate t d) dirs times
