@@ -1,0 +1,53 @@
+name: Continuous Integration
+on:
+  push:
+    branches:
+      - master
+    paths-ignore:
+      - "**.md"
+  pull_request:
+    paths-ignore:
+      - "**.md"
+
+jobs:
+  build:
+    name: ci
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: 'GitHub actions env workaround'
+        run: 'echo "ACTIONS_ALLOW_UNSECURE_COMMANDS=true" >> $GITHUB_ENV'
+
+      - uses: actions/checkout@v2
+
+      - name: Setup Stack
+        uses: mstksg/setup-stack@v1
+
+      - name: Install z3
+        run: sudo apt-get install -y z3 libz3-dev
+
+      - name: Cache Key
+        id: cache_key
+        run: echo ::set-output name=key::$(md5sum stack.yaml | awk '{print $1}')
+
+      - name: Cache Dependencies
+        id: cache
+        uses: actions/cache@v2
+        with:
+          path: ~/.stack
+          key: ${{ matrix.os }}-${{ steps.cache_key.outputs.key }}
+
+      - name: Variables
+        id: variables
+        run: |
+          echo ::set-output name=pkg_name::$(cat *.cabal | grep "name:" | sed "s/name:\s*\(.*\)/\1/")
+
+      - name: Build Snapshot
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          stack --install-ghc --no-interleaved-output --no-terminal test --only-snapshot
+
+      - run: stack --no-interleaved-output --no-terminal test
