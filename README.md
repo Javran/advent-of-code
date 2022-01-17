@@ -57,6 +57,12 @@ Solutions, scripting, and templates - all in one repo.
 | ☑ [Day 16](src/Javran/AdventOfCode/Y2017/Day16.hs) | ☑ [Day 17](src/Javran/AdventOfCode/Y2017/Day17.hs) | ☑ [Day 18](src/Javran/AdventOfCode/Y2017/Day18.hs) | ☑ [Day 19](src/Javran/AdventOfCode/Y2017/Day19.hs) | ☑ [Day 20](src/Javran/AdventOfCode/Y2017/Day20.hs) |
 | ☑ [Day 21](src/Javran/AdventOfCode/Y2017/Day21.hs) | ☑ [Day 22](src/Javran/AdventOfCode/Y2017/Day22.hs) | ☑ [Day 23](src/Javran/AdventOfCode/Y2017/Day23.hs) | ☑ [Day 24](src/Javran/AdventOfCode/Y2017/Day24.hs) | ☑ [Day 25](src/Javran/AdventOfCode/Y2017/Day25.hs) |
 
+### 2016
+
+| `<++++++++>` | `<++++++++>` | `<++++++++>` | `<++++++++>` | `<++++++++>` |
+| :-: | :-: | :-: | :-: | :-: |
+| ☐ [Day 1](src/Javran/AdventOfCode/Y2016/Day1.hs) |  |  |  |  |
+
 
 [//]: # (PROGRESS_AUTOGEN_END)
 
