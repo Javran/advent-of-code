@@ -1,53 +1,60 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE PatternGuards #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# OPTIONS_GHC -Wno-deprecations #-}
-{-# OPTIONS_GHC -Wno-typed-holes #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -fdefer-typed-holes #-}
 
 module Javran.AdventOfCode.Y2016.Day1
   (
   )
 where
 
-{- HLINT ignore -}
-
-import Control.Applicative
 import Control.Monad
-import Data.Char
-import Data.Function
-import Data.Function.Memoize (memoFix)
-import qualified Data.IntMap.Strict as IM
-import qualified Data.IntSet as IS
-import Data.List
-import Data.List.Split hiding (sepBy)
-import qualified Data.Map.Strict as M
-import Data.Monoid
-import Data.Semigroup
+import Control.Monad.Writer.Lazy
+import qualified Data.DList as DL
 import qualified Data.Set as S
-import qualified Data.Text as T
-import qualified Data.Vector as V
-import GHC.Generics (Generic)
+import Javran.AdventOfCode.GridSystem.RowThenCol.Nwse
 import Javran.AdventOfCode.Prelude
-import Text.ParserCombinators.ReadP hiding (count, many, get)
+import Javran.AdventOfCode.TestExtra
+import Text.ParserCombinators.ReadP hiding (count, get, many)
 
 data Day1 deriving (Generic)
 
+type Instr = (Dir -> Dir, Int)
+
+instrP :: ReadP Instr
+instrP = do
+  turn <- (turnLeft <$ char 'L') <++ (turnRight <$ char 'R')
+  n <- decimal1P
+  pure (turn, n)
+
+type LocDir = (Coord, Dir)
+
+type Traced = Writer (DL.DList Coord)
+
+applyDir' :: Dir -> Coord -> Traced Coord
+applyDir' d coord = do
+  let d' = applyDir d coord
+  d' <$ tell (DL.singleton d')
+
+applyInstr :: Instr -> LocDir -> Traced LocDir
+applyInstr (turn, n) (loc0, d) = do
+  let d' = turn d
+  loc' <- foldM (\loc () -> applyDir' d' loc) loc0 (replicate n ())
+  pure (loc', d')
+
+findFix :: Ord a => S.Set a -> [a] -> a
+findFix seen ~(x : xs) =
+  if S.member x seen
+    then x
+    else findFix (S.insert x seen) xs
+
 instance Solution Day1 where
-  solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    xs <- fmap id . lines <$> getInputS
-    mapM_ print xs
+    (extraOps, rawInput) <- consumeExtra getInputS
+    let instrs = consumeOrDie (instrP `sepBy` string ", " <* char '\n') rawInput
+        (runPart1, runPart2) = shouldRun extraOps
+        dist = manhattan (0, 0)
+        ((loc, _), path) = runWriter (foldM (\ld instr -> applyInstr instr ld) ((0, 0), N) instrs)
+    when runPart1 do
+      answerShow $ dist loc
+    when runPart2 do
+      answerShow $ dist $ findFix S.empty (DL.toList path)

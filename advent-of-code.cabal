@@ -29,6 +29,7 @@ library
       Javran.AdventOfCode.Cli.TestAll
       Javran.AdventOfCode.Cli.TestdataDigest
       Javran.AdventOfCode.ColorfulTerminal
+      Javran.AdventOfCode.Fixpoint
       Javran.AdventOfCode.GridSystem.RowThenCol.Nwse
       Javran.AdventOfCode.GridSystem.RowThenCol.Uldr
       Javran.AdventOfCode.Infra
