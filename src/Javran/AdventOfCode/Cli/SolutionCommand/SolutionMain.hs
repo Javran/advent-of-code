@@ -25,7 +25,7 @@ import Javran.AdventOfCode.Cli.New
 import Javran.AdventOfCode.Cli.ProgressReport
 import Javran.AdventOfCode.Cli.TestdataDigest
 import Javran.AdventOfCode.Infra
-import Javran.AdventOfCode.Network (submitAnswer)
+import Javran.AdventOfCode.Network
 import Javran.AdventOfCode.Solutions
 import Javran.AdventOfCode.Testdata (TestdataInfo (..), scanForSolution)
 import System.Directory
@@ -53,6 +53,7 @@ data Command
   | CmdTest
   | CmdAddExtra ExampleName
   | CmdListExamples
+  | CmdDownload (Maybe FilePath)
 
 getExampleInputPath :: Int -> Int -> String -> FilePath
 getExampleInputPath year day n =
@@ -117,6 +118,8 @@ parseArgs = \case
             mx <- atMostOneExtra args
             maybe (pure defExample) parseExampleName mx
         | cmd == "ls" -> CmdListExamples <$ expectNoExtra args
+        | cmd == "download" ->
+          CmdDownload <$> atMostOneExtra args
         | otherwise -> Left $ "Unrecognized: " <> unwords (cmd : args)
   where
     defExample = ExName "example"
@@ -157,6 +160,7 @@ runMainWith SubCmdContext {cmdHelpPrefix, mTerm, manager} year day args = do
         ]
       mkHelp "add-extra" ["Prepend extra input fields to tests."]
       mkHelp "ls" ["List all examples."]
+      mkHelp "download [dest]" ["Download login input to a specific location or stdout if left empty."]
       exitFailure
     Right v -> pure v
   case cmd of
@@ -230,5 +234,11 @@ runMainWith SubCmdContext {cmdHelpPrefix, mTerm, manager} year day args = do
                 case mExpectFilePath of
                   Just ep -> putStrLn $ "  " <> ep
                   Nothing -> pure ()
+            CmdDownload mDest -> do
+              mySession <- getEnv "ADVENT_OF_CODE_SESSION"
+              raw <- fetchInputData manager (BSC.pack mySession) year day
+              case mDest of
+                Just actualFp -> BSL.writeFile actualFp raw
+                Nothing -> BSC.putStrLn (BSL.toStrict raw)
         Nothing ->
           die "No solution available, only `new` command is accepted."
