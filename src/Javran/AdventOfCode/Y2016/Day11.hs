@@ -83,6 +83,7 @@ data Day11 deriving (Generic)
 
 data Obj = Generator | Microchip deriving (Show)
 
+inputP :: ReadP [[(String, Obj)]]
 inputP = do
   let wordP = munch1 isAsciiLower
       objP =
@@ -94,21 +95,28 @@ inputP = do
           pure (w, o)
       floorP =
         ([] <$ string "nothing relevant")
-          <++
-          -- TODO: reduce backtracking
-          choice
-            [ (: []) <$> objP
-            , do
-                a <- objP
-                _ <- string " and "
-                b <- objP
-                pure [a, b]
-            , do
-                xs <- many1 (objP <* string ", ")
-                _ <- string "and "
-                x <- objP
-                pure (xs <> [x])
-            ]
+          <++ (do
+                 a <- objP
+                 ahead <- look
+                 if
+                     | "." `isPrefixOf` ahead ->
+                       -- exactly one thing
+                       pure [a]
+                     | " and " `isPrefixOf` ahead -> do
+                       -- two things
+                       _ <- string " and "
+                       b <- objP
+                       pure [a, b]
+                     | ", " `isPrefixOf` ahead -> do
+                       -- three, four, or more things, oxford comma.
+                       bs <-
+                         between
+                           (string ", ")
+                           (string ", and ")
+                           (objP `sepBy1` string (", "))
+                       c <- objP
+                       pure $ a : bs <> [c]
+                     | otherwise -> pfail)
       dotNl = string ".\n"
   f1 <- between (string "The first floor contains ") dotNl floorP
   f2 <- between (string "The second floor contains ") dotNl floorP
