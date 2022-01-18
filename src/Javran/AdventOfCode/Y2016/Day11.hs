@@ -42,7 +42,7 @@ import qualified Data.Text as T
 import qualified Data.Vector as V
 import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
-import Text.ParserCombinators.ReadP hiding (count, many, get)
+import Text.ParserCombinators.ReadP hiding (count, get, many)
 
 data Day11 deriving (Generic)
 
@@ -81,8 +81,43 @@ data Day11 deriving (Generic)
 
  -}
 
+data Obj = Generator | Microchip deriving (Show)
+
+inputP = do
+  let wordP = munch1 isAsciiLower
+      objP =
+        string "a " *> do
+          w <- wordP
+          o <-
+            (Microchip <$ string "-compatible microchip")
+              <++ (Generator <$ string " generator")
+          pure (w, o)
+      floorP =
+        ([] <$ string "nothing relevant")
+          <++
+          -- TODO: reduce backtracking
+          choice
+            [ (: []) <$> objP
+            , do
+                a <- objP
+                _ <- string " and "
+                b <- objP
+                pure [a, b]
+            , do
+                xs <- many1 (objP <* string ", ")
+                _ <- string "and "
+                x <- objP
+                pure (xs <> [x])
+            ]
+      dotNl = string ".\n"
+  f1 <- between (string "The first floor contains ") dotNl floorP
+  f2 <- between (string "The second floor contains ") dotNl floorP
+  f3 <- between (string "The third floor contains ") dotNl floorP
+  f4 <- between (string "The fourth floor contains ") dotNl floorP
+  pure [f1, f2, f3, f4]
+
 instance Solution Day11 where
   solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    xs <- fmap id . lines <$> getInputS
+    xs <- consumeOrDie inputP <$> getInputS
     mapM_ print xs
