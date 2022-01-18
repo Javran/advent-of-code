@@ -4,28 +4,17 @@
 {-# LANGUAGE TypeApplications #-}
 
 module Javran.AdventOfCode.Y2017.Day6
-  ( rotateLeftBy
-  , rotateRightBy
+  (
   )
 where
 
 import Control.Lens
 import qualified Data.Map.Strict as M
 import Data.Semigroup
+import Javran.AdventOfCode.Misc
 import Javran.AdventOfCode.Prelude
 
 data Day6 deriving (Generic)
-
-{-
-  Rotates a known-length list to left or right.
-  n > 0, 0 <= offset <= n.
-
-  TODO: QuickCheck, make this accept nums in other ranges.
-
- -}
-rotateLeftBy, rotateRightBy :: Int -> Int -> [a] -> [a]
-rotateLeftBy n offset xs = take n $ drop offset $ cycle xs
-rotateRightBy n offset = rotateLeftBy n (n - offset)
 
 {-
   Computes a balanced way to split `val` into `n` bins,

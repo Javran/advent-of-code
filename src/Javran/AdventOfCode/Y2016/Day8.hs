@@ -12,9 +12,9 @@ where
 import Control.Lens
 import Control.Monad
 import Data.List
+import Javran.AdventOfCode.Misc (rotateRightBy)
 import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.TestExtra
-import Javran.AdventOfCode.Y2017.Day6 (rotateRightBy)
 import Text.ParserCombinators.ReadP hiding (count, get, many)
 
 data Day8 deriving (Generic)

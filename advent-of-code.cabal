@@ -34,6 +34,7 @@ library
       Javran.AdventOfCode.GridSystem.RowThenCol.Uldr
       Javran.AdventOfCode.Infra
       Javran.AdventOfCode.Main
+      Javran.AdventOfCode.Misc
       Javran.AdventOfCode.Network
       Javran.AdventOfCode.NumberTheory
       Javran.AdventOfCode.Prelude

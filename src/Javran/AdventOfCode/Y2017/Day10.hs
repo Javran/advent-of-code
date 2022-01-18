@@ -17,9 +17,9 @@ import Data.List.Split hiding (sepBy)
 import qualified Data.Vector.Unboxed as VU
 import qualified Data.Vector.Unboxed.Mutable as VUM
 import Data.Word
+import Javran.AdventOfCode.Misc (rotateLeftBy, rotateRightBy)
 import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.TestExtra
-import Javran.AdventOfCode.Y2017.Day6 (rotateLeftBy, rotateRightBy)
 import Text.Printf
 
 data Day10 deriving (Generic)

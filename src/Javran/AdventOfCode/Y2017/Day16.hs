@@ -16,9 +16,9 @@ import Data.Coerce
 import Data.List
 import qualified Data.Map.Strict as M
 import Data.Monoid
+import Javran.AdventOfCode.Misc (rotateRightBy)
 import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.TestExtra
-import Javran.AdventOfCode.Y2017.Day6 (rotateRightBy)
 import Text.ParserCombinators.ReadP hiding (count, get, many)
 
 data Day16 deriving (Generic)
