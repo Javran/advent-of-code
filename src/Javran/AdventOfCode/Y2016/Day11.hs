@@ -14,8 +14,10 @@ import Control.Lens
 import Control.Monad
 import Data.Bits
 import Data.Char
+import Data.Foldable
 import qualified Data.IntMap.Strict as IM
 import Data.List
+import qualified Data.List.NonEmpty as NE
 import qualified Data.Map.Strict as M
 import qualified Data.PSQueue as PQ
 import Data.Semigroup
@@ -114,11 +116,12 @@ inputP = do
   - level: 0 ~ 3, where the elevator is, which is also where we are.
   - floors: from 1st to 4th.
 
-  TOOD: probably a good invariant for floor state to have is that
-  values should be non-empty.
+  FloorState uses NonEmpty, as we want to make sure that when
+  none of G or M are on that floor, we also remove that element's presence
+  as map key as well.
 
  -}
-type FloorState = IM.IntMap [Obj]
+type FloorState = IM.IntMap (NE.NonEmpty Obj)
 
 type WorldState = (Int, [FloorState])
 
@@ -163,7 +166,7 @@ normWorld (ev, floors) = (ev, sort $ IM.elems compact)
       {-
         Generator encodes to 0~3, Microchip encodes to 4~7.
        -}
-      o <- objs
+      o <- toList objs
       let byObj = case o of
             Generator -> id
             Microchip -> \v -> unsafeShiftL v 4
@@ -175,7 +178,7 @@ _pprWorld iToS (ev, floors) = do
     let objs =
           ["E" | ev == i] <> do
             (k, vs) <- IM.toAscList fl
-            v <- vs
+            v <- toList vs
             pure $
               take 3 (iToS k) <> "-" <> case v of
                 Generator -> "G"
@@ -200,7 +203,7 @@ step (ev, floors) = do
       objs :: [(Int, Obj)]
       objs = do
         (k, vs) <- IM.toList flFrom
-        v <- vs
+        v <- toList vs
         pure (k, v)
       flTo = floors !! ev'
   objsFrom <- do
@@ -218,19 +221,16 @@ step (ev, floors) = do
           (\case
              Nothing -> unreachable
              Just vs ->
-               let vs' = delete o vs
-                in vs' <$ guard (not $ null vs'))
+               NE.nonEmpty $ delete o (toList vs))
           i
-      insertObj (i, o) = IM.insertWith (<>) i [o]
+      insertObj (i, o) = IM.insertWith (<>) i (o NE.:| [])
       flFrom' = foldr deleteObj flFrom objsFrom
       flTo' = foldr insertObj flTo objsFrom
   guard $ isFloorSafe flFrom' && isFloorSafe flTo'
   pure (ev', floors & ix ev .~ flFrom' & ix ev' .~ flTo')
 
-step' :: WorldState -> [] WorldState
-step' ws = M.elems tmp
-  where
-    tmp = M.fromList $ fmap (\v -> (normWorld v, v)) (step ws)
+step' :: WorldState -> M.Map WorldStateNorm WorldState
+step' ws = M.fromList $ fmap (\v -> (normWorld v, v)) (step ws)
 
 {-
   The estimation is the total distance for every item to get to 4th floor.
@@ -249,28 +249,26 @@ estimateDist (_, floors) =
   sum $ zipWith (\dist fs -> dist * sum (fmap length $ IM.elems fs)) [3, 2, 1] floors
 
 aStar :: PQ.PSQ WorldState (Arg Int Int) -> M.Map WorldStateNorm Int -> Int
-aStar q0 gScores = case PQ.minView q0 of
+aStar q0 dists = case PQ.minView q0 of
   Nothing -> error "queue exhausted"
   Just (ws PQ.:-> (Arg fScore dist), q1) ->
     if fScore == dist
       then dist
       else
-        let gScore = gScores M.! normWorld ws
-            nexts = do
-              ws' <- step' ws
-              let mGScore = gScores M.!? normWorld ws'
-                  gScore' = gScore + 1
-                  fScore' = gScore' + estimateDist ws'
+        let nexts = do
+              p@(nws', ws') <- M.toList $ step' ws
+              let mDists' = dists M.!? nws'
                   dist' = dist + 1
-              guard $ maybe True (gScore' <) mGScore
-              pure (ws', gScore', Arg fScore' dist')
+                  fScore' = dist' + estimateDist ws'
+              guard $ maybe True (dist' <) mDists'
+              pure (p, dist', Arg fScore' dist')
             q2 = foldr upd q1 nexts
               where
-                upd (ws', _, prio') = PQ.insert ws' prio'
-            gScores' = foldr upd gScores nexts
+                upd ((_, ws'), _, prio') = PQ.insert ws' prio'
+            dists' = foldr upd dists nexts
               where
-                upd (ws', gScore', _) = M.insert (normWorld ws') gScore'
-         in aStar q2 gScores'
+                upd ((nws', _), dist', _) = M.insert nws' dist'
+         in aStar q2 dists'
 
 solve :: ParsedInput -> Int
 solve inp =
@@ -278,15 +276,16 @@ solve inp =
     (PQ.singleton initSt (Arg (estimateDist initSt) 0))
     (M.singleton (normWorld initSt) 0)
   where
-    objTypes = do
-      fl <- inp
-      (t, _) <- fl
-      pure t
+    objTypes = [t | fl <- inp, (t, _) <- fl]
+    {-
+      turn element string into ints, so we can use IntMap and avoid having to
+      carry those strings around in WorldState.
+     -}
     (sToI, _iToS) = internalize objTypes
     initSt :: WorldState
     initSt =
       ( 0
-      , fmap (IM.fromListWith (<>) . fmap (\(k, v) -> (sToI k, [v]))) inp
+      , fmap (IM.fromListWith (<>) . fmap (\(k, v) -> (sToI k, v NE.:| []))) inp
       )
 
 instance Solution Day11 where
