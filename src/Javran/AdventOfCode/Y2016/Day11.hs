@@ -28,6 +28,7 @@ where
 import Control.Applicative
 import Control.Lens
 import Control.Monad
+import Data.Bits
 import Data.Char
 import Data.Function
 import Data.Function.Memoize (memoFix)
@@ -138,7 +139,6 @@ inputP = do
   - level: 0 ~ 3, where the elevator is, which is also where we are.
   - floors: from 1st to 4th.
 
-
   TOOD: probably a good invariant for floor state to have is that
   values should be non-empty.
 
@@ -146,6 +146,24 @@ inputP = do
 type FloorState = IM.IntMap [Obj]
 
 type WorldState = (Int, [FloorState])
+
+type WorldStateNorm = (Int, [Int])
+
+normWorld :: WorldState -> WorldStateNorm
+normWorld (ev, floors) = (ev, sort $ IM.elems compact)
+  where
+    compact :: IM.IntMap Int
+    compact = IM.fromListWith (.|.) do
+      (lvl, fs) <- zip [0 :: Int ..] floors
+      (objTyp, objs) <- IM.toList fs
+      {-
+        Generator encodes to 0~3, Microchip encodes to 4~7.
+       -}
+      o <- objs
+      let byObj = case o of
+            Generator -> id
+            Microchip -> \v -> unsafeShiftL v 4
+      pure (objTyp, byObj (unsafeShiftL 1 lvl))
 
 pprWorld :: (Int -> String) -> WorldState -> IO ()
 pprWorld iToS (ev, floors) = do
@@ -205,6 +223,11 @@ step (ev, floors) = do
   guard $ isFloorSafe flFrom' && isFloorSafe flTo'
   pure (ev', floors & ix ev .~ flFrom' & ix ev' .~ flTo')
 
+step' :: WorldState -> [] WorldState
+step' ws = M.elems tmp
+  where
+    tmp = M.fromList $ fmap (\v -> (normWorld v, v)) (step ws)
+
 {-
   The estimation is the total distance for every item to get to 4th floor.
   This would underestimate as:
@@ -221,18 +244,17 @@ estimateDist :: WorldState -> Int
 estimateDist (_, floors) =
   sum $ zipWith (\dist fs -> dist * (length $ concat $ IM.elems fs)) [3, 2, 1] floors
 
-
-aStar :: t -> PQ.PSQ WorldState (Arg Int Int) -> M.Map WorldState Int -> Int
+aStar :: t -> PQ.PSQ WorldState (Arg Int Int) -> M.Map WorldStateNorm Int -> Int
 aStar ppr q0 gScores = case PQ.minView q0 of
   Nothing -> error "queue exhausted"
   Just (ws PQ.:-> (Arg (fScore :: Int) (dist :: Int)), q1) ->
     if fScore == dist
       then dist
       else
-        let gScore = gScores M.! ws
+        let gScore = gScores M.! normWorld ws
             nexts = do
-              ws' <- step ws
-              let mGScore = gScores M.!? ws'
+              ws' <- step' ws
+              let mGScore = gScores M.!? normWorld ws'
                   gScore' = gScore + 1
                   fScore' = gScore' + estimateDist ws'
                   dist' = dist + 1
@@ -243,7 +265,7 @@ aStar ppr q0 gScores = case PQ.minView q0 of
                 upd (ws', _, prio') = PQ.insert ws' prio'
             gScores' = foldr upd gScores nexts
               where
-                upd (ws', gScore', _) = M.insert ws' gScore'
+                upd (ws', gScore', _) = M.insert (normWorld ws') gScore'
          in aStar ppr q2 gScores'
 
 instance Solution Day11 where
@@ -261,7 +283,11 @@ instance Solution Day11 where
           , fmap (IM.fromListWith (<>) . fmap (\(k, v) -> (sToI k, [v]))) inp
           )
     let ans =
-          aStar (pprWorld iToS) (PQ.singleton initSt (Arg (estimateDist initSt) 0)) (M.singleton initSt 0)
+          aStar
+            (pprWorld iToS)
+            (PQ.singleton initSt (Arg (estimateDist initSt) 0))
+            (M.singleton (normWorld initSt) 0)
     answerShow ans
-    answerShow (ans + 4 * 6)
-
+    do
+      -- TODO
+      answerShow (ans + 4 * 6)
