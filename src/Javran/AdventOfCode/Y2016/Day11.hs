@@ -39,9 +39,11 @@ import qualified Data.Map.Strict as M
 import Data.Monoid
 import qualified Data.PSQueue as PQ
 import Data.Semigroup
+import qualified Data.Sequence as Seq
 import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Vector as V
+import Debug.Trace
 import GHC.Generics (Generic)
 import GHC.IO (unsafePerformIO)
 import Javran.AdventOfCode.Misc
@@ -136,6 +138,10 @@ inputP = do
   - level: 0 ~ 3, where the elevator is, which is also where we are.
   - floors: from 1st to 4th.
 
+
+  TOOD: probably a good invariant for floor state to have is that
+  values should be non-empty.
+
  -}
 type FloorState = IM.IntMap [Obj]
 
@@ -185,7 +191,14 @@ step (ev, floors) = do
          pure [obj1])
         <|> pure []
     pure $ obj0 : os
-  let deleteObj (i, o) = IM.adjust (delete o) i
+  let deleteObj (i, o) =
+        IM.alter
+          (\case
+             Nothing -> unreachable
+             Just vs ->
+               let vs' = delete o vs
+                in vs' <$ guard (not $ null vs'))
+          i
       insertObj (i, o) = IM.insertWith (<>) i [o]
       flFrom' = foldr deleteObj flFrom objsFrom
       flTo' = foldr insertObj flTo objsFrom
@@ -193,17 +206,23 @@ step (ev, floors) = do
   pure (ev', floors & ix ev .~ flFrom' & ix ev' .~ flTo')
 
 {-
-  For now let's just ignore where the elevator is
-  and say if that floor contains anything, it needs to be moved
-  to the 4-th floor and the underestimation is just that floor distance.
+  The estimation is the total distance for every item to get to 4th floor.
+  This would underestimate as:
+
+  - it doesn't consider current level and unsafe states
+  - despite that we can move at most 2 items at a time,
+    1 item is needed for elevator to function,
+    so effectively we still carry items one by one.
 
   Also that this esimation has the property that we are in a goal state
   iff. estimation says 0.
  -}
 estimateDist :: WorldState -> Int
 estimateDist (_, floors) =
-  sum $ zipWith (\dist fs -> if null fs then 0 else dist) [3, 2, 1] floors
+  sum $ zipWith (\dist fs -> dist * (length $ concat $ IM.elems fs)) [3, 2, 1] floors
 
+
+aStar :: t -> PQ.PSQ WorldState (Arg Int Int) -> M.Map WorldState Int -> Int
 aStar ppr q0 gScores = case PQ.minView q0 of
   Nothing -> error "queue exhausted"
   Just (ws PQ.:-> (Arg (fScore :: Int) (dist :: Int)), q1) ->
@@ -225,18 +244,7 @@ aStar ppr q0 gScores = case PQ.minView q0 of
             gScores' = foldr upd gScores nexts
               where
                 upd (ws', gScore', _) = M.insert ws' gScore'
-         in unsafePerformIO do
-              print ws
-              putStrLn $ "cur: (dist=" <> show dist <> "):"
-              ppr ws
-              putStrLn "++++ nexts"
-              forM_ nexts \(ws', _, _) -> do
-                ppr ws'
-                putStrLn ""
-              putStrLn "--- nexts"
-              putStrLn ""
-              putStrLn ""
-              pure $ aStar ppr q2 gScores'
+         in aStar ppr q2 gScores'
 
 instance Solution Day11 where
   solutionSolved _ = False
@@ -252,40 +260,8 @@ instance Solution Day11 where
           ( 0
           , fmap (IM.fromListWith (<>) . fmap (\(k, v) -> (sToI k, [v]))) inp
           )
-    -- pprWorld iToS initSt
-    let ans = aStar (pprWorld iToS) (PQ.singleton initSt (Arg (estimateDist initSt) 0)) (M.singleton initSt 0)
-    print ans
-    when False do
-      let e =
-            ( 4 -1
-            , [ IM.empty
-              , IM.empty
-              , IM.fromList
-                  [(0, [Microchip])]
-              , IM.fromList
-                  [(0, [Generator]), (1, [Microchip, Generator])]
-              ]
-            )
-      pprWorld iToS e
-      forM_ (step e) \w' -> do
-        putStrLn "++++"
-        print w'
-        pprWorld iToS w'
-        putStrLn "----\n"
+    let ans =
+          aStar (pprWorld iToS) (PQ.singleton initSt (Arg (estimateDist initSt) 0)) (M.singleton initSt 0)
+    answerShow ans
+    answerShow (ans + 4 * 6)
 
-
-{-
-
-cur: (dist=9):
-F4: E, hyd-G, lit-G, lit-M
-F3: hyd-M
-F2:
-F1:
-++++ nexts
-F4: lit-G, lit-M
-F3: E, hyd-G, hyd-M
-F2: 
-F1: 
-
---- nexts
- -}
