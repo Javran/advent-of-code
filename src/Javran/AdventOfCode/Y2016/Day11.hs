@@ -41,6 +41,7 @@ import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Vector as V
 import GHC.Generics (Generic)
+import Javran.AdventOfCode.Misc
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (count, get, many)
 
@@ -81,7 +82,7 @@ data Day11 deriving (Generic)
 
  -}
 
-data Obj = Generator | Microchip deriving (Show)
+data Obj = Generator | Microchip deriving (Show, Eq, Ord)
 
 inputP :: ReadP [[(String, Obj)]]
 inputP = do
@@ -124,8 +125,44 @@ inputP = do
   f4 <- between (string "The fourth floor contains ") dotNl floorP
   pure [f1, f2, f3, f4]
 
+{-
+  state of the world in a search space.
+
+  (<level>, [<floor state>])
+
+  - level: 0 ~ 3, where the elevator is, which is also where we are.
+  - floors: from 1st to 4th.
+
+ -}
+type FloorState = IM.IntMap [Obj]
+
+type WorldState = (Int, [FloorState])
+
+pprWorld :: (Int -> String) -> WorldState -> IO ()
+pprWorld iToS (ev, floors) = do
+  forM_ (zip [4, 3, 2, 1] (reverse floors)) \(i, fl) -> do
+    let objs =
+          ["E" | ev == i] <> do
+            (k, vs) <- IM.toAscList fl
+            v <- vs
+            pure $
+              (take 3 $ iToS k) <> "-" <> case v of
+                Generator -> "G"
+                Microchip -> "M"
+    putStrLn $ "F" <> show i <> ": " <> intercalate ", " objs
+
 instance Solution Day11 where
   solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    xs <- consumeOrDie inputP <$> getInputS
-    mapM_ print xs
+    inp <- consumeOrDie inputP <$> getInputS
+    let objTypes = do
+          fl <- inp
+          (t, _) <- fl
+          pure t
+        (sToI, iToS) = internalize objTypes
+        initSt :: WorldState
+        initSt =
+          ( 1
+          , fmap (IM.fromListWith (<>) . fmap (\(k, v) -> (sToI k, [v]))) inp
+          )
+    pprWorld iToS initSt
