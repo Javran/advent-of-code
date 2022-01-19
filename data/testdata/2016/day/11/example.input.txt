@@ -1,3 +1,6 @@
+# EXAMPLE_EXTRA_BEGIN
+part1
+# EXAMPLE_EXTRA_END
 The first floor contains a hydrogen-compatible microchip and a lithium-compatible microchip.
 The second floor contains a hydrogen generator.
 The third floor contains a lithium generator.

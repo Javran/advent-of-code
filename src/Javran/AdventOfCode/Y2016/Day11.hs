@@ -1,54 +1,27 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE PatternGuards #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# OPTIONS_GHC -Wno-deprecations #-}
-{-# OPTIONS_GHC -Wno-typed-holes #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -fdefer-typed-holes #-}
 
 module Javran.AdventOfCode.Y2016.Day11
   (
   )
 where
 
-{- HLINT ignore -}
-
 import Control.Applicative
 import Control.Lens
 import Control.Monad
 import Data.Bits
 import Data.Char
-import Data.Function
-import Data.Function.Memoize (memoFix)
 import qualified Data.IntMap.Strict as IM
-import qualified Data.IntSet as IS
 import Data.List
-import Data.List.Split hiding (sepBy)
 import qualified Data.Map.Strict as M
-import Data.Monoid
 import qualified Data.PSQueue as PQ
 import Data.Semigroup
-import qualified Data.Sequence as Seq
-import qualified Data.Set as S
-import qualified Data.Text as T
-import qualified Data.Vector as V
-import Debug.Trace
-import GHC.Generics (Generic)
-import GHC.IO (unsafePerformIO)
 import Javran.AdventOfCode.Misc
 import Javran.AdventOfCode.Prelude
+import Javran.AdventOfCode.TestExtra
 import Text.ParserCombinators.ReadP hiding (count, get, many)
 
 data Day11 deriving (Generic)
@@ -90,7 +63,9 @@ data Day11 deriving (Generic)
 
 data Obj = Generator | Microchip deriving (Show, Eq, Ord)
 
-inputP :: ReadP [[(String, Obj)]]
+type ParsedInput = [[(String, Obj)]]
+
+inputP :: ReadP ParsedInput
 inputP = do
   let wordP = munch1 isAsciiLower
       objP =
@@ -120,7 +95,7 @@ inputP = do
                          between
                            (string ", ")
                            (string ", and ")
-                           (objP `sepBy1` string (", "))
+                           (objP `sepBy1` string ", ")
                        c <- objP
                        pure $ a : bs <> [c]
                      | otherwise -> pfail)
@@ -149,6 +124,35 @@ type WorldState = (Int, [FloorState])
 
 type WorldStateNorm = (Int, [Int])
 
+{-
+  There's an important observation under which lots of
+  states can be considered duplicates and thus reduce the search space:
+
+  Imagine, if we have:
+
+  - X-G on floor a, X-M on floor b
+  - Y-G on floor c, Y-M on floor d
+
+  in which X and Y are distinct items,
+  but a,b,c,d are allowed to be assigned same value.
+
+  it is the same as:
+
+  - Y-G on floor a, Y-M on floor b
+  - X-G on floor c, X-M on floor d
+
+  in other words, we don't care about the exact X or Y, the only thing matters
+  is which floor contains the generator and which one contains the microchip.
+
+  So, if we flatten and re-arrange the structure of [FloorState],
+  make all objects keyed by their element type (i.e. X- or Y-),
+  we can neatly encode the location (which are just floor numbers)
+  of Gs and Ms by using just 8 bits, as an Int.
+
+  After doing so, we can further cut down search space by sorting the resulting list -
+  after all, we only care about the *bag* of all configurations.
+
+ -}
 normWorld :: WorldState -> WorldStateNorm
 normWorld (ev, floors) = (ev, sort $ IM.elems compact)
   where
@@ -165,15 +169,15 @@ normWorld (ev, floors) = (ev, sort $ IM.elems compact)
             Microchip -> \v -> unsafeShiftL v 4
       pure (objTyp, byObj (unsafeShiftL 1 lvl))
 
-pprWorld :: (Int -> String) -> WorldState -> IO ()
-pprWorld iToS (ev, floors) = do
+_pprWorld :: (Int -> String) -> WorldState -> IO ()
+_pprWorld iToS (ev, floors) = do
   forM_ (zip [3, 2, 1, 0] (reverse floors)) \(i, fl) -> do
     let objs =
           ["E" | ev == i] <> do
             (k, vs) <- IM.toAscList fl
             v <- vs
             pure $
-              (take 3 $ iToS k) <> "-" <> case v of
+              take 3 (iToS k) <> "-" <> case v of
                 Generator -> "G"
                 Microchip -> "M"
     putStrLn $ "F" <> show (i + 1) <> ": " <> intercalate ", " objs
@@ -181,7 +185,7 @@ pprWorld iToS (ev, floors) = do
 isFloorSafe :: FloorState -> Bool
 isFloorSafe fs = not hasGenerator || not hasUnprotected
   where
-    hasGenerator = (any . any) (== Generator) fs
+    hasGenerator = any (elem Generator) fs
     hasUnprotected =
       any
         (\vs ->
@@ -242,12 +246,12 @@ step' ws = M.elems tmp
  -}
 estimateDist :: WorldState -> Int
 estimateDist (_, floors) =
-  sum $ zipWith (\dist fs -> dist * (length $ concat $ IM.elems fs)) [3, 2, 1] floors
+  sum $ zipWith (\dist fs -> dist * sum (fmap length $ IM.elems fs)) [3, 2, 1] floors
 
-aStar :: t -> PQ.PSQ WorldState (Arg Int Int) -> M.Map WorldStateNorm Int -> Int
-aStar ppr q0 gScores = case PQ.minView q0 of
+aStar :: PQ.PSQ WorldState (Arg Int Int) -> M.Map WorldStateNorm Int -> Int
+aStar q0 gScores = case PQ.minView q0 of
   Nothing -> error "queue exhausted"
-  Just (ws PQ.:-> (Arg (fScore :: Int) (dist :: Int)), q1) ->
+  Just (ws PQ.:-> (Arg fScore dist), q1) ->
     if fScore == dist
       then dist
       else
@@ -266,28 +270,43 @@ aStar ppr q0 gScores = case PQ.minView q0 of
             gScores' = foldr upd gScores nexts
               where
                 upd (ws', gScore', _) = M.insert (normWorld ws') gScore'
-         in aStar ppr q2 gScores'
+         in aStar q2 gScores'
+
+solve :: ParsedInput -> Int
+solve inp =
+  aStar
+    (PQ.singleton initSt (Arg (estimateDist initSt) 0))
+    (M.singleton (normWorld initSt) 0)
+  where
+    objTypes = do
+      fl <- inp
+      (t, _) <- fl
+      pure t
+    (sToI, _iToS) = internalize objTypes
+    initSt :: WorldState
+    initSt =
+      ( 0
+      , fmap (IM.fromListWith (<>) . fmap (\(k, v) -> (sToI k, [v]))) inp
+      )
 
 instance Solution Day11 where
-  solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    inp <- consumeOrDie inputP <$> getInputS
-    let objTypes = do
-          fl <- inp
-          (t, _) <- fl
-          pure t
-        (sToI, iToS) = internalize objTypes
-        initSt :: WorldState
-        initSt =
-          ( 0
-          , fmap (IM.fromListWith (<>) . fmap (\(k, v) -> (sToI k, [v]))) inp
-          )
-    let ans =
-          aStar
-            (pprWorld iToS)
-            (PQ.singleton initSt (Arg (estimateDist initSt) 0))
-            (M.singleton (normWorld initSt) 0)
-    answerShow ans
-    do
-      -- TODO
-      answerShow (ans + 4 * 6)
+    (extraOps, rawInput) <- consumeExtra getInputS
+    let (runPart1, runPart2) = shouldRun extraOps
+        inp = consumeOrDie inputP rawInput
+    when runPart1 do
+      answerShow $ solve inp
+    {-
+      the example puzzle can't be used to run part2,
+      as the 1st floor microchips would be fried immediately
+      by newly introduced generators.
+     -}
+    when runPart2 do
+      let inp2 =
+            inp & ix 0
+              %~ (<>
+                    [ (e, o)
+                    | e <- ["elerium", "dilithium"]
+                    , o <- [Generator, Microchip]
+                    ])
+      answerShow $ solve inp2
