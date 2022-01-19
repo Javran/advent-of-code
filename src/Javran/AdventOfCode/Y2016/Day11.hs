@@ -26,6 +26,7 @@ where
 {- HLINT ignore -}
 
 import Control.Applicative
+import Control.Lens
 import Control.Monad
 import Data.Char
 import Data.Function
@@ -36,11 +37,13 @@ import Data.List
 import Data.List.Split hiding (sepBy)
 import qualified Data.Map.Strict as M
 import Data.Monoid
+import qualified Data.PSQueue as PQ
 import Data.Semigroup
 import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Vector as V
 import GHC.Generics (Generic)
+import GHC.IO (unsafePerformIO)
 import Javran.AdventOfCode.Misc
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (count, get, many)
@@ -140,7 +143,7 @@ type WorldState = (Int, [FloorState])
 
 pprWorld :: (Int -> String) -> WorldState -> IO ()
 pprWorld iToS (ev, floors) = do
-  forM_ (zip [4, 3, 2, 1] (reverse floors)) \(i, fl) -> do
+  forM_ (zip [3, 2, 1, 0] (reverse floors)) \(i, fl) -> do
     let objs =
           ["E" | ev == i] <> do
             (k, vs) <- IM.toAscList fl
@@ -149,7 +152,91 @@ pprWorld iToS (ev, floors) = do
               (take 3 $ iToS k) <> "-" <> case v of
                 Generator -> "G"
                 Microchip -> "M"
-    putStrLn $ "F" <> show i <> ": " <> intercalate ", " objs
+    putStrLn $ "F" <> show (i + 1) <> ": " <> intercalate ", " objs
+
+isFloorSafe :: FloorState -> Bool
+isFloorSafe fs = not hasGenerator || not hasUnprotected
+  where
+    hasGenerator = (any . any) (== Generator) fs
+    hasUnprotected =
+      any
+        (\vs ->
+           Microchip `elem` vs && Generator `notElem` vs)
+        fs
+
+step :: WorldState -> [] WorldState
+step (ev, floors) = do
+  ev' <- [ev -1, ev + 1]
+  guard $ ev' >= 0 && ev' <= 3
+  let flFrom = floors !! ev
+      objs :: [(Int, Obj)]
+      objs = do
+        (k, vs) <- IM.toList flFrom
+        v <- vs
+        pure (k, v)
+      flTo = floors !! ev'
+  objsFrom <- do
+    -- pick at least one object for the elevator to work.
+    (obj0, os0) <- pickInOrder objs
+    -- can optionally pick one extra object, or no extra at all.
+    os <-
+      (do
+         obj1 <- os0
+         pure [obj1])
+        <|> pure []
+    pure $ obj0 : os
+  let deleteObj (i, o) = IM.adjust (delete o) i
+      insertObj (i, o) = IM.insertWith (<>) i [o]
+      flFrom' = foldr deleteObj flFrom objsFrom
+      flTo' = foldr insertObj flTo objsFrom
+  guard $ isFloorSafe flFrom' && isFloorSafe flTo'
+  pure (ev', floors & ix ev .~ flFrom' & ix ev' .~ flTo')
+
+{-
+  For now let's just ignore where the elevator is
+  and say if that floor contains anything, it needs to be moved
+  to the 4-th floor and the underestimation is just that floor distance.
+
+  Also that this esimation has the property that we are in a goal state
+  iff. estimation says 0.
+ -}
+estimateDist :: WorldState -> Int
+estimateDist (_, floors) =
+  sum $ zipWith (\dist fs -> if null fs then 0 else dist) [3, 2, 1] floors
+
+aStar ppr q0 gScores = case PQ.minView q0 of
+  Nothing -> error "queue exhausted"
+  Just (ws PQ.:-> (Arg (fScore :: Int) (dist :: Int)), q1) ->
+    if fScore == dist
+      then dist
+      else
+        let gScore = gScores M.! ws
+            nexts = do
+              ws' <- step ws
+              let mGScore = gScores M.!? ws'
+                  gScore' = gScore + 1
+                  fScore' = gScore' + estimateDist ws'
+                  dist' = dist + 1
+              guard $ maybe True (gScore' <) mGScore
+              pure (ws', gScore', Arg fScore' dist')
+            q2 = foldr upd q1 nexts
+              where
+                upd (ws', _, prio') = PQ.insert ws' prio'
+            gScores' = foldr upd gScores nexts
+              where
+                upd (ws', gScore', _) = M.insert ws' gScore'
+         in unsafePerformIO do
+              print ws
+              putStrLn $ "cur: (dist=" <> show dist <> "):"
+              ppr ws
+              putStrLn "++++ nexts"
+              forM_ nexts \(ws', _, _) -> do
+                ppr ws'
+                putStrLn ""
+              putStrLn "--- nexts"
+              putStrLn ""
+              putStrLn ""
+              pure $ aStar ppr q2 gScores'
 
 instance Solution Day11 where
   solutionSolved _ = False
@@ -162,7 +249,43 @@ instance Solution Day11 where
         (sToI, iToS) = internalize objTypes
         initSt :: WorldState
         initSt =
-          ( 1
+          ( 0
           , fmap (IM.fromListWith (<>) . fmap (\(k, v) -> (sToI k, [v]))) inp
           )
-    pprWorld iToS initSt
+    -- pprWorld iToS initSt
+    let ans = aStar (pprWorld iToS) (PQ.singleton initSt (Arg (estimateDist initSt) 0)) (M.singleton initSt 0)
+    print ans
+    when False do
+      let e =
+            ( 4 -1
+            , [ IM.empty
+              , IM.empty
+              , IM.fromList
+                  [(0, [Microchip])]
+              , IM.fromList
+                  [(0, [Generator]), (1, [Microchip, Generator])]
+              ]
+            )
+      pprWorld iToS e
+      forM_ (step e) \w' -> do
+        putStrLn "++++"
+        print w'
+        pprWorld iToS w'
+        putStrLn "----\n"
+
+
+{-
+
+cur: (dist=9):
+F4: E, hyd-G, lit-G, lit-M
+F3: hyd-M
+F2:
+F1:
+++++ nexts
+F4: lit-G, lit-M
+F3: E, hyd-G, hyd-M
+F2: 
+F1: 
+
+--- nexts
+ -}
