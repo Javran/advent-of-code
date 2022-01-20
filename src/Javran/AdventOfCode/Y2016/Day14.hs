@@ -1,22 +1,7 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE PatternGuards #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# OPTIONS_GHC -Wno-deprecations #-}
-{-# OPTIONS_GHC -Wno-typed-holes #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -fdefer-typed-holes #-}
 
 module Javran.AdventOfCode.Y2016.Day14
   (
@@ -31,35 +16,19 @@ where
   I'm very glad that this is the last year that I see this kind of puzzle.
  -}
 
-{- HLINT ignore -}
-
-import Control.Applicative
 import Control.Monad
 import qualified Crypto.Hash.MD5 as Md5
 import Data.Bits
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BSC
 import Data.Char
-import Data.Containers.ListUtils
-import Data.Function
-import Data.Function.Memoize (memoFix)
-import qualified Data.IntMap.Strict as IM
-import qualified Data.IntSet as IS
 import Data.List
 import Data.List.Split hiding (sepBy)
-import qualified Data.Map.Strict as M
 import Data.Monoid
 import Data.Semigroup
-import qualified Data.Set as S
-import qualified Data.Text as T
-import qualified Data.Vector as V
 import Data.Word
-import Debug.Trace
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.TestExtra
-import Text.ParserCombinators.ReadP hiding (count, get, many)
-import Text.Printf
 
 data Day14 deriving (Generic)
 
@@ -91,17 +60,21 @@ unpackWord4 = concatMap f . BS.unpack
     f v =
       let (hi, lo) = splitHighLow v in [hi, lo]
 
-isKey :: [(BS.ByteString, S.Set Word8)] -> Bool
+isKey :: [(BS.ByteString, Word16)] -> Bool
 isKey ~((hd, _) : tl) = isJust do
   let threeOfAKind ~[a, b, c] = a <$ guard (a == b && b == c)
   targetNum : _ <- pure $ mapMaybe threeOfAKind $ divvy 3 1 $ unpackWord4 hd
-  guard $ any ((elem targetNum) . snd) (take 1000 tl)
+  guard $ any ((\s -> testBit s (fromIntegral targetNum)) . snd) (take 1000 tl)
 
 {-
   This is to pre-process five-of-a-kind information.
  -}
-fives :: BS.ByteString -> S.Set Word8
-fives = S.fromList . mapMaybe five . divvy 5 1 . unpackWord4
+fives :: BS.ByteString -> Word16
+fives =
+  foldr (\i r -> r .|. unsafeShiftL 1 (fromIntegral i)) 0
+    . mapMaybe five
+    . divvy 5 1
+    . unpackWord4
   where
     five ~(x : xs) = x <$ guard (all (== x) xs)
 
