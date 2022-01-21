@@ -4,7 +4,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Javran.AdventOfCode.Y2016.Day14
-  (
+  ( splitHighLow
   )
 where
 
