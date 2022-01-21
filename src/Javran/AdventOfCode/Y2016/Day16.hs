@@ -52,9 +52,6 @@ type DragonSeq = (Int, Int -> Bool)
 bitP :: ReadP Bool
 bitP = (False <$ char '0') <++ (True <$ char '1')
 
-ppr :: DragonSeq -> String
-ppr (l, getAt) = fmap (bool '0' '1' . getAt) [0 .. l -1]
-
 gen :: DragonSeq -> DragonSeq
 gen (l, getAt) = (l * 2 + 1, f)
   where
@@ -63,14 +60,32 @@ gen (l, getAt) = (l * 2 + 1, f)
       EQ -> False
       GT -> not (getAt (2 * l - i))
 
+stepChecksum :: [Bool] -> [Bool]
+stepChecksum = fmap (\(~[a, b]) -> a == b) . chunksOf 2
+
+computeChecksum :: Int -> [Bool] -> [Bool]
+computeChecksum l xs = aux (halve l) (stepChecksum xs)
+  where
+    aux curL ys =
+      if odd curL
+        then ys
+        else computeChecksum curL ys
+
 instance Solution Day16 where
-  solutionSolved _ = False
-  solutionRun _ SolutionContext {getInputS, answerShow} = do
+  solutionRun _ SolutionContext {getInputS, answerS} = do
     (extraOpts, rawInput) <- consumeExtra getInputS
     let xs = V.fromList . consumeOrDie (many1 bitP) . head . lines $ rawInput
         initSeq :: DragonSeq
         initSeq = (V.length xs, (xs V.!))
-        fillLen = case extraOpts of
-          Nothing -> 272
-          Just ~[raw] -> read raw
-    mapM_ (putStrLn . ppr) (take 4 (iterate gen initSeq))
+    do
+      let fillLen = case extraOpts of
+            Nothing -> 272
+            Just ~[raw] -> read raw
+          (_, getAt) : _ = dropWhile ((< fillLen) . fst) $ iterate gen initSeq
+          ys = computeChecksum fillLen $ fmap getAt [0 .. fillLen -1]
+      answerS $ fmap (bool '0' '1') ys
+    do
+      let fillLen = 35651584
+          (_, getAt) : _ = dropWhile ((< fillLen) . fst) $ iterate gen initSeq
+          ys = computeChecksum fillLen $ fmap getAt [0 .. fillLen -1]
+      answerS $ fmap (bool '0' '1') ys
