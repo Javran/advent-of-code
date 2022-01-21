@@ -1,0 +1,4 @@
+# EXAMPLE_EXTRA_BEGIN
+10
+# EXAMPLE_EXTRA_END
+.^^.^.^^^^
