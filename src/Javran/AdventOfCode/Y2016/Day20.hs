@@ -1,50 +1,19 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE NumericUnderscores #-}
-{-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE PatternGuards #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# OPTIONS_GHC -Wno-deprecations #-}
-{-# OPTIONS_GHC -Wno-typed-holes #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -fdefer-typed-holes #-}
 
 module Javran.AdventOfCode.Y2016.Day20
   (
   )
 where
 
-{- HLINT ignore -}
-
-import Control.Applicative
 import Control.Monad
-import Data.Char
-import Data.Containers.ListUtils
-import Data.Function
-import Data.Function.Memoize (memoFix)
 import qualified Data.IntMap.Strict as IM
 import qualified Data.IntSet as IS
-import Data.List
-import Data.List.Ordered
-import Data.List.Split hiding (sepBy)
-import qualified Data.Map.Strict as M
-import Data.Monoid
-import Data.Semigroup
-import qualified Data.Set as S
-import qualified Data.Text as T
-import qualified Data.Vector as V
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
+import Javran.AdventOfCode.TestExtra
 import Text.ParserCombinators.ReadP hiding (count, get, many)
 
 data Day20 deriving (Generic)
@@ -68,23 +37,60 @@ isBlocked bl addr = any isIn ls || any isIn c
         (_l', c', r') = IS.splitMember addr xs
     (ls, c, _) = IM.splitLookup addr bl
 
+{-
+  This function assumes that:
+
+  - xs is sorted and contain only numbers in range,
+    with the exception of the last one, which is maxRange + 1
+
+  - two assumptions that are not required but makes it easier to think about:
+
+    + assume that 0 is blocked
+    + assume that maxRange + 1 is not blocked
+
+ -}
+solve2 :: BlockList -> [Int] -> Int
 solve2 bl xs = case xs of
   [] -> 0
   [_] -> 1
-  y : ys@(u : vs) ->
-    if isBlocked bl (y + 1) then 1 + solve2 bl ys else u - y + 1 + solve2 bl vs
+  y : ys@(z : zs) ->
+    -- test y's right side
+    if isBlocked bl (y + 1)
+      then -- y+1 is blocked, meaning this discrete bound stands on its own.
+        1 + solve2 bl ys
+      else -- now we can establish a consecutive "allowed zone" by taking next value
+        z - y + 1 + solve2 bl zs
 
 instance Solution Day20 where
-  solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    xs <- fmap (consumeOrDie rangeP) . lines <$> getInputS
-    let bl = IM.fromListWith (<>) do
+    (extraOps, rawInput) <- consumeExtra getInputS
+    let xs = fmap (consumeOrDie rangeP) . lines $ rawInput
+        maxRange' :: Integer
+        maxRange' = case extraOps of
+          Nothing ->
+            0xFFFF_FFFF
+          Just ~[raw] -> read raw
+        bl = IM.fromListWith (<>) do
           (l, r) <- xs
           pure (l, IS.singleton r)
+        maxRange :: Int
+        maxRange = either (\msg -> error $ "requirement unmet: " <> msg) id do
+          when (fromIntegral @_ @Integer (maxBound @Int) < maxRange') do
+            Left "size of Int is too small"
+          unless (isBlocked bl 0) do
+            Left "assumed 0 is blocked, which is not the case."
+          let r = fromInteger maxRange'
+          when (isBlocked bl (r+ 1)) do
+            Left "assumed max value + 1 is not blocked, which is not the case."
+          pure r
         alts = IS.fromList do
           (l, r) <- xs
+          {-
+            to detect consecutive allowed ranges, we can just probe
+            immediate left and immediate right of all listed ranges.
+           -}
           v <- [l -1, r + 1]
-          v <$ guard (v >= 0 && v <= 0xFFFF_FFFF)
+          v <$ guard (v >= 0 && v <= maxRange)
         discreteBounds = filter (not . isBlocked bl) (IS.toAscList alts)
     answerShow $ head discreteBounds
-    print (solve2 bl discreteBounds)
+    answerShow $ solve2 bl (discreteBounds <> [maxRange+1]) - 1
