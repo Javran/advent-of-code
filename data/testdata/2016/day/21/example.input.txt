@@ -1,3 +1,6 @@
+# EXAMPLE_EXTRA_BEGIN
+abcde
+# EXAMPLE_EXTRA_END
 swap position 4 with position 0
 swap letter d with letter b
 reverse positions 0 through 4

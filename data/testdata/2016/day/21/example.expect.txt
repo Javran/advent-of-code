@@ -1,0 +1,8 @@
+ebcda
+edcba
+abcde
+bcdea
+bdeac
+abdec
+ecabd
+decab
