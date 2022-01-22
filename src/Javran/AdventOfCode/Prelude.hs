@@ -20,6 +20,8 @@ module Javran.AdventOfCode.Prelude
   , nextCharP
   , manhattan
   , checkedDecimal1P
+  , strP
+  , charP
   , -- infrastructures
     module Javran.AdventOfCode.Infra
   , module Petbox
@@ -41,6 +43,7 @@ import Data.Bool
 import Data.Char
 import Data.Either
 import Data.Function
+import Data.Functor (void)
 import Data.Ix (inRange)
 import Data.List
 import Data.List.Split
@@ -113,6 +116,12 @@ minMax2D (u, v) = MinMax2D ((u, u), (v, v))
 
 nextCharP :: ReadP.ReadP Char
 nextCharP = ReadP.get
+
+strP :: String -> ReadP.ReadP ()
+strP = void . ReadP.string
+
+charP :: Char -> ReadP.ReadP ()
+charP = void . ReadP.char
 
 manhattan :: (Num a, Each s s a a) => s -> s -> a
 manhattan u v = sum $ zipWith (\u' v' -> abs (u' - v')) (u ^.. each) (v ^.. each)
