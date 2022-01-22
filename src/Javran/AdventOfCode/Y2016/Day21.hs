@@ -119,6 +119,9 @@ instance Solution Day21 where
       So let's just don't bother improving p2 (now that the obvious idea of
       just reverse every operation is gone), and focus on p1 tests instead -
       say print out how sequence changes for each operation for easy debugging.
+
+      TODO: despite that some operations are irreversible, we can probably still run
+      operations backwards, just that we need to return multiple alternatives.
      -}
     when genExample do
       let uniqueInputs = M.filter ((== 1) . length) $ M.fromListWith (<>) do
