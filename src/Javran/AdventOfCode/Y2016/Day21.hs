@@ -100,6 +100,39 @@ applyOp n = \case
     let x = xs !! i
      in fmap snd . insertBy (comparing fst) (j, x) . zip [0 ..] . delete x $ xs
 
+{-
+  Attempts to undo an operation.
+
+  With runtime checks - we could certainly go faster, but I'd say
+  the program is fast enough that we can afford having those checks in place.
+
+  TODO: QuickCheck probably?
+ -}
+unapplyOp :: Int -> Operation -> [] Char -> [[] Char]
+unapplyOp n = \case
+  op@(RotCh x) -> \ys -> do
+    {-
+      n is small enough that we can afford trying them all
+      TODO: probably something smarter than this?
+     -}
+    offset <- [0 .. n -1]
+    let xs = rotateLeftBy n offset ys
+        Just i = elemIndex x xs
+        extra = if i >= 4 then 1 else 0
+    guard $ offset == ((i + 1 + extra) `mod` n)
+    if applyOp n op xs == ys
+      then pure xs
+      else error $ "violated: " <> show (xs, op, ys)
+  op -> \ys ->
+    let op' = case op of
+          RotStep e -> RotStep $ either Right Left e
+          Move i j -> Move j i
+          _ -> op
+        xs = applyOp n op' ys
+     in if applyOp n op xs == ys
+          then [xs]
+          else error $ "violated: " <> show (op, op', xs, ys)
+
 instance Solution Day21 where
   solutionRun _ SolutionContext {getInputS, answerS} = do
     (extraOps, rawInput) <- consumeExtra getInputS
@@ -116,12 +149,8 @@ instance Solution Day21 where
       in the same sequence, suggesting that some of those operations are
       probably irreversible.
 
-      So let's just don't bother improving p2 (now that the obvious idea of
-      just reverse every operation is gone), and focus on p1 tests instead -
-      say print out how sequence changes for each operation for easy debugging.
-
-      TODO: despite that some operations are irreversible, we can probably still run
-      operations backwards, just that we need to return multiple alternatives.
+      Despite that, we can still run operations backwards,
+      just that we need to return multiple alternatives.
      -}
     when genExample do
       let uniqueInputs = M.filter ((== 1) . length) $ M.fromListWith (<>) do
@@ -134,10 +163,13 @@ instance Solution Day21 where
       Nothing -> do
         answerS xs
         do
-          -- search space isn't huge, meaning we can bruteforce this.
-          let ps = permutations initSeq
-              p2Target = "fbgdceah"
-          answerS $ head $ filter ((== p2Target) . applyAll) ps
+          let p2Target = "fbgdceah"
+              inputs =
+                foldM
+                  (flip $ unapplyOp (length p2Target))
+                  p2Target
+                  (reverse ops)
+          answerS $ head inputs
       Just _ -> do
         mapM_ answerS $
           tail $ scanl' (\cur op -> applyOp (length initSeq) op cur) initSeq ops
