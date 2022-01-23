@@ -86,6 +86,66 @@ checkCompleteness xs = do
       (,) <$> [0 .. rMax] <*> [0 .. cMax]
   pure (rMax + 1, cMax + 1)
 
+{-
+  TODO: I don't know if my assumption would hold, but let's see.
+
+  This heuristic is based on the fact that for every move that
+  brings goal block closer to the origin (except for the last step
+  the brings goal block to the origin)
+  it is accompanied by shuffling the empty block around so that
+  we can advance the goal block again.
+
+  Let [g] be goal block, [e] empty block, [x] an occupied block:
+
+  0: [x] [e]-[g]
+
+  1: [x] [g] [e]
+              |
+             [x]
+
+  2: [x] [g] [x]
+
+         [x]-[e]
+
+  3: [x] [g] [x]
+
+     [x]-[e] [x]
+
+  4: [x] [g] [x]
+      |
+     [e] [x] [x]
+
+  5: [e] [g] [x]
+
+     [x] [x] [x]
+
+  Therefore, if we need `dist` steps moving goal block to the origin
+  pretending all other blocks are empty, we need `dist` moves.
+  If dist > 0, it is also accompanied by `4*(dist-1)` extra moves
+  for shuffling the empty block around.
+
+  dist + 4 * (dist - 1) (dist > 0)
+  ==> 5 * dist - 4
+
+  Note that so far we haven't take care of where the empty block is,
+  but it's obvious that we need to bring the block closer to the goal
+  block to make any progress, I'm making a random guess that
+  if the dist between empty block and target block is > 2
+  (as the empty block shuffling process never brings empty block
+  further than 2 to the goal block), we include an extra distance of:
+
+  `dist(empty, goal) - 2`
+
+  in our heuristic.
+
+ -}
+estimateDist :: Coord -> Coord -> Int
+estimateDist c e = if dist == 0 then 0 else (5 * dist - 4 + extra)
+  where
+    distCe = manhattan c e
+    extra = if dist > 0 && distCe > 2 then distCe - 2 else 0
+    dist = manhattan (0, 0) c
+
 instance Solution Day22 where
   solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
