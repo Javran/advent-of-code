@@ -36,6 +36,7 @@ import Data.List
 import Data.List.Split hiding (sepBy)
 import qualified Data.Map.Strict as M
 import Data.Monoid
+import qualified Data.PSQueue as PQ
 import Data.Semigroup
 import qualified Data.Set as S
 import qualified Data.Text as T
@@ -73,8 +74,8 @@ nodeP = do
   pure ((y, x), Node {nSize, nUsed, nAvail, nUsePercent})
 
 {-
-  Gets the dimension of the grid (rows, cols),
-  and verifies that all coords within (inclusively) (0,0) ~ (rows-1, cols-1)
+  Gets the bound of the grid (rMax, cMax),
+  and verifies that all coords within (inclusively) (0,0) ~ (rMax, cMax)
   are present and correct.
  -}
 checkCompleteness :: [Coord] -> Maybe (Int, Int)
@@ -84,7 +85,7 @@ checkCompleteness xs = do
   guard $
     allCoords == S.fromDistinctAscList do
       (,) <$> [0 .. rMax] <*> [0 .. cMax]
-  pure (rMax + 1, cMax + 1)
+  pure (rMax, cMax)
 
 {-
   TODO: I don't know if my assumption would hold, but let's see.
@@ -138,6 +139,9 @@ checkCompleteness xs = do
 
   in our heuristic.
 
+  TODO: we are assuming no merge between two non-empty nodes can happen,
+  we are not yet sure whether this is true.
+
  -}
 estimateDist :: Coord -> Coord -> Int
 estimateDist c e = if dist == 0 then 0 else (5 * dist - 4 + extra)
@@ -145,6 +149,50 @@ estimateDist c e = if dist == 0 then 0 else (5 * dist - 4 + extra)
     distCe = manhattan c e
     extra = if dist > 0 && distCe > 2 then distCe - 2 else 0
     dist = manhattan (0, 0) c
+
+type SearchState = (Coord, Coord, M.Map Coord Int) -- location of the empty block, location of the goal block, and all current nodes.
+
+aStar capacities (gScores :: M.Map SearchState Int) q0 = case PQ.minView q0 of
+  Nothing -> error "queue exhausted"
+  Just (((coord, targetNode, ns) :: SearchState) PQ.:-> (Arg fScore gScore), q1) ->
+    if fScore == gScore
+      then gScore
+      else
+        let nexts = do
+              let used = 0
+                  capa =
+                    if ns M.! coord == 0
+                      then capacities M.! coord
+                      else error "empty grid is not empty?"
+              coord' <- uldrOfCoord coord
+              {-
+                Clarification: we are "moving" the empty block
+                from coord to coord', which means, in operational terms,
+                moving data from coord' to coord.
+               -}
+              Just used' <- pure (ns M.!? coord')
+              let newUsed' = used + used'
+              guard $ newUsed' <= capa
+              let gScore' = gScore + 1
+                  targetNode' = if coord' == targetNode then coord else targetNode
+                  fScore' = gScore' + estimateDist targetNode' coord'
+                  ns' = M.insert coord newUsed' $ M.insert coord' 0 ns
+                  ss' = (coord', targetNode', ns')
+              guard case gScores M.!? ss' of
+                Nothing -> True
+                Just g -> gScore' < g
+              pure (ss', fScore', gScore')
+            gScores' =
+              foldr
+                (\(ss', _, gScore') -> M.insert ss' gScore')
+                gScores
+                nexts
+            q2 =
+              foldr
+                (\(ss', fScore', gScore') -> PQ.insert ss' (Arg fScore' gScore'))
+                q1
+                nexts
+         in aStar capacities gScores' q2
 
 instance Solution Day22 where
   solutionSolved _ = False
@@ -165,13 +213,18 @@ instance Solution Day22 where
         that initial few moves might be quite restricted that
         a plain search (probably a* algorithm) would work.
      -}
-    print (checkCompleteness $ fmap fst nodes)
-    print $ do
-      (c, n) <- nodes
-      guard $ nUsed n < 64
-      pure c
-
-    print do
-      (u, v) <- viablePairs
-      guard $ manhattan u v == 1
-      pure (u, v)
+    do
+      let Just (_yMax, xMax) = checkCompleteness $ fmap fst nodes
+          [(theEmpty, _)] = filter ((== 0) . nUsed . snd) nodes
+          target = (0, xMax)
+          capacities :: M.Map Coord Int
+          capacities = M.fromList $ (fmap . second) nSize nodes
+          initNs = M.fromList $ (fmap . second) nUsed nodes
+          initSs :: SearchState
+          initSs = (theEmpty, target, initNs)
+          r =
+            aStar
+              capacities
+              (M.singleton initSs 0)
+              (PQ.singleton initSs $ Arg (estimateDist target theEmpty) 0)
+      print r
