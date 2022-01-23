@@ -164,11 +164,8 @@ instance Solution Day21 where
         answerS xs
         do
           let p2Target = "fbgdceah"
-              inputs =
-                foldM
-                  (flip $ unapplyOp (length p2Target))
-                  p2Target
-                  (reverse ops)
+              l = length p2Target
+              inputs = foldr (\op cur -> cur >>= unapplyOp l op) [p2Target] ops
           answerS $ head inputs
       Just _ -> do
         mapM_ answerS $
