@@ -223,7 +223,6 @@ aStar capacities gScores q0 = case PQ.minView q0 of
          in aStar capacities gScores' q2
 
 instance Solution Day22 where
-  solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow, terminal} = do
     nodes <- fmap (consumeOrDie nodeP) . drop 2 . lines <$> getInputS
     let viablePairs = do
