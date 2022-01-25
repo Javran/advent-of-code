@@ -33,6 +33,7 @@ import Data.Function.Memoize (memoFix)
 import qualified Data.IntMap.Strict as IM
 import qualified Data.IntSet as IS
 import Data.List
+import Data.List.Ordered (nubSort)
 import Data.List.Split hiding (sepBy)
 import qualified Data.Map.Strict as M
 import Data.Monoid
@@ -230,7 +231,7 @@ aStar capacities (gScores :: M.Map SearchState Int) q0 = case PQ.minView q0 of
 
 instance Solution Day22 where
   solutionSolved _ = False
-  solutionRun _ SolutionContext {getInputS, answerShow} = do
+  solutionRun _ SolutionContext {getInputS, answerShow, terminal} = do
     nodes <- fmap (consumeOrDie nodeP) . drop 2 . lines <$> getInputS
     let viablePairs = do
           ((ca, a), xs0) <- pick nodes
@@ -251,17 +252,19 @@ instance Solution Day22 where
       let Just (yMax, xMax) = checkCompleteness $ fmap fst nodes
           [(theEmpty, _)] = filter ((== 0) . nUsed . snd) nodes
           target = (0, xMax)
-          capacitiesPre :: M.Map Coord Int
-          capacitiesPre = M.fromList $ (fmap . second) nSize nodes
-          capacities = M.map tr capacitiesPre
+          shouldNormalizeInput = yMax * xMax > 25
+          capacities :: M.Map Coord Int
+          capacities = M.fromList $ (fmap . second) (f . nSize) nodes
             where
+              f = if shouldNormalizeInput then tr else id
               tr v
                 | v >= 85 && v <= 94 = 80
                 | v >= 500 = 500
                 | otherwise = error "unexpected capacity"
 
-          initNs = M.fromList $ (fmap . second) (tr . nUsed) nodes
+          initNs = M.fromList $ (fmap . second) (f . nUsed) nodes
             where
+              f = if shouldNormalizeInput then tr else id
               tr v
                 | v == 0 = 0
                 | v >= 64 && v <= 73 = 70
@@ -274,16 +277,16 @@ instance Solution Day22 where
               capacities
               (M.singleton initSs 0)
               (PQ.singleton initSs $ Arg (estimateDist target theEmpty) 0)
-      forM_ [0 .. yMax] \y -> do
-        let render x
-              | (y, x) == target = 'G'
-              | u == 0 = 'E'
-              | u >= 400 = '#'
-              | otherwise = '.'
-              where
-                u = initNs M.! (y, x)
-        -- c = capacities M.! (y,x)
-        putStrLn $ fmap render [0 .. xMax]
-      print $ S.toAscList $ S.fromList $ M.elems initNs
-      print $ S.toAscList $ S.fromList $ M.elems capacities
+      when (isJust terminal) do
+        forM_ [0 .. yMax] \y -> do
+          let render x
+                | (y, x) == target = 'G'
+                | u == 0 = 'E'
+                | u >= 400 = '#'
+                | otherwise = '.'
+                where
+                  u = initNs M.! (y, x)
+          putStrLn $ fmap render [0 .. xMax]
+        print $ nubSort $ M.elems initNs
+        print $ nubSort $ M.elems capacities
       answerShow r
