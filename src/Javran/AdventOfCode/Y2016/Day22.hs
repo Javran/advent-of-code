@@ -214,7 +214,7 @@ instance Solution Day22 where
         a plain search (probably a* algorithm) would work.
      -}
     do
-      let Just (_yMax, xMax) = checkCompleteness $ fmap fst nodes
+      let Just (yMax, xMax) = checkCompleteness $ fmap fst nodes
           [(theEmpty, _)] = filter ((== 0) . nUsed . snd) nodes
           target = (0, xMax)
           capacities :: M.Map Coord Int
@@ -227,4 +227,13 @@ instance Solution Day22 where
               capacities
               (M.singleton initSs 0)
               (PQ.singleton initSs $ Arg (estimateDist target theEmpty) 0)
-      print r
+      forM_ [0 .. yMax] \y -> do
+        let render x
+               | (y,x) == target = 'G'
+               | u == 0 = 'E'
+               | u >= 400 = '#'
+               | otherwise = '.'
+               where
+                 u = initNs M.! (y,x)
+                 -- c = capacities M.! (y,x)
+        putStrLn $ fmap render [0..xMax]
