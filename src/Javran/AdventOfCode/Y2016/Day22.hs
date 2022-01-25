@@ -194,6 +194,40 @@ aStar capacities (gScores :: M.Map SearchState Int) q0 = case PQ.minView q0 of
                 nexts
          in aStar capacities gScores' q2
 
+{-
+  Some observation made after visualization (on my login input):
+
+  - unique used values:
+
+    [0,64,65,66,67,68,69,70,71,72,73,490,491,492,493,494,495,496,497,498,499]
+
+    we can further break this down into: 0, 64~73, 490~499
+
+  - unique total values:
+
+    [85,86,87,88,89,90,91,92,93,94,501,502,503,504,505,506,507,508,509,510]
+
+    which can be further broken down into: 85~94, 501~510
+
+  few key thing:
+
+  - 4xx used / 5xx total blocks might not be movable at all
+  - for those that has a capacity of 85~94, data can move freely between
+    them without worrying about moving target's capacity.
+
+  TODO:
+  this provides us with an interesting way of narrowing down the search space:
+
+  - let's say:
+
+    - all 4xx used / 5xx total becomes 490 used / 500 total
+    - all x used / y total (where x in [64..73], y in [85..94] becomes
+      just 70 / 80 (the choice is arbitrary).
+
+  this might give us sufficiently low search space to work with.
+
+ -}
+
 instance Solution Day22 where
   solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
@@ -237,3 +271,5 @@ instance Solution Day22 where
                  u = initNs M.! (y,x)
                  -- c = capacities M.! (y,x)
         putStrLn $ fmap render [0..xMax]
+      print $ S.toAscList $ S.fromList $ M.elems initNs
+      print $ S.toAscList $ S.fromList $ M.elems capacities
