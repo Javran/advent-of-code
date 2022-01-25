@@ -251,9 +251,22 @@ instance Solution Day22 where
       let Just (yMax, xMax) = checkCompleteness $ fmap fst nodes
           [(theEmpty, _)] = filter ((== 0) . nUsed . snd) nodes
           target = (0, xMax)
-          capacities :: M.Map Coord Int
-          capacities = M.fromList $ (fmap . second) nSize nodes
-          initNs = M.fromList $ (fmap . second) nUsed nodes
+          capacitiesPre :: M.Map Coord Int
+          capacitiesPre = M.fromList $ (fmap . second) nSize nodes
+          capacities = M.map tr capacitiesPre
+            where
+              tr v
+                | v >= 85 && v <= 94 = 80
+                | v >= 500 = 500
+                | otherwise = error "unexpected capacity"
+
+          initNs = M.fromList $ (fmap . second) (tr . nUsed) nodes
+            where
+              tr v
+                | v == 0 = 0
+                | v >= 64 && v <= 73 = 70
+                | v >= 490 = 490
+                | otherwise = error "unexpected used"
           initSs :: SearchState
           initSs = (theEmpty, target, initNs)
           r =
@@ -263,13 +276,14 @@ instance Solution Day22 where
               (PQ.singleton initSs $ Arg (estimateDist target theEmpty) 0)
       forM_ [0 .. yMax] \y -> do
         let render x
-               | (y,x) == target = 'G'
-               | u == 0 = 'E'
-               | u >= 400 = '#'
-               | otherwise = '.'
-               where
-                 u = initNs M.! (y,x)
-                 -- c = capacities M.! (y,x)
-        putStrLn $ fmap render [0..xMax]
+              | (y, x) == target = 'G'
+              | u == 0 = 'E'
+              | u >= 400 = '#'
+              | otherwise = '.'
+              where
+                u = initNs M.! (y, x)
+        -- c = capacities M.! (y,x)
+        putStrLn $ fmap render [0 .. xMax]
       print $ S.toAscList $ S.fromList $ M.elems initNs
       print $ S.toAscList $ S.fromList $ M.elems capacities
+      answerShow r
