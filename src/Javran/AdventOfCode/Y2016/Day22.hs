@@ -1,49 +1,18 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE PatternGuards #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# OPTIONS_GHC -Wno-deprecations #-}
-{-# OPTIONS_GHC -Wno-typed-holes #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -fdefer-typed-holes #-}
 
 module Javran.AdventOfCode.Y2016.Day22
   (
   )
 where
 
-{- HLINT ignore -}
-
-import Control.Applicative
 import Control.Monad
-import Data.Char
-import Data.Function
-import Data.Function.Memoize (memoFix)
-import qualified Data.IntMap.Strict as IM
-import qualified Data.IntSet as IS
-import Data.List
 import Data.List.Ordered (nubSort)
-import Data.List.Split hiding (sepBy)
 import qualified Data.Map.Strict as M
-import Data.Monoid
 import qualified Data.PSQueue as PQ
 import Data.Semigroup
 import qualified Data.Set as S
-import qualified Data.Text as T
-import qualified Data.Vector as V
-import Debug.Trace
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.GridSystem.RowThenCol.Uldr
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (count, get, many)
@@ -89,8 +58,65 @@ checkCompleteness xs = do
   pure (rMax, cMax)
 
 {-
-  TODO: I don't know if my assumption would hold, but let's see.
+  Notes regarding solving part 2:
 
+  For this part, we'd like to make following assumptions:
+
+  #1 Only one "empty" node that is capable of "moving around".
+
+    To "move around" the empty node is to move adjacent data into it
+    while the destination has enough capacity.
+
+  #2 No "data merge" could happen.
+
+    That is, we don't consider cases where merges two non-empty data,
+    as this will result in more than one empty block that we can work with.
+
+  #3 The whole grid forms a rectangle, and have all nodes available inside of it.
+
+    This is not a necessary condition for solving this puzzle, but so far all
+    login data has this property, and this makes it a bit easier to visualize and debug.
+
+    This assumption is verified by `checkCompleteness` function, which also gives
+    the grid's dimension.
+
+  #4 For actual login input (rather than examples),
+    all nodes fall into one of the following 3 categories (ranges are all inclusive):
+
+    C1: Used: 0, Size in [85..94]
+    C2: Used in [64..73], Size in [85..94]
+    C3: Used in [490..499], Size in [501..510]
+
+    This assumption is made after examining my login input
+    (and some other input data obtained after solving this puzzle)
+    Also note that having this assumption also confirms assumption #2:
+    even with two smallest C2 node, 64+64 < 94, which can't fit into any C2 node.
+    Although C3 nodes have enough capacity, they are basically "walls" as empty node
+    will never have sufficient capacity to receive their contents.
+
+    Assumption #4 allows a crucial normalization that
+    can narrow down search space quite a bit, in short:
+
+    - C3 are "walls"
+    - the empty cell can move freely between C1 and C2 nodes,
+      without worrying about capacity.
+
+    Since there's no point "shuffling C2 nodes around to make rooms for moving the target",
+    we might as well treat all C2 nodes as identical, this gives the following normalization:
+
+    - Treat the C1 node (only one) as Used: 0, Size: 80
+    - Treat C2 nodes as Used: 70, Size: 80
+    - Treat C3 nodes as Used: 490, Size: 500
+
+    Numbers are arbitrarily chosen around original value ranges - we just need some
+    value that maintains desired properties.
+
+    This normalization eliminates useless shuffling, as different shuffles results
+    in identical search state.
+
+ -}
+
+{-
   This heuristic is based on the fact that for every move that
   brings goal block closer to the origin (except for the last step
   the brings goal block to the origin)
@@ -139,23 +165,24 @@ checkCompleteness xs = do
   `dist(empty, goal) - 2`
 
   in our heuristic.
-
-  TODO: we are assuming no merge between two non-empty nodes can happen,
-  we are not yet sure whether this is true.
-
  -}
 estimateDist :: Coord -> Coord -> Int
-estimateDist c e = if dist == 0 then 0 else (5 * dist - 4 + extra)
+estimateDist c e = if dist == 0 then 0 else 5 * dist - 4 + extra
   where
     distCe = manhattan c e
     extra = if dist > 0 && distCe > 2 then distCe - 2 else 0
     dist = manhattan (0, 0) c
 
-type SearchState = (Coord, Coord, M.Map Coord Int) -- location of the empty block, location of the goal block, and all current nodes.
+type SearchState =
+  ( Coord -- location of the empty block
+  , Coord -- location of the goal block, and all current nodes.
+  , M.Map Coord Int -- current used fields.
+  )
 
-aStar capacities (gScores :: M.Map SearchState Int) q0 = case PQ.minView q0 of
+aStar :: M.Map Coord Int -> M.Map SearchState Int -> PQ.PSQ SearchState (Arg Int Int) -> Int
+aStar capacities gScores q0 = case PQ.minView q0 of
   Nothing -> error "queue exhausted"
-  Just (((coord, targetNode, ns) :: SearchState) PQ.:-> (Arg fScore gScore), q1) ->
+  Just ((coord, targetNode, ns) PQ.:-> (Arg fScore gScore), q1) ->
     if fScore == gScore
       then gScore
       else
@@ -195,40 +222,6 @@ aStar capacities (gScores :: M.Map SearchState Int) q0 = case PQ.minView q0 of
                 nexts
          in aStar capacities gScores' q2
 
-{-
-  Some observation made after visualization (on my login input):
-
-  - unique used values:
-
-    [0,64,65,66,67,68,69,70,71,72,73,490,491,492,493,494,495,496,497,498,499]
-
-    we can further break this down into: 0, 64~73, 490~499
-
-  - unique total values:
-
-    [85,86,87,88,89,90,91,92,93,94,501,502,503,504,505,506,507,508,509,510]
-
-    which can be further broken down into: 85~94, 501~510
-
-  few key thing:
-
-  - 4xx used / 5xx total blocks might not be movable at all
-  - for those that has a capacity of 85~94, data can move freely between
-    them without worrying about moving target's capacity.
-
-  TODO:
-  this provides us with an interesting way of narrowing down the search space:
-
-  - let's say:
-
-    - all 4xx used / 5xx total becomes 490 used / 500 total
-    - all x used / y total (where x in [64..73], y in [85..94] becomes
-      just 70 / 80 (the choice is arbitrary).
-
-  this might give us sufficiently low search space to work with.
-
- -}
-
 instance Solution Day22 where
   solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow, terminal} = do
@@ -239,24 +232,22 @@ instance Solution Day22 where
           guard $ nUsed a /= 0 && nUsed a <= nAvail b
           pure (ca, cb)
     answerShow $ length viablePairs
-    {-
-      Few notes:
-      - the grid has all coords present inside the rectangle,
-        this should be a reasonable assumption to make.
-      - for my specific input, there is only one empty space
-        that we can use to move things around, suggesting
-        that initial few moves might be quite restricted that
-        a plain search (probably a* algorithm) would work.
-     -}
     do
       let Just (yMax, xMax) = checkCompleteness $ fmap fst nodes
           [(theEmpty, _)] = filter ((== 0) . nUsed . snd) nodes
           target = (0, xMax)
-          shouldNormalizeInput = yMax * xMax > 25
+          shouldNormalizeInput =
+            {-
+              We want to run A* as it is on small examples to verify its correctness,
+              but for larger inputs, we really need to normalize
+              to get any reasonable run time.
+             -}
+            yMax * xMax > 25
           capacities :: M.Map Coord Int
           capacities = M.fromList $ (fmap . second) (f . nSize) nodes
             where
               f = if shouldNormalizeInput then tr else id
+              -- See assumption #4 above.
               tr v
                 | v >= 85 && v <= 94 = 80
                 | v >= 500 = 500
@@ -265,6 +256,7 @@ instance Solution Day22 where
           initNs = M.fromList $ (fmap . second) (f . nUsed) nodes
             where
               f = if shouldNormalizeInput then tr else id
+              -- See assumption #4 above.
               tr v
                 | v == 0 = 0
                 | v >= 64 && v <= 73 = 70
@@ -272,11 +264,6 @@ instance Solution Day22 where
                 | otherwise = error "unexpected used"
           initSs :: SearchState
           initSs = (theEmpty, target, initNs)
-          r =
-            aStar
-              capacities
-              (M.singleton initSs 0)
-              (PQ.singleton initSs $ Arg (estimateDist target theEmpty) 0)
       when (isJust terminal) do
         forM_ [0 .. yMax] \y -> do
           let render x
@@ -287,6 +274,12 @@ instance Solution Day22 where
                 where
                   u = initNs M.! (y, x)
           putStrLn $ fmap render [0 .. xMax]
-        print $ nubSort $ M.elems initNs
-        print $ nubSort $ M.elems capacities
-      answerShow r
+        putStrLn "Used values before normalization:"
+        print $ nubSort $ fmap (nUsed . snd) nodes
+        putStrLn "Size values before normalization: "
+        print $ nubSort $ fmap (nSize . snd) nodes
+      answerShow $
+        aStar
+          capacities
+          (M.singleton initSs 0)
+          (PQ.singleton initSs $ Arg (estimateDist target theEmpty) 0)
