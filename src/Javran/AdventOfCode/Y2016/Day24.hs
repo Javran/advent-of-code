@@ -50,7 +50,6 @@ import Text.ParserCombinators.ReadP hiding (count, get, many)
 data Day24 deriving (Generic)
 
 {-
-  TODO:
 
   We can probably apply the same simplification that we did in Y2019 Day 18 and 20,
   which is to prune useless tunnels and other terminal nodes
@@ -60,6 +59,13 @@ data Day24 deriving (Generic)
 
   After simplification, we can priority-search to find the shortest path
   (with current path length as priority).
+
+  TODO: we need some more cleanups, more specifically, we should only consider
+  numbered nodes in the map - probably we can run shortest path algorithms
+  on all numbered nodes to all numbered nodes (but stop at those numbered nodes
+  so that we only construct direct paths rather than allowing indirect paths.
+
+  Then priority search will then use search state (<cur node>, <not-yet-visited-nodes>).
 
  -}
 
