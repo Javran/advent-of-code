@@ -2,14 +2,13 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Javran.AdventOfCode.Y2016.Day23
   (
   )
 where
-
 
 import Control.Monad
 import Control.Monad.ST
@@ -20,9 +19,9 @@ import qualified Data.Vector as V
 import qualified Data.Vector.Mutable as VM
 import Debug.Trace
 import Javran.AdventOfCode.Prelude
+import Javran.AdventOfCode.TestExtra
 import Text.ParserCombinators.ReadP hiding (count, get, many)
 import Text.Printf
-import Javran.AdventOfCode.TestExtra (consumeExtra)
 
 data Day23 deriving (Generic)
 
@@ -227,17 +226,41 @@ pprInstrs vs = mapM_ pprInstr (zip [0 ..] $ V.toList vs)
         lineNum :: String
         lineNum = printf "  %2d:  " pc
 
+{-
+  Solving this puzzle without any simulation:
+
+  Running `interpret` with `fastForward` on is fast enough,
+  but there's a way that we don't need to run it at all:
+
+  upon examining multiple login inputs, I notice the only varying number
+  is on line 19 and line 20, and the final part that we are actually running
+  is to add the multiple of those two varying number together -
+  so we might as well do it ourselves.
+
+ -}
+fastSolve :: [Instr] -> Int -> Int
+fastSolve instrs n = x * y + product [1 .. n]
+  where
+    InstrBinary _ (Left x) _ = instrs !! 19
+    InstrBinary _ (Left y) _ = instrs !! 20
+
 instance Solution Day23 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     let showInstrs = False
     (extraOp, rawInput) <- consumeExtra getInputS
     let instrs = fmap (consumeOrDie instrP) . lines $ rawInput
+        fast = True
+        solve =
+          if fast
+            then fastSolve instrs
+            else \i -> runST $ interpret instrs True i
+
     when showInstrs do
       pprInstrs $ V.fromList instrs
 
     case extraOp of
       Nothing -> do
-        answerShow $ runST $ interpret instrs True 7
-        answerShow $ runST $ interpret instrs True 12
+        answerShow $ solve 7
+        answerShow $ solve 12
       Just _ ->
         answerShow $ runST $ interpret instrs False 0
