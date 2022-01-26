@@ -45,6 +45,8 @@ import qualified Data.Vector.Mutable as VM
 import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (count, get, many)
+import Text.Printf
+import Debug.Trace
 
 data Day23 deriving (Generic)
 
@@ -97,15 +99,25 @@ toggleInstr = \case
     tglBin = \case
       Jnz -> Cpy
       _ -> Jnz
-interpret :: forall s. [Instr] -> ST s Int
-interpret instrSrc = do
+
+interpret :: forall s. [Instr] -> Int -> ST s Int
+interpret instrSrc aVal = do
   regs <- VM.replicate 4 (0 :: Int)
   -- setup for login input.
-  VM.unsafeWrite regs 0 7
+  VM.unsafeWrite regs 0 aVal
   instrs <- V.unsafeThaw $ V.fromList instrSrc
   let getVal = \case
         Left i -> pure i
         Right (Reg i) -> VM.unsafeRead regs i
+
+  VM.unsafeModify instrs toggleInstr 24
+  VM.unsafeModify instrs toggleInstr 22
+  VM.unsafeModify instrs toggleInstr 20
+  VM.unsafeWrite regs 0 $! product [1..aVal]
+  VM.unsafeWrite regs 1 1
+  VM.unsafeWrite regs 2 2
+  VM.unsafeWrite regs 3 0
+
   fix
     do
       \go pc ->
@@ -125,7 +137,8 @@ interpret instrSrc = do
                     offset <- getVal ax
                     let ind = pc + offset
                     when (ind >= 0 && ind < VM.length instrs) do
-                      VM.unsafeModify instrs toggleInstr ind
+                      curRegs <- V.freeze regs
+                      VM.unsafeModify instrs toggleInstr $ traceShow (ind, curRegs) $ ind
                   _ -> pure ()
                 go (pc + 1)
               InstrBinary i ax ay ->
@@ -140,10 +153,42 @@ interpret instrSrc = do
                     offset <- getVal ay
                     go (pc + if cond /= 0 then offset else 1)
                   _ -> go (pc + 1)
-    0
+    16
+
+pprInstrs :: V.Vector Instr -> IO ()
+pprInstrs vs = mapM_ pprInstr (zip [0 ..] $ V.toList vs)
+  where
+    pprReg (Reg i) = [chr (ord 'a' + i)]
+    pprReadVal = \case
+      Left i -> show i
+      Right r -> pprReg r
+    pprInstr :: (Int, Instr) -> IO ()
+    pprInstr (pc, instr) =
+      putStrLn $
+        lineNum <> case instr of
+          InstrUnary Inc (Right reg) ->
+            pprReg reg <> " += 1"
+          InstrUnary Dec (Right reg) ->
+            pprReg reg <> " -= 1"
+          InstrUnary Tgl (Right reg) ->
+            "tgl " <> pprReg reg
+          InstrBinary Cpy x (Right reg) ->
+            pprReg reg <> " = " <> pprReadVal x
+          InstrBinary Jnz x (Left offset) ->
+            "jnz " <> pprReadVal x <> " to loc " <> show (pc + offset)
+          InstrBinary Jnz x (Right reg) ->
+            "jnz " <> pprReadVal x <> " to loc (" <> pprReg reg <> " + " <> show pc <> ")"
+          _ -> show instr
+      where
+        lineNum :: String
+        lineNum = printf "  %2d:  " pc
 
 instance Solution Day23 where
   solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     xs <- fmap (consumeOrDie instrP) . lines <$> getInputS
-    answerShow $ runST $ interpret xs
+    do
+      let vs = V.fromList xs
+      pprInstrs vs
+      print $ runST $ interpret xs 12
+
