@@ -1,52 +1,28 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE PatternGuards #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# OPTIONS_GHC -Wno-deprecations #-}
-{-# OPTIONS_GHC -Wno-typed-holes #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -fdefer-typed-holes #-}
+{-# LANGUAGE RankNTypes #-}
 
 module Javran.AdventOfCode.Y2016.Day23
   (
   )
 where
 
-{- HLINT ignore -}
 
-import Control.Applicative
 import Control.Monad
 import Control.Monad.ST
 import Data.Char
 import Data.Function
-import Data.Function.Memoize (memoFix)
-import qualified Data.IntMap.Strict as IM
-import qualified Data.IntSet as IS
 import Data.List
-import Data.List.Split hiding (sepBy)
-import qualified Data.Map.Strict as M
-import Data.Monoid
-import Data.Semigroup
-import qualified Data.Set as S
-import qualified Data.Text as T
 import qualified Data.Vector as V
 import qualified Data.Vector.Mutable as VM
-import GHC.Generics (Generic)
+import Debug.Trace
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (count, get, many)
 import Text.Printf
-import Debug.Trace
+import Javran.AdventOfCode.TestExtra (consumeExtra)
 
 data Day23 deriving (Generic)
 
@@ -100,8 +76,68 @@ toggleInstr = \case
       Jnz -> Cpy
       _ -> Jnz
 
-interpret :: forall s. [Instr] -> Int -> ST s Int
-interpret instrSrc aVal = do
+{-
+  For solving part2, the actual clue comes from dumping registers right before
+  executing the instruction at pc=16, which is a `tgl` instruction.
+  Set `dumpRegs` below to True to observe this in action:
+
+  any non-negative aVale less than 6 seems to stuck, so we begin with 6:
+  (the output format below `(loc, regs)` means `loc` will be toggled,
+  and prior to the toggling, registers are `regs`, in that order).
+
+  aVal = 6:
+
+  (24,[30,4,8,0])
+  (22,[120,3,6,0])
+  (20,[360,2,4,0])
+  (18,[720,1,2,0])
+  final a = 7158
+
+  aVal = 7:
+
+  (24,[210,4,8,0])
+  (22,[840,3,6,0])
+  (20,[2520,2,4,0])
+  (18,[5040,1,2,0])
+  final a = 11478
+
+  aVal = 8:
+  (24,[1680,4,8,0])
+  (22,[6720,3,6,0])
+  (20,[20160,2,4,0])
+  (18,[40320,1,2,0])
+  final a = 46758
+
+  aVal = 9:
+  (24,[15120,4,8,0])
+  (22,[60480,3,6,0])
+  (20,[181440,2,4,0])
+  (18,[362880,1,2,0])
+  final a = 369318
+
+  aVal = 10:
+  (24,[151200,4,8,0])
+  (22,[604800,3,6,0])
+  (20,[1814400,2,4,0])
+  (18,[3628800,1,2,0])
+  final a = 3635238
+
+  now it's easier to see that:
+
+  - toggle always happen at location 24, 22, 20, and 18, in that order,
+    regardless of what the input value is.
+
+  - right before loc 18 is toggled (this is also the last time we run a toggle instruction),
+    reg a is `product [1..aVal]`, and reg b, c, d are [1,2,0], in that order.
+
+  Since the only state for this virtual machine is pc and registers,
+  we can re-construct the state right before entering loc 16 (i.e. the tgl instruction)
+  for the last time, and allow the machine to continue from there.
+
+ -}
+interpret :: forall s. [Instr] -> Bool -> Int -> ST s Int
+interpret instrSrc fastForward aVal = do
+  let dumpRegs = False
   regs <- VM.replicate 4 (0 :: Int)
   -- setup for login input.
   VM.unsafeWrite regs 0 aVal
@@ -110,13 +146,16 @@ interpret instrSrc aVal = do
         Left i -> pure i
         Right (Reg i) -> VM.unsafeRead regs i
 
-  VM.unsafeModify instrs toggleInstr 24
-  VM.unsafeModify instrs toggleInstr 22
-  VM.unsafeModify instrs toggleInstr 20
-  VM.unsafeWrite regs 0 $! product [1..aVal]
-  VM.unsafeWrite regs 1 1
-  VM.unsafeWrite regs 2 2
-  VM.unsafeWrite regs 3 0
+  when fastForward do
+    VM.unsafeModify instrs toggleInstr 24
+    VM.unsafeModify instrs toggleInstr 22
+    VM.unsafeModify instrs toggleInstr 20
+    VM.unsafeWrite regs 0 $! product [1 .. aVal]
+    VM.unsafeWrite regs 1 1
+    VM.unsafeWrite regs 2 2
+    VM.unsafeWrite regs 3 0
+
+  let startPc = if fastForward then 16 else 0
 
   fix
     do
@@ -137,8 +176,13 @@ interpret instrSrc aVal = do
                     offset <- getVal ax
                     let ind = pc + offset
                     when (ind >= 0 && ind < VM.length instrs) do
-                      curRegs <- V.freeze regs
-                      VM.unsafeModify instrs toggleInstr $ traceShow (ind, curRegs) $ ind
+                      mayTrace <-
+                        if dumpRegs
+                          then do
+                            curRegs <- V.freeze regs
+                            pure (traceShow (ind, curRegs))
+                          else pure id
+                      VM.unsafeModify instrs toggleInstr $ mayTrace ind
                   _ -> pure ()
                 go (pc + 1)
               InstrBinary i ax ay ->
@@ -153,7 +197,7 @@ interpret instrSrc aVal = do
                     offset <- getVal ay
                     go (pc + if cond /= 0 then offset else 1)
                   _ -> go (pc + 1)
-    16
+    startPc
 
 pprInstrs :: V.Vector Instr -> IO ()
 pprInstrs vs = mapM_ pprInstr (zip [0 ..] $ V.toList vs)
@@ -184,11 +228,16 @@ pprInstrs vs = mapM_ pprInstr (zip [0 ..] $ V.toList vs)
         lineNum = printf "  %2d:  " pc
 
 instance Solution Day23 where
-  solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    xs <- fmap (consumeOrDie instrP) . lines <$> getInputS
-    do
-      let vs = V.fromList xs
-      pprInstrs vs
-      print $ runST $ interpret xs 12
+    let showInstrs = False
+    (extraOp, rawInput) <- consumeExtra getInputS
+    let instrs = fmap (consumeOrDie instrP) . lines $ rawInput
+    when showInstrs do
+      pprInstrs $ V.fromList instrs
 
+    case extraOp of
+      Nothing -> do
+        answerShow $ runST $ interpret instrs True 7
+        answerShow $ runST $ interpret instrs True 12
+      Just _ ->
+        answerShow $ runST $ interpret instrs False 0
