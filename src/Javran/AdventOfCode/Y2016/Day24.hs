@@ -193,10 +193,10 @@ shortestDirectDists mi@MapInfo {miGraph, miDist} targets dists q0 = case PQ.minV
 
 type SearchState = (Int, IS.IntSet) -- current node, nodes to be visited
 
-solve (simpleDists :: IM.IntMap [(Int, Int)]) (pathLens :: M.Map SearchState Int) q0 = case PQ.minView q0 of
+solve (simpleDists :: IM.IntMap [(Int, Int)]) (isDone :: SearchState -> Bool) (pathLens :: M.Map SearchState Int) q0 = case PQ.minView q0 of
   Nothing -> error "queue exhausted"
-  Just (((u, todos) :: SearchState) PQ.:-> len, q1) ->
-    if IS.null todos
+  Just ((ss@(u, todos) :: SearchState) PQ.:-> len, q1) ->
+    if isDone ss
       then len
       else let nexts = do
                  Just vs <- pure $ simpleDists IM.!? u
@@ -208,7 +208,7 @@ solve (simpleDists :: IM.IntMap [(Int, Int)]) (pathLens :: M.Map SearchState Int
                  pure (next, len')
                pathLens' = foldr (\(next, len') -> M.insert next len') pathLens nexts
                q2 = foldr (\(next, prio) -> PQ.insert next prio) q1 nexts
-         in solve simpleDists pathLens' q2
+         in solve simpleDists isDone pathLens' q2
 
 instance Solution Day24 where
   solutionSolved _ = False
@@ -244,4 +244,5 @@ instance Solution Day24 where
           pure (ptToInt src, (fmap . first ) ptToInt $ M.toList dists)
         initSt = (0, initTodos)
         initTodos = IS.delete 0 $ IS.fromList $ M.elems $ miNums mi
-    answerShow $ solve simpleDists (M.singleton initSt 0) (PQ.singleton initSt 0)
+    answerShow $ solve simpleDists (IS.null . snd) (M.singleton initSt 0) (PQ.singleton initSt 0)
+    answerShow $ solve simpleDists (\(cur, todos) -> IS.null todos && cur == 0) (M.singleton initSt 0) (PQ.singleton initSt 0)
