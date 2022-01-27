@@ -73,13 +73,13 @@ data MapInfo = MapInfo
   { miStart :: Coord
   , miGraph :: M.Map Coord [Coord]
   , miDist :: M.Map (MinMax Coord) Int
-  , miVisits :: S.Set Coord
+  , miTargets :: M.Map Coord Int
   , miDims :: (Int, Int)
   }
   deriving (Show)
 
 parseFromRaw :: [String] -> MapInfo
-parseFromRaw xs = MapInfo {miGraph, miDist, miStart, miVisits, miDims}
+parseFromRaw xs = MapInfo {miGraph, miDist, miStart, miTargets, miDims}
   where
     rows = length xs
     cols = length (head xs)
@@ -107,20 +107,20 @@ parseFromRaw xs = MapInfo {miGraph, miDist, miStart, miVisits, miDims}
       v <- vs
       guard $ u <= v
       pure (minMaxFromPair (u, v), 1)
-    (0, miStart) : visits = sortOn fst do
+    (0, miStart) : targets = sortOn fst do
       (u, ch, _) <- gPre
       guard $ isDigit ch
       pure (ord ch - ord '0', u)
-    miVisits = S.fromList $ fmap snd visits
+    miTargets = M.fromList $ fmap swap targets
 
 simplifyMapInfo :: MapInfo -> MapInfo
-simplifyMapInfo mi@MapInfo {miGraph, miStart, miVisits} = simplifyMapInfoAux shouldKeep mi $ PQ.fromList do
+simplifyMapInfo mi@MapInfo {miGraph, miStart, miTargets} = simplifyMapInfoAux shouldKeep mi $ PQ.fromList do
   (coord, cs) <- M.toList miGraph
   let deg = length cs
   guard $ deg <= 2
   pure (coord PQ.:-> deg)
   where
-    shouldKeep = S.insert miStart miVisits
+    shouldKeep = S.insert miStart $ M.keysSet miTargets
 
 getDist :: M.Map (MinMax Coord) Int -> (Coord, Coord) -> Maybe Int
 getDist m p = m M.!? minMaxFromPair p
@@ -168,25 +168,62 @@ simplifyMapInfoAux
               mi
           _ -> unreachable
 
+{-
+  Basically just single-source shortest distance algorithm
+  but not allowing further expansion from a target node.
+  by doing so we only consider direct paths
+  (a path that does not go through a node of interest)
+ -}
+shortestDirectDists mi@MapInfo {miGraph, miDist} targets dists q0 = case PQ.minView q0 of
+  Nothing -> M.restrictKeys dists targets
+  Just (u PQ.:-> distU, q1) ->
+    let nexts = do
+          -- not allowed to expand further if we have reached some targets.
+          guard $ S.notMember u targets
+          Just vs <- pure (miGraph M.!? u)
+          v <- vs
+
+          let distV' = distU + fromJust (getDist miDist (u, v))
+              mDistV = dists M.!? v
+          guard $ maybe True (distV' <) mDistV
+          pure (v, distV')
+        dists' = foldr (\(v, distV') -> M.insert v distV') dists nexts
+        q2 = foldr (\(v, distV') -> PQ.insert v distV') q1 nexts
+     in shortestDirectDists mi targets dists' q2
+
 instance Solution Day24 where
   solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     mi <- parseFromRaw . lines <$> getInputS
     let mi'@MapInfo {miDims = (rows, cols)} = simplifyMapInfo mi
     putStrLn $ "before vs after: " <> show (M.size (miGraph mi), M.size (miGraph mi'))
-    forM_ [0 .. rows -1] \r -> do
-      let render c =
-            case miGraph mi M.!? (r, c) of
-              Nothing -> '#'
-              Just _ ->
-                if
-                    | coord == miStart mi -> 'S'
-                    | S.member coord (miVisits mi) -> 'V'
-                    | otherwise ->
-                      case miGraph mi' M.!? (r, c) of
-                        Nothing -> ' '
-                        Just _ -> '.'
-            where
-              coord = (r, c)
+    let shouldPrintMap = False
+    when shouldPrintMap do
+      forM_ [0 .. rows -1] \r -> do
+        let render c =
+              case miGraph mi M.!? (r, c) of
+                Nothing -> '#'
+                Just _ ->
+                  if
+                      | coord == miStart mi -> 'S'
+                      | Just t <- miTargets mi M.!? coord -> chr (ord '0' + t)
+                      | otherwise ->
+                        case miGraph mi' M.!? (r, c) of
+                          Nothing -> ' '
+                          Just _ -> '.'
+              where
+                coord = (r, c)
 
-      putStrLn $ fmap render [0 .. cols -1]
+        putStrLn $ fmap render [0 .. cols -1]
+    let points = S.insert (miStart mi') (M.keysSet $ miTargets mi')
+    forM_
+      do
+        src <- S.toList points
+        let targets = S.delete src points
+        pure (src, targets)
+      \(src, targets) -> do
+        let initQ = PQ.singleton src 0
+        print src
+        print $ shortestDirectDists mi' targets M.empty initQ
+        pure ()
+    pure ()
