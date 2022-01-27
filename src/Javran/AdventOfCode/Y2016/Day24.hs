@@ -211,11 +211,9 @@ solve (simpleDists :: IM.IntMap [(Int, Int)]) (isDone :: SearchState -> Bool) (p
          in solve simpleDists isDone pathLens' q2
 
 instance Solution Day24 where
-  solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     mi <- parseFromRaw . lines <$> getInputS
     let mi'@MapInfo {miDims = (rows, cols)} = simplifyMapInfo mi
-    putStrLn $ "before vs after: " <> show (M.size (miGraph mi), M.size (miGraph mi'))
     let shouldPrintMap = False
     when shouldPrintMap do
       forM_ [0 .. rows -1] \r -> do
