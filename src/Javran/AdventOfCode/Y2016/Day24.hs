@@ -191,6 +191,25 @@ shortestDirectDists mi@MapInfo {miGraph, miDist} targets dists q0 = case PQ.minV
         q2 = foldr (\(v, distV') -> PQ.insert v distV') q1 nexts
      in shortestDirectDists mi targets dists' q2
 
+type SearchState = (Int, IS.IntSet) -- current node, nodes to be visited
+
+solve (simpleDists :: IM.IntMap [(Int, Int)]) (pathLens :: M.Map SearchState Int) q0 = case PQ.minView q0 of
+  Nothing -> error "queue exhausted"
+  Just (((u, todos) :: SearchState) PQ.:-> len, q1) ->
+    if IS.null todos
+      then len
+      else let nexts = do
+                 Just vs <- pure $ simpleDists IM.!? u
+                 (v, d) <- vs
+                 let todos' = IS.delete v todos
+                     len' = len + d
+                     next = (v, todos')
+                 guard $ maybe True (len' <) $ pathLens M.!? next
+                 pure (next, len')
+               pathLens' = foldr (\(next, len') -> M.insert next len') pathLens nexts
+               q2 = foldr (\(next, prio) -> PQ.insert next prio) q1 nexts
+         in solve simpleDists pathLens' q2
+
 instance Solution Day24 where
   solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
@@ -216,15 +235,13 @@ instance Solution Day24 where
 
         putStrLn $ fmap render [0 .. cols -1]
     let points = S.insert (miStart mi') (M.keysSet $ miNums mi')
-    forM_
-      do
-        src <- S.toList points
-        let targets = S.delete src points
-        pure (src, targets)
-      \(src, targets) -> do
-        let initQ = PQ.singleton src 0
-        putStrLn $ "From: " <> show (miNums mi' M.! src)
-        forM_ (sortOn fst $ (fmap . first) (miNums mi' M.!) $ M.toList $ shortestDirectDists mi' targets M.empty initQ) \(k, d) -> do
-          putStrLn $ "  ==> "  <> show k <> " dist: " <> show d
-        pure ()
-    pure ()
+        ptToInt = (miNums mi' M.!)
+        simpleDists :: IM.IntMap [(Int, Int)]
+        simpleDists = IM.fromList do
+          src <- S.toList points
+          let targets = S.delete src points
+              dists = shortestDirectDists mi' targets M.empty (PQ.singleton src 0)
+          pure (ptToInt src, (fmap . first ) ptToInt $ M.toList dists)
+        initSt = (0, initTodos)
+        initTodos = IS.delete 0 $ IS.fromList $ M.elems $ miNums mi
+    answerShow $ solve simpleDists (M.singleton initSt 0) (PQ.singleton initSt 0)
