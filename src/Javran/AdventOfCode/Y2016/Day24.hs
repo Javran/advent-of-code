@@ -73,13 +73,13 @@ data MapInfo = MapInfo
   { miStart :: Coord
   , miGraph :: M.Map Coord [Coord]
   , miDist :: M.Map (MinMax Coord) Int
-  , miTargets :: M.Map Coord Int
+  , miNums :: M.Map Coord Int
   , miDims :: (Int, Int)
   }
   deriving (Show)
 
 parseFromRaw :: [String] -> MapInfo
-parseFromRaw xs = MapInfo {miGraph, miDist, miStart, miTargets, miDims}
+parseFromRaw xs = MapInfo {miGraph, miDist, miStart, miNums, miDims}
   where
     rows = length xs
     cols = length (head xs)
@@ -107,20 +107,20 @@ parseFromRaw xs = MapInfo {miGraph, miDist, miStart, miTargets, miDims}
       v <- vs
       guard $ u <= v
       pure (minMaxFromPair (u, v), 1)
-    (0, miStart) : targets = sortOn fst do
+    nums@((0, miStart) : _) = sortOn fst do
       (u, ch, _) <- gPre
       guard $ isDigit ch
       pure (ord ch - ord '0', u)
-    miTargets = M.fromList $ fmap swap targets
+    miNums = M.fromList $ fmap swap nums
 
 simplifyMapInfo :: MapInfo -> MapInfo
-simplifyMapInfo mi@MapInfo {miGraph, miStart, miTargets} = simplifyMapInfoAux shouldKeep mi $ PQ.fromList do
+simplifyMapInfo mi@MapInfo {miGraph, miStart, miNums} = simplifyMapInfoAux shouldKeep mi $ PQ.fromList do
   (coord, cs) <- M.toList miGraph
   let deg = length cs
   guard $ deg <= 2
   pure (coord PQ.:-> deg)
   where
-    shouldKeep = S.insert miStart $ M.keysSet miTargets
+    shouldKeep = M.keysSet miNums
 
 getDist :: M.Map (MinMax Coord) Int -> (Coord, Coord) -> Maybe Int
 getDist m p = m M.!? minMaxFromPair p
@@ -206,7 +206,7 @@ instance Solution Day24 where
                 Just _ ->
                   if
                       | coord == miStart mi -> 'S'
-                      | Just t <- miTargets mi M.!? coord -> chr (ord '0' + t)
+                      | Just t <- miNums mi M.!? coord -> chr (ord '0' + t)
                       | otherwise ->
                         case miGraph mi' M.!? (r, c) of
                           Nothing -> ' '
@@ -215,7 +215,7 @@ instance Solution Day24 where
                 coord = (r, c)
 
         putStrLn $ fmap render [0 .. cols -1]
-    let points = S.insert (miStart mi') (M.keysSet $ miTargets mi')
+    let points = S.insert (miStart mi') (M.keysSet $ miNums mi')
     forM_
       do
         src <- S.toList points
@@ -223,7 +223,8 @@ instance Solution Day24 where
         pure (src, targets)
       \(src, targets) -> do
         let initQ = PQ.singleton src 0
-        print src
-        print $ shortestDirectDists mi' targets M.empty initQ
+        putStrLn $ "From: " <> show (miNums mi' M.! src)
+        forM_ (sortOn fst $ (fmap . first) (miNums mi' M.!) $ M.toList $ shortestDirectDists mi' targets M.empty initQ) \(k, d) -> do
+          putStrLn $ "  ==> "  <> show k <> " dist: " <> show d
         pure ()
     pure ()
