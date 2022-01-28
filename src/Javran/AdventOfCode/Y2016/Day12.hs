@@ -6,7 +6,11 @@
 {-# LANGUAGE TypeApplications #-}
 
 module Javran.AdventOfCode.Y2016.Day12
-  (
+  ( Reg (..)
+  , mkReg
+  , regP
+  , ReadVal
+  , readValP
   )
 where
 
@@ -53,10 +57,15 @@ instrP =
     binary lit builder pa pb =
       unary lit builder pa <*> (sp *> pb)
 
-    -- below are basic parsers that won't consume extra spaces afterwards.
-    intP = readS_to_P (reads @Int)
-    regP = mkReg <$> satisfy (\ch -> ch >= 'a' && ch <= 'h')
-    readValP = (Right <$> regP) <++ (Left <$> intP)
+-- below are basic parsers that won't consume extra spaces afterwards.
+intP :: ReadP Int
+intP = readS_to_P (reads @Int)
+
+regP :: ReadP Reg
+regP = mkReg <$> satisfy (\ch -> ch >= 'a' && ch <= 'h')
+
+readValP :: ReadP ReadVal
+readValP = (Right <$> regP) <++ (Left <$> intP)
 
 interpret :: forall s. V.Vector Instr -> Bool -> ST s Int
 interpret instrs part2 = do
