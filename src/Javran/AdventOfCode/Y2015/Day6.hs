@@ -1,11 +1,11 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE FlexibleContexts #-}
 
 module Javran.AdventOfCode.Y2015.Day6
   (
@@ -56,7 +56,6 @@ simulate instrs z opToFn toAnswer = do
     forM_ [(r, c) | r <- [rLo .. rHi], c <- [cLo .. cHi]] \coord -> do
       v <- MArr.readArray grid coord
       MArr.writeArray grid coord (f v)
-
   toAnswer <$> MArr.getElems grid
 
 instance Solution Day6 where
