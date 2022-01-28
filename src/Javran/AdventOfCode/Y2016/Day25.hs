@@ -146,7 +146,6 @@ solve c b = target - n
         iterate (\v -> v * 4 + 2) 0
 
 instance Solution Day25 where
-  solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     instrs <- V.fromList . fmap (consumeOrDie instrP) . lines <$> getInputS
     let Cpy (Left c) (Reg 2) = instrs V.! 1
