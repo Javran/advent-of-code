@@ -43,6 +43,9 @@ library
       Javran.AdventOfCode.TestExtra
       Javran.AdventOfCode.TH
       Javran.AdventOfCode.UnionFind.ST
+      Javran.AdventOfCode.Y2015.Day1
+      Javran.AdventOfCode.Y2015.Day2
+      Javran.AdventOfCode.Y2015.Day3
       Javran.AdventOfCode.Y2016.Day1
       Javran.AdventOfCode.Y2016.Day10
       Javran.AdventOfCode.Y2016.Day11
