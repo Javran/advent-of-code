@@ -1,6 +1,5 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
 
 module Javran.AdventOfCode.Y2016.Day24
@@ -22,32 +21,17 @@ import Javran.AdventOfCode.Prelude
 
 data Day24 deriving (Generic)
 
-{-
-
-  We can probably apply the same simplification that we did in Y2019 Day 18 and 20,
-  which is to prune useless tunnels and other terminal nodes
-  (nodes of deg 1 or 2 that doesn't have tags attached)
-  so that we can get to points of interest faster
-  (search for `simplifyMapInfo` for details).
-
-  After simplification, we can priority-search to find the shortest path
-  (with current path length as priority).
-
-  TODO: we need some more cleanups, more specifically, we should only consider
-  numbered nodes in the map - probably we can run shortest path algorithms
-  on all numbered nodes to all numbered nodes (but stop at those numbered nodes
-  so that we only construct direct paths rather than allowing indirect paths.
-
-  Then priority search will then use search state (<cur node>, <not-yet-visited-nodes>).
-
- -}
-
 data MapInfo = MapInfo
-  { miStart :: Coord
+  { -- | the coord tagged `0`
+    miStart :: Coord
   , miGraph :: M.Map Coord [Coord]
-  , miDist :: M.Map (MinMax Coord) Int
-  , miNums :: M.Map Coord Int -- all number locations
-  , miDims :: (Int, Int)
+  , -- | distance between coords,
+    --   might contain edges that no longer exist due to simplification
+    miDist :: M.Map (MinMax Coord) Int
+  , -- | all number locations
+    miNums :: M.Map Coord Int
+  , -- | rows and cols
+    miDims :: (Int, Int)
   }
   deriving (Show)
 
@@ -89,6 +73,24 @@ parseFromRaw xs = MapInfo {miGraph, miDist, miStart, miNums, miDims}
 getDist :: M.Map (MinMax Coord) Int -> (Coord, Coord) -> Maybe Int
 getDist m p = m M.!? minMaxFromPair p
 
+{-
+  Simplifies a graph by pruning "boring" nodes,
+  while preserving graph's shortest paths between tagged nodes.
+
+  A "boring" node is a node without tag that meets one of the following requirement:
+
+  - of degree 0 or 1: a "dead end" node that can simply be removed from graph.
+  - of degree 2: a "tunnel" node that connects exactly 2 other nodes
+    (one needs to be careful that removal of this node should not destroy the shortest
+    path passing it)
+
+  This is very similar to what we did in Y2019 Day 18 and 20, the simplification
+  allows us to travel between nodes with less intermediate hops.
+
+  Note that this is not a necessary step, but it could speed up subsequent
+  shortest-path finding as we have way less nodes to consider
+  (due to the "tunnel-rich" nature of input maze)
+ -}
 simplifyMapInfo :: MapInfo -> MapInfo
 simplifyMapInfo miIn = simp miIn $ PQ.fromList do
   (coord, cs) <- M.toList (miGraph miIn)
@@ -137,10 +139,13 @@ simplifyMapInfo miIn = simp miIn $ PQ.fromList do
             _ -> unreachable
 
 {-
-  Basically just single-source shortest distance algorithm
-  but not allowing further expansion from a target node.
-  by doing so we only consider direct paths
-  (a path that does not go through a node of interest)
+  Finds single-source shortest direct distances to `target` nodes.
+
+  "Direct" means that we don't consider paths that "go beyond" target nodes.
+  In some cases (especially puzzle's example) this allows terminating
+  shortest path finding earlier - it's unnecessary to find paths beyond direct reach
+  because passing through a node without actually visiting it can't be the optimal solution.
+
  -}
 shortestDirectDists :: MapInfo -> S.Set Coord -> M.Map Coord Int -> PQ.PSQ Coord Int -> M.Map Coord Int
 shortestDirectDists MapInfo {miGraph, miDist} targets = fix \go dists q0 -> case PQ.minView q0 of
@@ -160,10 +165,13 @@ shortestDirectDists MapInfo {miGraph, miDist} targets = fix \go dists q0 -> case
         q2 = foldr (\(v, distV') -> PQ.insert v distV') q1 nexts
      in go dists' q2
 
-type SearchState = (Int, IS.IntSet) -- current node, nodes to be visited
+type SearchState =
+  ( Int -- current node
+  , IS.IntSet -- nodes not yet visited
+  )
 
-solve :: IM.IntMap [(Int, Int)] -> (SearchState -> Bool) -> M.Map SearchState Int -> PQ.PSQ SearchState Int -> Int
-solve simpleDists isDone = fix \go pathLens q0 -> case PQ.minView q0 of
+salesman :: IM.IntMap [(Int, Int)] -> (SearchState -> Bool) -> M.Map SearchState Int -> PQ.PSQ SearchState Int -> Int
+salesman simpleDists isDone = fix \go pathLens q0 -> case PQ.minView q0 of
   Nothing -> error "queue exhausted"
   Just (ss@(u, todos) PQ.:-> len, q1) ->
     if isDone ss
@@ -181,37 +189,36 @@ solve simpleDists isDone = fix \go pathLens q0 -> case PQ.minView q0 of
             q2 = foldr (\(next, prio) -> PQ.insert next prio) q1 nexts
          in go pathLens' q2
 
+{-
+  The key insight of this puzzle is that, despite having many nodes in the graph,
+  we have only n <= 10 nodes that we are interested in.
+
+  Therefore, if we can simplify the graph to the point that we are only taking
+  about shortest paths between those n nodes, we have a very small search space to deal with.
+ -}
 instance Solution Day24 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    mi <- parseFromRaw . lines <$> getInputS
-    let mi'@MapInfo {miDims = (rows, cols)} = simplifyMapInfo mi
-    let shouldPrintMap = False
-    when shouldPrintMap do
-      forM_ [0 .. rows -1] \r -> do
-        let render c =
-              case miGraph mi M.!? (r, c) of
-                Nothing -> '#'
-                Just _ ->
-                  if
-                      | coord == miStart mi -> 'S'
-                      | Just t <- miNums mi M.!? coord -> chr (ord '0' + t)
-                      | otherwise ->
-                        case miGraph mi' M.!? (r, c) of
-                          Nothing -> ' '
-                          Just _ -> '.'
-              where
-                coord = (r, c)
-
-        putStrLn $ fmap render [0 .. cols -1]
-    let points = S.insert (miStart mi') (M.keysSet $ miNums mi')
-        ptToInt = (miNums mi' M.!)
+    miPre <- parseFromRaw . lines <$> getInputS
+    let mi = simplifyMapInfo miPre
+        points = M.keysSet $ miNums mi
+        ptToInt = (miNums mi M.!)
         simpleDists :: IM.IntMap [(Int, Int)]
         simpleDists = IM.fromList do
+          {-
+            re-constructs the graph and preseves only those tagged nodes
+            distances between tagged nodes are shortest distances between them.
+           -}
           src <- S.toList points
           let targets = S.delete src points
-              dists = shortestDirectDists mi' targets M.empty (PQ.singleton src 0)
+              dists = shortestDirectDists mi targets M.empty (PQ.singleton src 0)
           pure (ptToInt src, (fmap . first) ptToInt $ M.toList dists)
         initSt = (0, initTodos)
         initTodos = IS.delete 0 $ IS.fromList $ M.elems $ miNums mi
-    answerShow $ solve simpleDists (IS.null . snd) (M.singleton initSt 0) (PQ.singleton initSt 0)
-    answerShow $ solve simpleDists (\(cur, todos) -> IS.null todos && cur == 0) (M.singleton initSt 0) (PQ.singleton initSt 0)
+        solveSalesman isDone =
+          salesman
+            simpleDists
+            isDone
+            (M.singleton initSt 0)
+            (PQ.singleton initSt 0)
+    answerShow $ solveSalesman (IS.null . snd)
+    answerShow $ solveSalesman (\(cur, todos) -> IS.null todos && cur == 0)
