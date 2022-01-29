@@ -271,6 +271,7 @@ library
     , turtle
     , union-find
     , unordered-containers
+    , utility-ht
     , vector
     , vector-algorithms
     , writer-cps-mtl

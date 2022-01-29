@@ -71,6 +71,7 @@ library:
     - cryptohash-md5
     - data-fix
     - scientific
+    - utility-ht
   ghc-options:
     - -Wall
     - -O2

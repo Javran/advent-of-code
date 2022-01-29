@@ -10,6 +10,7 @@ where
 import Data.Char
 import Data.Containers.ListUtils (nubOrd)
 import Data.List
+import qualified Data.List.Match as LMatch
 import Data.List.Split hiding (sepBy)
 import qualified Data.Map.Strict as M
 import Javran.AdventOfCode.Prelude
@@ -38,7 +39,8 @@ happinessP = do
 type HappinessInfo = M.Map (Name, Name) Int
 
 happiness :: HappinessInfo -> [Name] -> Int
-happiness hInfo xs = sum $ fmap (compute . snd) $ zip xs (divvy 3 1 (cycle xs))
+happiness hInfo xs =
+  sum . fmap compute . LMatch.take xs $ divvy 3 1 (cycle xs)
   where
     compute ~[a, b, c] =
       fromMaybe 0 (hInfo M.!? (b, a))
