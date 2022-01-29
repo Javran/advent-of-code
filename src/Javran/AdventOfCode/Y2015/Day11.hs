@@ -1,48 +1,20 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE PatternGuards #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# OPTIONS_GHC -Wno-deprecations #-}
-{-# OPTIONS_GHC -Wno-typed-holes #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -fdefer-typed-holes #-}
 
 module Javran.AdventOfCode.Y2015.Day11
   (
   )
 where
 
-{- HLINT ignore -}
-
-import Control.Applicative
 import Control.Monad
 import Data.Char
-import Data.Function
-import Data.Function.Memoize (memoFix)
-import qualified Data.IntMap.Strict as IM
-import qualified Data.IntSet as IS
 import Data.List
 import Data.List.Split hiding (sepBy)
-import qualified Data.Map.Strict as M
-import Data.Monoid
 import Data.Semigroup
-import qualified Data.Set as S
-import qualified Data.Text as T
-import qualified Data.Vector as V
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
-import Text.ParserCombinators.ReadP hiding (count, get, many)
 
 data Day11 deriving (Generic)
 
@@ -56,7 +28,20 @@ bans :: [] Char
 bans = "iol"
 
 incr :: RevPass -> RevPass
-incr = incrStd
+incr xs = case mostSignificantBan of
+  Nothing -> incrStd xs
+  Just (Last (i, x)) ->
+    {-
+      Optimization: if there is already banned digits in it,
+      tick the most significant digit containing banned digit,
+      and fill lower digits with 'a'
+     -}
+    replicate i 'a' <> (succ x : drop (i + 1) xs)
+  where
+    mostSignificantBan =
+      foldMap
+        (\p@(_, x) -> Last p <$ guard (x `elem` bans))
+        (zip [0 ..] xs)
 
 incrStd :: RevPass -> RevPass
 incrStd = \case
@@ -75,7 +60,10 @@ incrStd = \case
     preBans = fmap pred bans
 
 isCompliant :: RevPass -> Bool
-isCompliant xs = not (null twoPairs) && not (null incrStraight) && not (any (`elem` bans) xs)
+isCompliant xs =
+  not (null twoPairs)
+    && not (null incrStraight)
+    && not (any (`elem` bans) xs)
   where
     incrStraight = do
       ~[c, b, a] <- divvy 3 1 xs
@@ -89,7 +77,6 @@ isCompliant xs = not (null twoPairs) && not (null incrStraight) && not (any (`el
 instance Solution Day11 where
   solutionRun _ SolutionContext {getInputS, answerS} = do
     xs <- reverse . head . lines <$> getInputS
-    let gen = tail $ iterate incr xs
-        ans1 : ans2 : _ = filter isCompliant $ gen
+    let ans1 : ans2 : _ = filter isCompliant $ tail $ iterate incr xs
     answerS $ reverse ans1
     answerS $ reverse ans2
