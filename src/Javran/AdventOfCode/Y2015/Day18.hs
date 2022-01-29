@@ -37,8 +37,8 @@ adjacents coord@(r, c) = do
   let coord' = (r', c')
   coord' <$ guard (coord /= coord')
 
-step :: Int -> CoordSet -> CoordSet
-step size w =
+step :: (Coord -> Bool) -> CoordSet -> CoordSet
+step isIn w =
   S.fromDistinctAscList $ mapMaybe mightKeep $ M.toList contribs
   where
     mightKeep (coord, cnt) =
@@ -51,7 +51,7 @@ step size w =
     contribs = M.fromListWith (+) do
       cur <- S.toList w
       adj <- adjacents cur
-      guard $ inRange ((0, 0), (size -1, size -1)) adj
+      guard $ isIn adj
       pure (adj, 1 :: Int)
 
 instance Solution Day18 where
@@ -60,18 +60,19 @@ instance Solution Day18 where
     let raw = lines rawInput
         size = length raw
         (stepsP1, stepsP2) = singleLineExtra (100, 100) ex
+        isIn = inRange ((0, 0), (size -1, size -1))
         world = S.fromDistinctAscList do
           (r, rs) <- zip [0 ..] raw
           (c, '#') <- zip [0 ..] rs
           pure (r, c)
     do
-      let progression = iterate (step size) world
+      let progression = iterate (step isIn) world
       answerShow $ S.size (progression !! stepsP1)
     do
       let corners = S.fromAscList [(0, 0), (0, n'), (n', 0), (n', n')]
             where
               n' = size - 1
           addCorners = S.union corners
-          step2 w = addCorners $ step size (addCorners w)
+          step2 w = addCorners $ step isIn (addCorners w)
           progression = iterate step2 world
       answerShow $ S.size (progression !! stepsP2)
