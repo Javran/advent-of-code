@@ -72,6 +72,7 @@ library:
     - data-fix
     - scientific
     - utility-ht
+    - semigroups
   ghc-options:
     - -Wall
     - -O2
