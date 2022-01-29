@@ -1,15 +1,14 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE FlexibleContexts #-}
 
 module Javran.AdventOfCode.Y2016.Day10
   (
   )
 where
-
 
 import Control.Monad
 import Control.Monad.State.Strict
@@ -114,9 +113,7 @@ instance Solution Day10 where
           (b, hs) <- IM.toList bh
           guard $ length hs >= 2
           pure (b PQ.:-> Down (length hs))
-        tracedPair = minMaxFromPair case extraOps of
-          Nothing -> (17, 61)
-          Just ~[raw] -> read raw
+        tracedPair = minMaxFromPair $ singleLineExtra (17, 61) extraOps
         (ans2, Just (First ans1)) =
           evalState (runWriterT (simulate gr tracedPair initQ)) initSt
     answerShow ans1

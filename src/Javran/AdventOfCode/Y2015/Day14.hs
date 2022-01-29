@@ -49,9 +49,7 @@ instance Solution Day14 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     (extras, rawInput) <- consumeExtra getInputS
     let rs = fmap (consumeOrDie reindeerP) . lines $ rawInput
-        tMax = case extras of
-          Nothing -> 2503
-          Just ~[raw] -> read raw
+        tMax = singleLineExtra 2503 extras
     answerShow $ maximum $ fmap (travelDist tMax) rs
     answerShow $
       maximum $

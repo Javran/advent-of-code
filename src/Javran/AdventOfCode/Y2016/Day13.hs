@@ -84,9 +84,7 @@ instance Solution Day13 where
     let seed = read @Int . head . lines $ rawInput
         mapInfo = mkMapInfo seed
         start = (1, 1)
-        target = case extraOps of
-          Nothing -> (31, 39)
-          Just ~[raw] -> read raw
+        target = singleLineExtra (31, 39) extraOps
     answerShow $
       aStar
         mapInfo

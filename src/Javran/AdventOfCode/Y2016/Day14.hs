@@ -88,9 +88,7 @@ instance Solution Day14 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     (extraOps, rawInput) <- consumeExtra getInputS
     let [salt] = lines rawInput
-        (findNth, rehashTimes) = case extraOps of
-          Nothing -> (64, 2016 :: Int)
-          Just ~[raw] -> read raw
+        (findNth, rehashTimes) = singleLineExtra (64, 2016 :: Int) extraOps
         Endo rehashN = stimes rehashTimes (Endo rehash)
         ss = searchSpace salt
         ss2 = fmap rehashN ss

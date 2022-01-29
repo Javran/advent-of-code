@@ -66,10 +66,7 @@ instance Solution Day20 where
     (extraOps, rawInput) <- consumeExtra getInputS
     let xs = fmap (consumeOrDie rangeP) . lines $ rawInput
         maxRange' :: Integer
-        maxRange' = case extraOps of
-          Nothing ->
-            0xFFFF_FFFF
-          Just ~[raw] -> read raw
+        maxRange' = singleLineExtra 0xFFFF_FFFF extraOps
         bl = IM.fromListWith (<>) do
           (l, r) <- xs
           pure (l, IS.singleton r)
@@ -80,7 +77,7 @@ instance Solution Day20 where
           unless (isBlocked bl 0) do
             Left "assumed 0 is blocked, which is not the case."
           let r = fromInteger maxRange'
-          when (isBlocked bl (r+ 1)) do
+          when (isBlocked bl (r + 1)) do
             Left "assumed max value + 1 is not blocked, which is not the case."
           pure r
         alts = IS.fromList do
@@ -93,4 +90,4 @@ instance Solution Day20 where
           v <$ guard (v >= 0 && v <= maxRange)
         discreteBounds = filter (not . isBlocked bl) (IS.toAscList alts)
     answerShow $ head discreteBounds
-    answerShow $ solve2 bl (discreteBounds <> [maxRange+1]) - 1
+    answerShow $ solve2 bl (discreteBounds <> [maxRange + 1]) - 1

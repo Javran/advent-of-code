@@ -30,9 +30,7 @@ instance Solution Day17 where
     (extras, rawInput) <- consumeExtra getInputS
     let xs = V.fromList . fmap (read @Int) . lines $ rawInput
         n = V.length xs
-        target = case extras of
-          Nothing -> 150
-          Just ~[raw] -> read raw
+        target = singleLineExtra 150 extras
     do
       let dp :: (Int, Int) -> Int
           dp = memoFix \q (w, i) ->
