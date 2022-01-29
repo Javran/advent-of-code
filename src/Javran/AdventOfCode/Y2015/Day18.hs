@@ -16,6 +16,12 @@ import Javran.AdventOfCode.TestExtra
 
 data Day18 deriving (Generic)
 
+{-
+  TODO: the performance could have been better since we can
+  just keep the world a sorted list of Coords.
+  (actually, we only need Map for computing the adjacent-contribution)
+  But I don't think it's necessary to go that extra mile (for now).
+ -}
 type CoordSet = S.Set Coord
 
 _pprWorld :: Int -> CoordSet -> IO ()
@@ -62,7 +68,7 @@ instance Solution Day18 where
       let progression = iterate (step size) world
       answerShow $ S.size (progression !! stepsP1)
     do
-      let corners = S.fromDistinctAscList [(0, 0), (0, n'), (n', 0), (n', n')]
+      let corners = S.fromAscList [(0, 0), (0, n'), (n', 0), (n', n')]
             where
               n' = size - 1
           addCorners = S.union corners
