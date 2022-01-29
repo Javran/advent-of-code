@@ -46,6 +46,7 @@ library
       Javran.AdventOfCode.Y2015.Day1
       Javran.AdventOfCode.Y2015.Day10
       Javran.AdventOfCode.Y2015.Day11
+      Javran.AdventOfCode.Y2015.Day12
       Javran.AdventOfCode.Y2015.Day2
       Javran.AdventOfCode.Y2015.Day3
       Javran.AdventOfCode.Y2015.Day4
@@ -255,6 +256,7 @@ library
     , random
     , raw-strings-qq
     , recursion-schemes
+    , scientific
     , semirings
     , shower
     , split
