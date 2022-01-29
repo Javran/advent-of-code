@@ -3,6 +3,7 @@
 module Javran.AdventOfCode.TestExtra
   ( consumeExtra
   , shouldRun
+  , singleLineExtra
   )
 where
 
@@ -24,3 +25,14 @@ shouldRun :: Maybe [String] -> (Bool, Bool)
 shouldRun = \case
   Nothing -> (True, True)
   Just e -> ("part1" `elem` e, "part2" `elem` e)
+
+{-
+  Expects test's extra input to be exactly one line (if exists)
+  and parses it using Read.
+  If extra input doesn't exist, falls back to a defulat value.
+ -}
+singleLineExtra :: Read a => a -> Maybe [String] -> a
+singleLineExtra d = \case
+  Nothing -> d
+  Just [x] -> read x
+  Just xs -> error $ "Expected exactly one line in extra, got " <> show (length xs)

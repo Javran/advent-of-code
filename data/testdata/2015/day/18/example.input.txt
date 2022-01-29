@@ -1,0 +1,9 @@
+# EXAMPLE_EXTRA_BEGIN
+(4,5)
+# EXAMPLE_EXTRA_END
+.#.#.#
+...##.
+#....#
+..#...
+#.#..#
+####..
