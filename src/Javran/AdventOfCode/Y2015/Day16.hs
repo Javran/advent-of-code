@@ -1,6 +1,5 @@
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
 
 module Javran.AdventOfCode.Y2015.Day16
@@ -29,11 +28,10 @@ knownP = do
   ps <- pairP `sepBy` strP ", "
   pure (n, M.fromList ps)
 
-couldMatch :: Known -> Maybe Int
-couldMatch (which, m) = do
-  let eKey ~> eVal = case m M.!? eKey of
-        Nothing -> pure ()
-        Just v -> guard (eVal == v)
+couldMatch :: (String -> Int -> Int -> Bool) -> Known -> Maybe Int
+couldMatch matcher (which, m) = which <$ do
+  let eKey ~> eVal =
+        guard $ maybe True (matcher eKey eVal) (m M.!? eKey)
   "children" ~> 3
   "cats" ~> 7
   "samoyeds" ~> 2
@@ -44,37 +42,18 @@ couldMatch (which, m) = do
   "trees" ~> 3
   "cars" ~> 2
   "perfumes" ~> 1
-  pure which
-
-couldMatch2 :: Known -> Maybe Int
-couldMatch2 (which, m) = do
-  let eKey ~> eVal = case m M.!? eKey of
-        Nothing -> pure ()
-        Just v ->
-          if
-              | eKey `elem` ["cats", "trees"] ->
-                guard (v > eVal)
-              | eKey `elem` ["pomeranians", "goldfish"] ->
-                guard (v < eVal)
-              | otherwise -> guard (v == eVal)
-  "children" ~> 3
-  "cats" ~> 7
-  "samoyeds" ~> 2
-  "pomeranians" ~> 3
-  "akitas" ~> 0
-  "vizslas" ~> 0
-  "goldfish" ~> 5
-  "trees" ~> 3
-  "cars" ~> 2
-  "perfumes" ~> 1
-  pure which
 
 instance Solution Day16 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     knowns <- fmap (consumeOrDie knownP) . lines <$> getInputS
     do
-      let [ans1] = mapMaybe couldMatch knowns
+      let matcher _eKey eVal v = v == eVal
+          [ans1] = mapMaybe (couldMatch matcher) knowns
       answerShow ans1
     do
-      let [ans2] = mapMaybe couldMatch2 knowns
+      let matcher eKey eVal v
+            | eKey `elem` ["cats", "trees"] = v > eVal
+            | eKey `elem` ["pomeranians", "goldfish"] = v < eVal
+            | otherwise = v == eVal
+          [ans2] = mapMaybe (couldMatch matcher) knowns
       answerShow ans2
