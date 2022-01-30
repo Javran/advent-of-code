@@ -1,3 +1,6 @@
+# EXAMPLE_EXTRA_BEGIN
+part1
+# EXAMPLE_EXTRA_END
 Hit Points: 12
 Damage: 7
 Armor: 2

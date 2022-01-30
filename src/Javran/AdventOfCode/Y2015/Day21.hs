@@ -1,57 +1,28 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE PatternGuards #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ViewPatterns #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
-{-# OPTIONS_GHC -Wno-deprecations #-}
-{-# OPTIONS_GHC -Wno-typed-holes #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -fdefer-typed-holes #-}
 
 module Javran.AdventOfCode.Y2015.Day21
   (
   )
 where
 
-{- HLINT ignore -}
-
 import Control.Applicative
 import Control.Lens
 import Control.Monad
-import Control.Monad.Loops (untilJust)
 import Control.Monad.State.Strict
-import Data.Char
-import Data.Function
-import Data.Function.Memoize (memoFix)
-import qualified Data.IntMap.Strict as IM
-import qualified Data.IntSet as IS
 import Data.List
-import Data.List.Split hiding (sepBy)
-import qualified Data.Map.Strict as M
 import Data.Monoid hiding (First, Last)
-import Data.Semigroup
-import qualified Data.Set as S
-import qualified Data.Text as T
-import qualified Data.Vector as V
-import Debug.Trace
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
+import Javran.AdventOfCode.TestExtra
 import Text.ParserCombinators.ReadP hiding (count, get, many)
 
 data Day21 deriving (Generic)
 
--- short for Hit points, damage, and armor
+-- short for Hit points, Damage, and Armor
 type Hda = (Int, (Int, Int))
 
 hdaP :: ReadP Hda
@@ -88,22 +59,84 @@ simulate attackingSide = do
       modify (& _kee .~ kee')
       pure Nothing
 
+pickInOrderUpToN :: [a] -> Int -> [[a]]
+pickInOrderUpToN xs n =
+  pure [] <|> do
+    guard $ n > 0
+    (y, ys) <- pickInOrder xs
+    (y :) <$> pickInOrderUpToN ys (n -1)
+
+-- short for Cost, Damage, and Armor
+type Cda = (Int, (Int, Int))
+
+type Item = (String, Cda)
+
+weapons, armors, rings :: [Item]
+(weapons, armors, rings) = (ws, ams, rs)
+  where
+    ws =
+      [ t "Dagger" 8 4 0
+      , t "Shortsword" 10 5 0
+      , t "Warhammer" 25 6 0
+      , t "Longsword" 40 7 0
+      , t "Greataxe" 74 8 0
+      ]
+    ams =
+      [ t "Leather" 13 0 1
+      , t "Chainmail" 31 0 2
+      , t "Splintmail" 53 0 3
+      , t "Bandedmail" 75 0 4
+      , t "Platemail" 102 0 5
+      ]
+    rs =
+      [ t "Damage +1" 25 1 0
+      , t "Damage +2" 50 2 0
+      , t "Damage +3" 100 3 0
+      , t "Defense +1" 20 0 1
+      , t "Defense +2" 40 0 2
+      , t "Defense +3" 80 0 3
+      ]
+    t w c d a = (w, (c, (d, a)))
+
+players :: [(Int, (Hda, [String]))]
+players = sortOn fst do
+  -- exactly one weapon
+  w <- weapons
+  -- up to one armor
+  pAs <- pickInOrderUpToN armors 1
+  -- up to two rings
+  pRs <- pickInOrderUpToN rings 2
+  let pItems :: [Item]
+      pItems = w : pAs <> pRs
+      (Sum total, (Sum pD, Sum pA)) =
+        foldMap ((\(c, (d, a)) -> (Sum c, (Sum d, Sum a))) . snd) pItems
+      itemNames :: [String]
+      itemNames = fmap fst pItems
+      hda = (100, (pD, pA))
+  pure (total, (hda, itemNames))
+
 instance Solution Day21 where
-  solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    boss' <- consumeOrDie hdaP <$> getInputS
-    let player = (8, (5, 5))
-        boss = (12, (7, 2))
-        r =
-          runState
-            (do
-               let xs = fmap simulate (cycle [Player, Boss])
-               fix
-                 (\go (y : ys) -> do
-                    r <- y
-                    case r of
-                      Nothing -> go ys
-                      Just w -> pure w)
-                 xs)
+    (ex, rawInput) <- consumeExtra getInputS
+    let boss = consumeOrDie hdaP rawInput
+        (runPart1, runPart2) = shouldRun ex
+        playWith :: Hda -> Side
+        playWith player =
+          evalState
+            (fix
+               (\go (y : ys) ->
+                  y >>= \case
+                    Nothing -> go ys
+                    Just w -> pure w)
+               $ fmap simulate (cycle [Player, Boss]))
             (player, boss)
-    print r
+    when runPart1 do
+      answerShow $ head do
+        (cost, (player, _)) <- players
+        guard $ playWith player == Player
+        pure cost
+    when runPart2 do
+      answerShow $ head do
+        (cost, (player, _)) <- reverse players
+        guard $ playWith player == Boss
+        pure cost
