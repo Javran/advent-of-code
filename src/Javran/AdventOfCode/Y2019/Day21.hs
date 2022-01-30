@@ -43,7 +43,6 @@ where
 
  -}
 
-
 import Control.Monad
 import Data.Char
 import Javran.AdventOfCode.Prelude

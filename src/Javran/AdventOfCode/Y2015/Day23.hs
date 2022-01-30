@@ -13,9 +13,9 @@ where
 import Control.Lens
 import Data.Function
 import qualified Data.Vector as V
+import Javran.AdventOfCode.Misc (commitLeft1)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (count, get, many)
-import Javran.AdventOfCode.Misc (commitLeft1)
 
 data Day23 deriving (Generic)
 

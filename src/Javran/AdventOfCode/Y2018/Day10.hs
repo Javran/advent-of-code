@@ -9,7 +9,6 @@ module Javran.AdventOfCode.Y2018.Day10
   )
 where
 
-
 import Control.Monad
 import Data.List.Split hiding (sepBy)
 import qualified Data.Set as S

@@ -112,7 +112,7 @@ instance Solution Day11 where
                 (\sz -> do
                    let br@(x', y') = (x + sz -1, y + sz -1)
                    guard $ x' <= 300 && y' <= 300
-                   pure ((sz, br), sz+1))
+                   pure ((sz, br), sz + 1))
                 1
             let topLeft = (x, y)
                 totalPower = querySum topLeft bottomRight

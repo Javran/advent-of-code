@@ -7,7 +7,6 @@ module Javran.AdventOfCode.Y2016.Day15
   )
 where
 
-
 import Javran.AdventOfCode.NumberTheory
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (count, get, many)

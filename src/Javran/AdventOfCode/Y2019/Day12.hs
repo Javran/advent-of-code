@@ -13,8 +13,8 @@ where
 import Control.Lens
 import qualified Data.Map.Strict as M
 import Data.Monoid
-import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.NumberTheory
+import Javran.AdventOfCode.Prelude
 import Linear.Affine
 import Linear.V3
 import Text.ParserCombinators.ReadP hiding (count, many)

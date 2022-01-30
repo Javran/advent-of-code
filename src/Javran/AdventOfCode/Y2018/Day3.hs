@@ -8,7 +8,6 @@ module Javran.AdventOfCode.Y2018.Day3
   )
 where
 
-
 import qualified Data.IntSet as IS
 import qualified Data.Map.Strict as M
 import Javran.AdventOfCode.Prelude

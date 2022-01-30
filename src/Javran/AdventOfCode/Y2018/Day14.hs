@@ -32,8 +32,8 @@ step ((elf0, elf1), xs) =
     v1 = Seq.index xs elf1
     extra =
       let y = v0 + v1
-      -- TODO: can't use intToDigits, as it'll generate [] instead of expected [0]
-       in if y > 9 then [1, y -10] else [y]
+       in -- TODO: can't use intToDigits, as it'll generate [] instead of expected [0]
+          if y > 9 then [1, y -10] else [y]
     xs' = xs <> Seq.fromList extra
     newL = Seq.length xs'
 

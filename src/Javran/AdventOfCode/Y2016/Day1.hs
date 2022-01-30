@@ -8,14 +8,14 @@ module Javran.AdventOfCode.Y2016.Day1
 where
 
 import Control.Monad
-import qualified Data.Map.Strict as M
 import Control.Monad.Writer.Lazy
 import qualified Data.DList as DL
+import qualified Data.Map.Strict as M
+import Javran.AdventOfCode.Fixpoint
 import Javran.AdventOfCode.GridSystem.RowThenCol.Nwse
 import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.TestExtra
 import Text.ParserCombinators.ReadP hiding (count, get, many)
-import Javran.AdventOfCode.Fixpoint
 
 data Day1 deriving (Generic)
 
@@ -52,5 +52,5 @@ instance Solution Day1 where
     when runPart1 do
       answerShow $ dist loc
     when runPart2 do
-      let (_, (loc', _)) = findFix M.empty (zip [0..] $ DL.toList path)
+      let (_, (loc', _)) = findFix M.empty (zip [0 ..] $ DL.toList path)
       answerShow $ dist loc'

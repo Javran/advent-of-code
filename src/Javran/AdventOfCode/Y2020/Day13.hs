@@ -9,8 +9,8 @@ module Javran.AdventOfCode.Y2020.Day13
 where
 
 import qualified Data.List.Ordered as LOrdered
-import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.NumberTheory
+import Javran.AdventOfCode.Prelude
 
 data Day13 deriving (Generic)
 

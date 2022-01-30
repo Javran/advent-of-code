@@ -13,8 +13,8 @@ import Data.List
 import Data.List.Split hiding (sepBy)
 import qualified Data.Vector.Unboxed as VU
 import Javran.AdventOfCode.Prelude
-import Javran.AdventOfCode.Y2019.IntCode
 import Javran.AdventOfCode.TestExtra
+import Javran.AdventOfCode.Y2019.IntCode
 
 data Day7 deriving (Generic)
 

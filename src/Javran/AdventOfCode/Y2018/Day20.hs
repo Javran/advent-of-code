@@ -23,9 +23,9 @@ import Data.Semigroup
 import qualified Data.Sequence as Seq
 import qualified Data.Set as S
 import Javran.AdventOfCode.GridSystem.RowThenCol.Nwse
+import Javran.AdventOfCode.Misc (commitLeft1)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (count, get, many)
-import Javran.AdventOfCode.Misc (commitLeft1)
 
 data Day20 deriving (Generic)
 

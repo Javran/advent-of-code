@@ -97,4 +97,4 @@ instance Solution Day25 where
     ((s0, cnt), rules) <- consumeOrDie inputP <$> getInputS
     let (_, (foc, (ls, rs))) =
           execState (replicateM_ cnt (step rules)) (s0, (False, ([], [])))
-    answerShow $ countLength id ls + countLength id (foc:rs)
+    answerShow $ countLength id ls + countLength id (foc : rs)

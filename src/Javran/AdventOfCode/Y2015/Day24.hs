@@ -58,4 +58,3 @@ instance Solution Day24 where
     let total = sum xs
     answerShow $ solve xs 3 total
     answerShow $ solve xs 4 total
-

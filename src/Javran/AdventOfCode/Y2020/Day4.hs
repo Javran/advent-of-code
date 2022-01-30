@@ -12,9 +12,9 @@ import Control.Monad
 import Data.Char
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
+import Javran.AdventOfCode.Misc (commitLeft1)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP
-import Javran.AdventOfCode.Misc (commitLeft1)
 
 type Record = S.Set String
 

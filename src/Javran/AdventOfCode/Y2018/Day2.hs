@@ -8,7 +8,6 @@ module Javran.AdventOfCode.Y2018.Day2
   )
 where
 
-
 import Control.Monad
 import qualified Data.Map.Strict as M
 import Data.Monoid

@@ -18,10 +18,10 @@ import qualified Data.IntMap.Strict as IM
 import qualified Data.Sequence as Seq
 import qualified Data.Vector as V
 import Data.Void
+import Javran.AdventOfCode.Misc (commitLeft1)
 import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.TestExtra
 import Text.ParserCombinators.ReadP hiding (count, get, many)
-import Javran.AdventOfCode.Misc (commitLeft1)
 
 data Day18 deriving (Generic)
 

@@ -16,9 +16,9 @@ import Control.Monad.Writer.CPS
 import Data.Char
 import qualified Data.Map.Strict as M
 import Data.Semigroup
+import Javran.AdventOfCode.Misc (commitLeft1)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (count, get, many)
-import Javran.AdventOfCode.Misc (commitLeft1)
 
 data Day8 deriving (Generic)
 

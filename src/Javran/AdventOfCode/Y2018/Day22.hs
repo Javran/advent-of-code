@@ -67,7 +67,7 @@ mkRegionInfo (depth, target) =
     regionType = toEnum . riskLevel
 
 pprRegion :: (Int, Int) -> RegionInfo -> IO ()
-pprRegion (maxX, maxY) RegionInfo{regionType} = do
+pprRegion (maxX, maxY) RegionInfo {regionType} = do
   forM_ [0 .. maxY] \y -> do
     let render x = case regionType (x, y) of
           Rocky -> '.'
@@ -138,7 +138,7 @@ instance Solution Day22 where
     let ri = mkRegionInfo inp
         display = False
     when display do
-        pprRegion targetCoord ri
+      pprRegion targetCoord ri
     answerShow $ sum do
       let RegionInfo {riskLevel} = ri
           (_, (targetX, targetY)) = inp

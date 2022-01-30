@@ -42,7 +42,7 @@ adjacents Node {nLoc, nPath, nCtx} = do
   (d, avail) <- dirs
   let extra = BSC.pack $ show d
       nLoc' = applyDir d nLoc
-  guard $ avail && inRange ((0,0), (3,3)) nLoc'
+  guard $ avail && inRange ((0, 0), (3, 3)) nLoc'
   pure
     Node
       { nLoc = nLoc'

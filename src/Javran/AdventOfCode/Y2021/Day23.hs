@@ -14,9 +14,9 @@ where
 import Control.Applicative
 import Control.Lens hiding (universe)
 import Control.Monad
+import qualified Data.HashMap.Strict as HM
 import Data.List
 import qualified Data.Map.Strict as M
-import qualified Data.HashMap.Strict as HM
 import qualified Data.PSQueue as PQ
 import Data.Semigroup
 import qualified Data.Set as S

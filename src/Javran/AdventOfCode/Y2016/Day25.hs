@@ -11,11 +11,11 @@ where
 import Control.Monad
 import Data.Char
 import qualified Data.Vector as V
+import Javran.AdventOfCode.Misc (commitLeft1)
 import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.Y2016.Day12 (ReadVal, Reg (..), readValP, regP)
 import Text.ParserCombinators.ReadP hiding (count, get, many)
 import Text.Printf
-import Javran.AdventOfCode.Misc (commitLeft1)
 
 data Day25 deriving (Generic)
 
