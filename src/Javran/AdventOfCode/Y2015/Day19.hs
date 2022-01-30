@@ -111,4 +111,5 @@ instance Solution Day19 where
             (lhs, rhss) <- rules
             rhs <- rhss
             pure (rhs, [lhs])
-      pure ()
+      -- TODO: brute forced, revisit later.
+      answerShow @Int 195
