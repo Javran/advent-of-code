@@ -27,7 +27,7 @@ jobs:
         uses: mstksg/setup-stack@v1
 
       - name: Install z3
-        run: './ci-install-z3.sh'
+        run: './ci/install-z3.sh'
 
       - name: Cache Key
         id: cache_key
