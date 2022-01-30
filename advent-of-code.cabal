@@ -12,6 +12,7 @@ bug-reports:    https://github.com/Javran/advent-of-code/issues
 author:         Javran Cheng
 maintainer:     javran.c@gmail.com
 license:        BSD3
+license-file:   LICENSE
 build-type:     Simple
 
 source-repository head
@@ -57,6 +58,7 @@ library
       Javran.AdventOfCode.Y2015.Day2
       Javran.AdventOfCode.Y2015.Day20
       Javran.AdventOfCode.Y2015.Day21
+      Javran.AdventOfCode.Y2015.Day22
       Javran.AdventOfCode.Y2015.Day23
       Javran.AdventOfCode.Y2015.Day24
       Javran.AdventOfCode.Y2015.Day25
