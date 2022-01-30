@@ -25,6 +25,7 @@ import qualified Data.Set as S
 import Javran.AdventOfCode.GridSystem.RowThenCol.Nwse
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (count, get, many)
+import Javran.AdventOfCode.Misc (commitLeft1)
 
 data Day20 deriving (Generic)
 
@@ -46,8 +47,7 @@ reP = between (char '^') (char '$') reAltP
 
     reAtomP :: ReadP Re
     reAtomP =
-      foldl1
-        (<++)
+      commitLeft1
         [ ReAtom N <$ char 'N'
         , ReAtom W <$ char 'W'
         , ReAtom S <$ char 'S'

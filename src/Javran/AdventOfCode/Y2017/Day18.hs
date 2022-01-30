@@ -15,13 +15,13 @@ import Control.Monad
 import Control.Monad.Writer.CPS
 import Data.Char
 import qualified Data.IntMap.Strict as IM
-import Data.List
 import qualified Data.Sequence as Seq
 import qualified Data.Vector as V
 import Data.Void
 import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.TestExtra
 import Text.ParserCombinators.ReadP hiding (count, get, many)
+import Javran.AdventOfCode.Misc (commitLeft1)
 
 data Day18 deriving (Generic)
 
@@ -45,8 +45,7 @@ data Instr
 
 instrP :: ReadP Instr
 instrP =
-  foldl1'
-    (<++)
+  commitLeft1
     [ unary "snd" Send readValP
     , binary "set" Assign regP readValP
     , binary "add" Add regP readValP

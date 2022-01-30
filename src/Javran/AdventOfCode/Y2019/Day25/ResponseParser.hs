@@ -10,14 +10,14 @@ import Control.Monad
 import Control.Monad.Combinators
 import Data.Char
 import Data.List
+import Javran.AdventOfCode.Misc (commitLeft1)
 import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.Y2019.Day25.Common
 import Text.ParserCombinators.ReadP hiding (count, get, many, manyTill)
 
 dirP :: ReadP Dir
 dirP =
-  foldl1'
-    (<++)
+  commitLeft1
     [ North <$ string "north"
     , West <$ string "west"
     , South <$ string "south"

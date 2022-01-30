@@ -14,6 +14,7 @@ import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP
+import Javran.AdventOfCode.Misc (commitLeft1)
 
 type Record = S.Set String
 
@@ -50,7 +51,7 @@ valueValidators =
                    6
                    (satisfy (`elem` (['0' .. '9'] <> ['a' .. 'f'])))
              )
-           , ("ecl", void $ foldr1 (<++) $ string <$> words "amb blu brn gry grn hzl oth")
+           , ("ecl", commitLeft1 $ strP <$> words "amb blu brn gry grn hzl oth")
            , ( "pid"
              , replicateM_ 9 (satisfy isDigit)
              )

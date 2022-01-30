@@ -16,9 +16,9 @@ import Control.Monad.ST
 import Control.Monad.Writer.CPS
 import Data.Char
 import qualified Data.IntSet as IS
-import Data.List
 import qualified Data.Vector as V
 import qualified Data.Vector.Mutable as VM
+import Javran.AdventOfCode.Misc (commitLeft1)
 import Javran.AdventOfCode.Prelude
 import Math.NumberTheory.Primes.Testing
 import Text.ParserCombinators.ReadP hiding (count, get, many)
@@ -43,8 +43,7 @@ data Instr
 
 instrP :: ReadP Instr
 instrP =
-  foldl1'
-    (<++)
+  commitLeft1
     [ binary "set" Assign regP readValP
     , binary "sub" Sub regP readValP
     , binary "mul" Mul regP readValP

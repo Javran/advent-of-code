@@ -18,6 +18,7 @@ import qualified Data.Map.Strict as M
 import Data.Semigroup
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (count, get, many)
+import Javran.AdventOfCode.Misc (commitLeft1)
 
 data Day8 deriving (Generic)
 
@@ -38,8 +39,7 @@ instrP = do
   _ <- char ' '
   op <-
     let lit ~> f = f <$ string lit
-     in foldr1
-          (<++)
+     in commitLeft1
           [ ">=" ~> (>=)
           , "==" ~> (==)
           , "!=" ~> (/=)

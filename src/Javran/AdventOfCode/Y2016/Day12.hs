@@ -18,9 +18,9 @@ import Control.Monad
 import Control.Monad.ST
 import Data.Char
 import Data.Function
-import Data.List
 import qualified Data.Vector as V
 import qualified Data.Vector.Mutable as VM
+import Javran.AdventOfCode.Misc (commitLeft1)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (count, get, many)
 
@@ -43,8 +43,7 @@ data Instr
 
 instrP :: ReadP Instr
 instrP =
-  foldl1'
-    (<++)
+  commitLeft1
     [ binary "cpy" Cpy readValP regP
     , unary "inc" Inc regP
     , unary "dec" Dec regP

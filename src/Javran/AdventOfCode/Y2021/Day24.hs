@@ -22,6 +22,7 @@ import Control.Lens hiding (op)
 import Control.Monad
 import Control.Monad.State.Strict
 import Data.List.Split hiding (sepBy)
+import Javran.AdventOfCode.Misc (commitLeft1)
 import Javran.AdventOfCode.Prelude
 import qualified Javran.AdventOfCode.Y2021.Day24.Z3 as Z3
 import Text.ParserCombinators.ReadP hiding (count, get, many)
@@ -53,8 +54,7 @@ instrP =
           _ <- char ' '
           rhs <- (RoReg <$> regP) <++ (RoLit <$> readS_to_P (reads @Int))
           pure $ op lhs rhs
-    foldl1
-      (<++)
+    commitLeft1
       [ "add" ~> Add
       , "mul" ~> Mul
       , "div" ~> Div
@@ -64,8 +64,7 @@ instrP =
   where
     regP =
       let ch ~> v = v <$ char ch
-       in foldl1
-            (<++)
+       in commitLeft1
             [ 'w' ~> RegW
             , 'x' ~> RegX
             , 'y' ~> RegY

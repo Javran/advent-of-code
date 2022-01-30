@@ -14,10 +14,10 @@ import Control.Monad
 import Control.Monad.ST
 import Data.Char
 import Data.Function
-import Data.List
 import qualified Data.Vector as V
 import qualified Data.Vector.Mutable as VM
 import Debug.Trace
+import Javran.AdventOfCode.Misc (commitLeft1)
 import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.TestExtra
 import Text.ParserCombinators.ReadP hiding (count, get, many)
@@ -44,8 +44,7 @@ data Instr
 
 instrP :: ReadP Instr
 instrP =
-  foldl1'
-    (<++)
+  commitLeft1
     [ unary "inc" (InstrUnary Inc) readValP
     , unary "dec" (InstrUnary Dec) readValP
     , unary "tgl" (InstrUnary Tgl) readValP

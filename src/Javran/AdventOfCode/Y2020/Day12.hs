@@ -8,6 +8,7 @@ module Javran.AdventOfCode.Y2020.Day12
 where
 
 import Data.Monoid
+import Javran.AdventOfCode.Misc (commitLeft1)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP
 
@@ -56,14 +57,15 @@ turnRight deg (coord, h) = (coord, toEnum ((fromEnum h + dDir) `mod` 4))
 
 actionP :: ReadP ShipInstr
 actionP =
-  foldr1
-    (<++)
+  commitLeft1
     [ do
         dir <-
-          (N <$ char 'N')
-            <++ (E <$ char 'E')
-            <++ (S <$ char 'S')
-            <++ (W <$ char 'W')
+          commitLeft1
+            [ N <$ char 'N'
+            , E <$ char 'E'
+            , S <$ char 'S'
+            , W <$ char 'W'
+            ]
         dist <- decimal1P
         pure $ SiDir dir dist
     , do

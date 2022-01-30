@@ -15,6 +15,7 @@ import Data.Function
 import qualified Data.Vector as V
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (count, get, many)
+import Javran.AdventOfCode.Misc (commitLeft1)
 
 data Day23 deriving (Generic)
 
@@ -35,9 +36,11 @@ instrP = nonJumps <++ jmpP <++ condJmps
     regP = (RA <$ char 'a') <++ (RB <$ char 'b')
     nonJumps = do
       k <-
-        (Hlf <$ strP "hlf ")
-          <++ (Tpl <$ strP "tpl ")
-          <++ (Inc <$ strP "inc ")
+        commitLeft1
+          [ Hlf <$ strP "hlf "
+          , Tpl <$ strP "tpl "
+          , Inc <$ strP "inc "
+          ]
       r <- regP
       pure $ k r
     intP = do
@@ -52,8 +55,10 @@ instrP = nonJumps <++ jmpP <++ condJmps
       Jmp <$> intP
     condJmps = do
       k <-
-        (Jie <$ strP "jie ")
-          <++ (Jio <$ strP "jio ")
+        commitLeft1
+          [ Jie <$ strP "jie "
+          , Jio <$ strP "jio "
+          ]
       r <- regP
       strP ", "
       v <- intP
