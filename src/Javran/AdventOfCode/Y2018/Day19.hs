@@ -14,7 +14,7 @@ module Javran.AdventOfCode.Y2018.Day19
   , Instr (..)
   , pprProgram
   , Machine
-  , Register(..)
+  , Register (..)
   , _reg
   )
 where
@@ -27,9 +27,9 @@ import Data.Char
 import qualified Data.IntSet as IS
 import qualified Data.Map.Strict as M
 import qualified Data.Vector as V
+import Javran.AdventOfCode.NumberTheory (sumOfDivisors)
 import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.Y2018.Day16 (BinValueMode (..), OpType (..), ValueMode (..))
-import Math.NumberTheory.Primes
 import Text.ParserCombinators.ReadP hiding (count, get, many)
 import Text.Printf
 
@@ -219,15 +219,9 @@ runProgram prog bps inp = runAux (0, inp)
     runAux :: Machine -> Machine
     runAux m = maybe m runAux (interpret prog bps m)
 
--- https://math.stackexchange.com/a/22723/139439
-sumOfProperDivisors :: Int -> Int
-sumOfProperDivisors = product . fmap f . factorise
-  where
-    f (p, m) = sum (take (1 + fromIntegral m) $ iterate (* unPrime p) 1)
-
 {-
   Analyzes program without running it, returns information regarding
-  how should we obtain the input value of a sum-of-proper-divisors problem.
+  how should we obtain the input value of a sum-of-divisors problem.
  -}
 staticAnalysis :: Program -> Either String Register
 staticAnalysis (ipReg, prog) = do
@@ -307,7 +301,11 @@ staticAnalysis (ipReg, prog) = do
 
   > sum [ r3 | r3 <- [1..r2-1], r5 <- [1..r2-1], r3 * r5 == r2 ]
 
-  In other words, we are computing sum of proper divisors of some input n,
+  TODO: weird. I thought we are computing proper divisors,
+  but somehow we can actually get to r2 itself,
+  need some investigation.
+
+  In other words, we are computing sum of divisors of some input n,
   in our case the input value is held in register r2.
 
   For solving my specific input, this analysis is sufficient to give us the right answer.
@@ -329,7 +327,7 @@ staticAnalysis (ipReg, prog) = do
   to figure out which register is used to store the input value.
 
   We let the program run as-is, but stop at line 1.
-  At this point, the input to a sum-of-proper-divisors problem is in some register,
+  At this point, the input to a sum-of-divisors problem is in some register,
   which `staticAnalysis` should be able to figure out.
   Then we can use a faster algorithm to solve the problem,
   instead of allowing this slow program to run to its termination.
@@ -351,8 +349,8 @@ instance Solution Day19 where
       Nothing -> do
         when (isJust terminal) $
           pprProgram prog
-        answerShow $ sumOfProperDivisors $ extractInput prog 0
-        answerShow $ sumOfProperDivisors $ extractInput prog 1
+        answerShow $ sumOfDivisors $ extractInput prog 0
+        answerShow $ sumOfDivisors $ extractInput prog 1
       Just _ ->
         -- just dump all registers as output if we are running examples.
         answerShow $ snd (runProgram prog IS.empty (0, 0, 0, 0, 0, 0))
