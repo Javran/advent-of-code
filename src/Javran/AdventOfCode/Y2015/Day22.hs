@@ -78,7 +78,7 @@ manaCost = \case
   Poison -> 173
   Recharge -> 229
 
-data Side = Player | Boss deriving (Eq, Show)
+data Side = Player | Boss deriving (Eq, Ord, Show)
 
 data GameState = GameState
   { gsBoss :: Int -- hp
@@ -88,7 +88,7 @@ data GameState = GameState
   , gsSide :: Side
   , gsPremoves :: [Action] -- pre-determined player moves
   }
-  deriving (Show)
+  deriving (Eq, Ord, Show)
 
 type M =
   RWST
@@ -119,7 +119,7 @@ simulate = do
             effects <- gets gsEffects
             pm <- gets gsPremoves
             actions0 <- case pm of
-              [] -> pure $ reverse [MagicMissile, Drain, Shield, Poison, Recharge]
+              [] -> pure [MagicMissile, Drain, Shield, Poison, Recharge]
               m : pm' -> do
                 modify (\gs -> gs {gsPremoves = pm'})
                 pure [m]
@@ -199,6 +199,7 @@ instance Solution Day22 where
       TODO: working but taking is a guess work and this is very slow.
      -}
     answerShow $
-      take 20000 $ play simulate
+      minimum $
+        take 20000 $ play simulate
     answerShow $
       minimum $ play simulate2
