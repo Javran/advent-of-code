@@ -95,6 +95,22 @@ psearch rules steps q0 = case PQ.minView q0 of
             q2 = foldr (\(next, step') -> PQ.insert next (Arg (BSC.length next) step')) q1 nexts
          in psearch rules steps' q2
 
+chemP :: ReadP String
+chemP = (:) <$> satisfy isAsciiUpper <*> munch isAsciiLower
+
+{-
+  TODO:
+  Some analysis on my login input, which might or might not be useful:
+
+  - only on rule's LHS: ["e"]
+
+  - only on rule's RHS: ["Ar","C","Rn","Y"]
+
+    + further, `Rn` and `Ar` always appear in pairs, in that order,
+      and `Y` only appears between them.
+
+ -}
+
 instance Solution Day19 where
   solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
@@ -107,9 +123,9 @@ instance Solution Day19 where
                in (BSC.pack a, [BSC.pack b])
     answerShow (S.size $ S.fromList $ performReplace rules inp')
     do
-      let _revRules = M.toAscList $ M.fromListWith (<>) do
-            (lhs, rhss) <- rules
-            rhs <- rhss
-            pure (rhs, [lhs])
-      -- TODO: brute forced, revisit later.
-      answerShow @Int 195
+      let lhs = S.fromList (fmap (BSC.unpack . fst) rules)
+          rhs = S.fromList do
+            (_, rhss) <- rules
+            join $ fmap (consumeOrDie (many chemP) . BSC.unpack) rhss
+      print $ lhs S.\\ rhs
+      print $ rhs S.\\ lhs
