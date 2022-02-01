@@ -38,13 +38,13 @@ import Data.List
 import Data.List.Split hiding (sepBy)
 import qualified Data.Map.Strict as M
 import Data.Monoid hiding (First, Last)
+import qualified Data.PSQueue as PQ
 import Data.Semigroup
 import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Vector as V
 import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
-import qualified ListT
 import Text.ParserCombinators.ReadP hiding (count, get, many)
 
 data Day22 deriving (Generic)
@@ -97,8 +97,8 @@ type M =
     GameState
     []
 
-simulate :: M (Maybe Side)
-simulate = do
+oneTurn :: M (Maybe Side)
+oneTurn = do
   armor <- do
     effects <- gets gsEffects
     let armor = if M.member EShield effects then 7 else 0
@@ -167,39 +167,81 @@ simulate = do
               then Just Boss
               else Nothing
 
-simulate2 :: M (Maybe Side)
-simulate2 =
+oneTurn2 :: M (Maybe Side)
+oneTurn2 =
   gets gsSide >>= \case
     Player -> do
       modify (\gs -> gs {gsPlayerHp = gsPlayerHp gs - 1})
       hp <- gets gsPlayerHp
       if hp <= 0
         then pure $ Just Boss
-        else simulate
-    _ -> simulate
+        else oneTurn
+    _ -> oneTurn
+
+type SimState = (GameState, Maybe Side)
+
+{-
+  Turns a simulate action into a step function.
+ -}
+mkStep :: Int -> M (Maybe Side) -> SimState -> [(SimState, Int)]
+mkStep bossDmg sim (gs, ms) = case ms of
+  Just _ ->
+    -- no expansion if the game is already concluded.
+    []
+  Nothing ->
+    let nexts = runRWST sim bossDmg gs
+     in fmap (\(a, s, Sum w) -> ((s, a), w)) nexts
+
+prioSearch
+  :: (SimState -> [(SimState, Int)])
+  -> S.Set SimState
+  -> PQ.PSQ (GameState, Maybe Side) Int
+  -> [(Side, Int)]
+prioSearch step = fix \go discovered q0 -> case PQ.minView q0 of
+  Nothing -> []
+  Just (ss@(_, ms) PQ.:-> mana, q1) ->
+    case ms of
+      Just side -> (side, mana) : go discovered q1
+      Nothing ->
+        let nexts = do
+              (next, d) <- step ss
+              guard $ S.notMember next discovered
+              pure (next, mana + d)
+            discovered' = foldr (\(next, _) -> S.insert next) discovered nexts
+            q2 = foldr (uncurry PQ.insert) q1 nexts
+         in go discovered' q2
+
+{-
+  Play a simulation until conclusion.
+  After premoves are exhausted, all play decisions are non-deterministic.
+ -}
+_play :: Int -> GameState -> M (Maybe Side) -> [] (Side, GameState, Sum Int)
+_play bossDmg initGs simTurn =
+  runRWST
+    (untilJust simTurn)
+    bossDmg
+    initGs
+
+solve :: Int -> GameState -> M (Maybe Side) -> [Int]
+solve bossDmg initGs simTurn = do
+  (Player, mana) <- prioSearch step (S.singleton initSs) (PQ.singleton initSs 0)
+  pure mana
+  where
+    step = mkStep bossDmg simTurn
+    initSs = (initGs, Nothing)
 
 instance Solution Day22 where
-  solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     (bossHp, bossDmg) <- consumeOrDie bossInfoP <$> getInputS
-    let play simulator =
-          concatMap (\(a, _, Sum w) -> [w | a == Player]) $
-            runRWST
-              (untilJust simulator)
-              bossDmg
-              GameState
-                { gsBoss = bossHp
-                , gsPlayerHp = 50
-                , gsPlayerMana = 500
-                , gsEffects = M.empty
-                , gsSide = Player
-                , gsPremoves = []
-                }
-    {-
-      TODO: working but taking is a guess work and this is very slow.
-     -}
-    answerShow $
-      minimum $
-        take 20000 $ play simulate
-    answerShow $
-      minimum $ play simulate2
+    let initGs =
+          GameState
+            { gsBoss = bossHp
+            , gsPlayerHp = 50
+            , gsPlayerMana = 500
+            , gsEffects = M.empty
+            , gsSide = Player
+            , gsPremoves = []
+            }
+
+    answerShow $ head $ solve bossDmg initGs oneTurn
+    answerShow $ head $ solve bossDmg initGs oneTurn2
