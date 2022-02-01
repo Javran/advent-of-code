@@ -1,49 +1,20 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE PatternGuards #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# OPTIONS_GHC -Wno-deprecations #-}
-{-# OPTIONS_GHC -Wno-typed-holes #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -fdefer-typed-holes #-}
 
 module Javran.AdventOfCode.Y2015.Day22
   (
   )
 where
 
-{- HLINT ignore -}
-
-import Control.Applicative
 import Control.Monad
 import Control.Monad.Loops
 import Control.Monad.RWS.CPS
-import Data.Char
-import Data.Function
-import Data.Function.Memoize (memoFix)
-import qualified Data.IntMap.Strict as IM
-import qualified Data.IntSet as IS
 import Data.List
-import Data.List.Split hiding (sepBy)
 import qualified Data.Map.Strict as M
-import Data.Monoid hiding (First, Last)
 import qualified Data.PSQueue as PQ
-import Data.Semigroup
 import qualified Data.Set as S
-import qualified Data.Text as T
-import qualified Data.Vector as V
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Text.ParserCombinators.ReadP hiding (count, get, many)
 
@@ -86,7 +57,7 @@ data GameState = GameState
   , gsPlayerMana :: Int
   , gsEffects :: M.Map Effect Int
   , gsSide :: Side
-  , gsPremoves :: [Action] -- pre-determined player moves
+  , gsPremoves :: [Action] -- pre-determined player moves (for debugging)
   }
   deriving (Eq, Ord, Show)
 
@@ -97,6 +68,11 @@ type M =
     GameState
     []
 
+{-
+  TODO: can we use ContT on this one?
+  There are many places that we could exit immediately
+  rather than having this deep-nested structure.
+ -}
 oneTurn :: M (Maybe Side)
 oneTurn = do
   armor <- do
@@ -243,5 +219,7 @@ instance Solution Day22 where
             , gsPremoves = []
             }
 
-    answerShow $ head $ solve bossDmg initGs oneTurn
-    answerShow $ head $ solve bossDmg initGs oneTurn2
+    answerShow $
+      head $ solve bossDmg initGs oneTurn
+    answerShow $
+      head $ solve bossDmg initGs oneTurn2
