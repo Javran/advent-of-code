@@ -49,6 +49,7 @@ import qualified Data.Vector as V
 import Debug.Trace
 import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
+import Shower
 import Text.ParserCombinators.ReadP hiding (count, get, many)
 
 data Day19 deriving (Generic)
@@ -96,7 +97,33 @@ psearch rules steps q0 = case PQ.minView q0 of
          in psearch rules steps' q2
 
 chemP :: ReadP String
-chemP = (:) <$> satisfy isAsciiUpper <*> munch isAsciiLower
+chemP = do
+  atom <- (:) <$> satisfy isAsciiUpper <*> munch isAsciiLower
+  guard $ atom `notElem` ["Rn", "Y", "Ar"]
+  pure atom
+
+type Atom = String
+
+data RnAr
+  = Y0 [Inp]
+  | Y1 [Inp] [Inp]
+  | Y2 [Inp] [Inp] [Inp]
+  deriving (Show)
+
+data Inp
+  = Flat Atom
+  | Nest RnAr
+  deriving (Show)
+
+inpP :: ReadP Inp
+inpP = rnArP <++ (Flat <$> chemP)
+  where
+    rnArP = between (strP "Rn") (strP "Ar") do
+      xs <- many1 inpP `sepBy1` char 'Y'
+      pure $ Nest case xs of
+        [a] -> Y0 a
+        [a, b] -> Y1 a b
+        ~[a, b, c] -> Y2 a b c
 
 {-
   TODO:
@@ -108,6 +135,16 @@ chemP = (:) <$> satisfy isAsciiUpper <*> munch isAsciiLower
 
     + further, `Rn` and `Ar` always appear in pairs, in that order,
       and `Y` only appears between them.
+
+ - rules follow one of the following forms:
+
+   + X => Y Z
+     where X, Y, and Z are atoms
+
+   + X => Y `Rn` A `Ar`
+       or Y `Rn` A `Y` B `Ar`
+       or Y `Rn` A `Y` B `Y` C `Ar`
+     where X, Y, Z, A, B, and C are atoms.
 
  -}
 
@@ -123,9 +160,19 @@ instance Solution Day19 where
                in (BSC.pack a, [BSC.pack b])
     answerShow (S.size $ S.fromList $ performReplace rules inp')
     do
-      let lhs = S.fromList (fmap (BSC.unpack . fst) rules)
-          rhs = S.fromList do
-            (_, rhss) <- rules
-            join $ fmap (consumeOrDie (many chemP) . BSC.unpack) rhss
-      print $ lhs S.\\ rhs
-      print $ rhs S.\\ lhs
+      let revRules1 :: Rules
+          revRules1 = M.toAscList $ M.fromListWith (<>) do
+            (lhs, rhss) <- rules
+            rhs <- rhss
+            guard $ "Rn" `BSC.isInfixOf` rhs
+            pure (rhs, [lhs])
+          revRules2 = M.toAscList $ M.fromListWith (<>) do
+            (lhs, rhss) <- rules
+            rhs <- rhss
+            guard $ not $ "Rn" `BSC.isInfixOf` rhs
+            pure (rhs, [lhs])
+          experiment rs cur n = case performReplace rs cur of
+            [] -> (cur, n)
+            next : _ -> experiment rs next (n + 1)
+      print inp
+      printer (consumeOrDie (many inpP) inp)
