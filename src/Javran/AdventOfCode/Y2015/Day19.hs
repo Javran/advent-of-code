@@ -1,60 +1,30 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE PartialTypeSignatures #-}
-{-# LANGUAGE PatternGuards #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# OPTIONS_GHC -Wno-deprecations #-}
-{-# OPTIONS_GHC -Wno-typed-holes #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
-{-# OPTIONS_GHC -fdefer-typed-holes #-}
 
 module Javran.AdventOfCode.Y2015.Day19
   (
   )
 where
 
-{- HLINT ignore -}
-
 import Control.Applicative
 import Control.Monad
+import Control.Monad.Writer.CPS
 import qualified Data.ByteString.Char8 as BSC
 import Data.Char
-import qualified Data.DList as DL
-import Data.Function
-import Data.Function.Memoize (memoFix)
-import qualified Data.HashMap.Strict as HM
-import qualified Data.HashSet as HS
-import qualified Data.IntMap.Strict as IM
-import qualified Data.IntSet as IS
 import Data.List
-import qualified Data.List.Match as LMatch
 import Data.List.Split hiding (sepBy)
 import qualified Data.Map.Strict as M
-import Data.Monoid hiding (First, Last)
 import qualified Data.PSQueue as PQ
 import Data.Semigroup
-import qualified Data.Sequence as Seq
 import qualified Data.Set as S
-import qualified Data.Text as T
-import qualified Data.Vector as V
-import Debug.Trace
-import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
-import Shower
+import Javran.AdventOfCode.TestExtra
 import Text.ParserCombinators.ReadP hiding (count, get, many)
-import Control.Monad.Writer.CPS
 
 data Day19 deriving (Generic)
 
@@ -112,21 +82,6 @@ inpP = rnArP <++ (Flat <$> atomP)
         [a, b] -> Y1 a b
         ~[a, b, c] -> Y2 a b c
 
-replacementClosure rules = fix \go discovered q0 -> case PQ.minView q0 of
-  Nothing -> []
-  Just (a PQ.:-> Arg _l cnt, q1) ->
-    let nexts = performReplace2 rules a
-     in case nexts of
-          [] -> (a, cnt) : go discovered q1
-          _ : _ ->
-            let nexts' = do
-                  next <- nexts
-                  guard $ S.notMember next discovered
-                  pure (next, length next, cnt+1)
-                q2 = foldr (\(next, l', cnt') -> PQ.insert next (Arg l' cnt')) q1 nexts'
-                discovered' = foldr (\(n, _, _) -> S.insert n) discovered nexts'
-             in go discovered' q2
-
 {-
   TODO:
   Some analysis on my login input, which might or might not be useful:
@@ -154,6 +109,8 @@ replacementClosure rules = fix \go discovered q0 -> case PQ.minView q0 of
 
   - For RnAr, we probably can get all fields of Y0 / Y1 / Y2
     to a single atom.
+
+  TODO: a bit messy, cleanup needed.
 
  -}
 
@@ -209,26 +166,52 @@ simpInp rs = \case
       [o] <- simp rs i
       pure [o]
 
+replaceUntilFix
+  :: Rules2
+  -> S.Set [Inp]
+  -> PQ.PSQ [Inp] (Arg Int Int)
+  -> [([Inp], Int)]
+replaceUntilFix rules = fix \go discovered q0 -> case PQ.minView q0 of
+  Nothing -> []
+  Just (a PQ.:-> Arg _l cnt, q1) ->
+    let nexts = performReplace2 rules a
+     in case nexts of
+          [] -> (a, cnt) : go discovered q1
+          _ : _ ->
+            let nexts' = do
+                  next <- nexts
+                  guard $ S.notMember next discovered
+                  pure (next, length next, cnt + 1)
+                q2 = foldr (\(next, l', cnt') -> PQ.insert next (Arg l' cnt')) q1 nexts'
+                discovered' = foldr (\(n, _, _) -> S.insert n) discovered nexts'
+             in go discovered' q2
+
 simp :: Rules2 -> [Inp] -> WriterT (Sum Int) [] [Inp]
 simp rs xs = do
   xs' <- mapM (simpInp rs) xs
-  (r, l) <- lift $ replacementClosure rs (S.singleton xs') (PQ.singleton xs' $ Arg (length xs') 0)
+  (r, l) <-
+    lift $
+      replaceUntilFix
+        rs
+        (S.singleton xs')
+        (PQ.singleton xs' $ Arg (length xs') 0)
   tell (Sum l)
   pure r
 
 instance Solution Day19 where
-  solutionSolved _ = False
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    [rawRules, [inp]] <- splitOn [""] . lines <$> getInputS
-    let inp' = BSC.pack inp
-    do
+    (ex, rawInput) <- consumeExtra getInputS
+    let [rawRules, [inp]] = splitOn [""] . lines $ rawInput
+        inp' = BSC.pack inp
+        (runPart1, runPart2) = shouldRun ex
+    when runPart1 do
       let rules = M.toAscList $ M.fromListWith (<>) $ fmap tr rawRules
             where
               tr x =
                 let [a, b] = splitOn " => " x
                  in (BSC.pack a, [BSC.pack b])
       answerShow (S.size $ S.fromList $ performReplace rules inp')
-    do
+    when runPart2 do
       let rules :: Rules2
           rules = M.fromListWith (error "duplicated key") do
             rawRule <- rawRules
