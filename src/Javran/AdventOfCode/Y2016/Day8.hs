@@ -64,8 +64,8 @@ performOp (colLim, rowLim) = \case
 
 instance Solution Day8 where
   solutionRun _ SolutionContext {getInputS, answerShow, answerS, terminal} = do
-    (extraOps, rawInput) <- consumeExtra getInputS
-    let dims@(colLim, rowLim) = singleLineExtra (50, 6) extraOps
+    (ex, rawInput) <- consumeExtra getInputS
+    let dims@(colLim, rowLim) = singleLineExtra (50, 6) ex
         ops = fmap (consumeOrDie (operationP dims)) . lines $ rawInput
         initScr = replicate rowLim (replicate colLim False)
         scr = foldl' (flip (performOp dims)) initScr ops

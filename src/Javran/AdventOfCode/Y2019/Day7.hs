@@ -40,10 +40,10 @@ pipeProgram lProg rProg = do
 
 instance Solution Day7 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    (extraOps, rawInput) <- consumeExtra getInputS
+    (ex, rawInput) <- consumeExtra getInputS
     let xs = fmap (read @Int) . splitOn "," . head . lines $ rawInput
         mem = VU.fromList xs
-        (runPart1, runPart2) = shouldRun extraOps
+        (runPart1, runPart2) = shouldRun ex
     when
       runPart1
       do

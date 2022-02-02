@@ -41,17 +41,17 @@ _pprRow = fmap \case
 
 instance Solution Day18 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    (extraOpts, rawInput) <- consumeExtra getInputS
+    (ex, rawInput) <- consumeExtra getInputS
     let initRow = consumeOrDie (many1 tileP) . head . lines $ rawInput
         allRows = iterate nextRow initRow
     do
-      let takeN = take case extraOpts of
+      let takeN = take case ex of
             Nothing -> 40
             Just ~[raw] -> read raw
           room = takeN allRows
       answerShow $ countLength (== Safe) $ concat room
     do
-      let takeN = take case extraOpts of
+      let takeN = take case ex of
             Nothing -> 400000
             Just _ -> 4000
       answerShow $ countLength (== Safe) $ concat (takeN allRows)

@@ -45,9 +45,9 @@ recipes = 3 : 7 : DL.toList (execWriter (gen initSt))
 
 instance Solution Day14 where
   solutionRun _ SolutionContext {getInputS, answerS, answerShow} = do
-    (extraOps, rawInput) <- consumeExtra getInputS
+    (ex, rawInput) <- consumeExtra getInputS
     let rawN = head . lines $ rawInput
-        (runPart1, runPart2) = shouldRun extraOps
+        (runPart1, runPart2) = shouldRun ex
     when runPart1 do
       let n = read @Int rawN
       answerS (fmap (\v -> chr (v + ord '0')) $ take 10 $ toList $ drop n recipes)

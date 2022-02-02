@@ -53,17 +53,17 @@ solve fillLen initSeq = computeChecksum (fillLen, getAt)
 
 instance Solution Day16 where
   solutionRun _ SolutionContext {getInputS, answerS} = do
-    (extraOpts, rawInput) <- consumeExtra getInputS
+    (ex, rawInput) <- consumeExtra getInputS
     let xs = V.fromList . consumeOrDie (many1 bitP) . head . lines $ rawInput
         initSeq :: VSeq
         initSeq = (V.length xs, (xs V.!))
     do
-      let fillLen = case extraOpts of
+      let fillLen = case ex of
             Nothing -> 272
             Just ~[raw] -> read raw
       answerS $ ppr $ solve fillLen initSeq
     do
-      let fillLen = case extraOpts of
+      let fillLen = case ex of
             Nothing -> 35651584
             Just _ -> 0x70000
       answerS $ ppr $ solve fillLen initSeq

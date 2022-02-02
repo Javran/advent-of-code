@@ -20,9 +20,9 @@ data Day2 deriving (Generic)
 
 instance Solution Day2 where
   solutionRun _ SolutionContext {getInputS, answerShow, answerS} = do
-    (extraOps, rawInput) <- consumeExtraLeadingLines <$> getInputS
+    (ex, rawInput) <- consumeExtraLeadingLines <$> getInputS
     let xs = parseCodeOrDie rawInput
-    case extraOps of
+    case ex of
       Nothing -> do
         -- running with login data.
         let runWithInput a b = do

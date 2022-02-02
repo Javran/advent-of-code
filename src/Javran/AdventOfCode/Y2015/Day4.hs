@@ -39,9 +39,9 @@ isHashUsable2 relaxedForTest h =
 
 instance Solution Day4 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    (extraOps, rawInput) <- consumeExtra getInputS
+    (ex, rawInput) <- consumeExtra getInputS
     let salt = head . lines $ rawInput
-        testing = isJust extraOps
+        testing = isJust ex
     do
       let (ans, _) : _ =
             filter (isHashUsable testing . snd) $ searchSpace salt

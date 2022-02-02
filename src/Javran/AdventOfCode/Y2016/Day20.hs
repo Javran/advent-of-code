@@ -63,10 +63,10 @@ solve2 bl xs = case xs of
 
 instance Solution Day20 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    (extraOps, rawInput) <- consumeExtra getInputS
+    (ex, rawInput) <- consumeExtra getInputS
     let xs = fmap (consumeOrDie rangeP) . lines $ rawInput
         maxRange' :: Integer
-        maxRange' = singleLineExtra 0xFFFF_FFFF extraOps
+        maxRange' = singleLineExtra 0xFFFF_FFFF ex
         bl = IM.fromListWith (<>) do
           (l, r) <- xs
           pure (l, IS.singleton r)

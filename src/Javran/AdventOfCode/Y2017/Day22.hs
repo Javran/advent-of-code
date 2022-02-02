@@ -85,7 +85,7 @@ burst2 = do
 
 instance Solution Day22 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    (extraOps, rawInput) <- consumeExtra getInputS
+    (ex, rawInput) <- consumeExtra getInputS
     let ns = parseFromRaw . lines $ rawInput
         vc = ((0, 0), U)
     do
@@ -93,7 +93,7 @@ instance Solution Day22 where
       answerShow ans
     do
       let m = M.fromSet (\_ -> Infected) ns
-          iters = case extraOps of
+          iters = case ex of
             Nothing -> 10_000_000
             Just _ -> 10000
           (_, _, Sum ans) = runRWS (replicateM iters burst2) () (m, vc)

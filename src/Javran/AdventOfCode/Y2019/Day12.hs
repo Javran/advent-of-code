@@ -16,7 +16,7 @@ import Data.Monoid
 import Javran.AdventOfCode.NumberTheory
 import Javran.AdventOfCode.Prelude
 import Linear.Affine
-import Linear.V3
+import Linear.V3 hiding (ex)
 import Text.ParserCombinators.ReadP hiding (count, many)
 
 data Day12 deriving (Generic)
@@ -93,11 +93,11 @@ detectLoop xs = detectLoopAux traced M.empty
 
 instance Solution Day12 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    (extraOps, rawInput) <- consumeExtraLeadingLines <$> getInputS
+    (ex, rawInput) <- consumeExtraLeadingLines <$> getInputS
     let moons = fmap (consumeOrDie moonLocationP) . lines $ rawInput
         initSys :: System
         initSys = zip moons (repeat 0)
-        steps = case extraOps of
+        steps = case ex of
           Just xs -> read (head xs)
           Nothing -> 1000
     answerShow $ systemEnerge (iterate stepSystem initSys !! steps)

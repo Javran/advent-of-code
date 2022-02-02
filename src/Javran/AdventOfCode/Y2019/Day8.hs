@@ -37,8 +37,8 @@ combinePixel u v = if u /= '2' then u else v
 
 instance Solution Day8 where
   solutionRun _ SolutionContext {getInputS, answerShow, answerS} = do
-    (extraOps, rawInput) <- consumeExtraLeadingLines <$> getInputS
-    let (width, height) = case extraOps of
+    (ex, rawInput) <- consumeExtraLeadingLines <$> getInputS
+    let (width, height) = case ex of
           Nothing -> (25, 6)
           Just [raw] -> read raw
           Just _ -> errInvalid

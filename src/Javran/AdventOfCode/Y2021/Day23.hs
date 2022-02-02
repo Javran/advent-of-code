@@ -377,9 +377,9 @@ solveFromRawMap rawMap =
 
 instance Solution Day23 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    (extraOps, rawInput) <- consumeExtraLeadingLines <$> getInputS
+    (ex, rawInput) <- consumeExtraLeadingLines <$> getInputS
     let rawMap = lines rawInput
-    case extraOps of
+    case ex of
       Nothing -> do
         -- running login input.
         answerShow $! solveFromRawMap rawMap

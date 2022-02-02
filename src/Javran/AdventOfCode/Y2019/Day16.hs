@@ -80,10 +80,10 @@ performSndHalfFftRev xs = runST do
 
 instance Solution Day16 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    (extraOps, rawInput) <- consumeExtra getInputS
+    (ex, rawInput) <- consumeExtra getInputS
     let xs = fmap chToInt . head . lines $ rawInput
         len = length xs
-        (runPart1, runPart2) = shouldRun extraOps
+        (runPart1, runPart2) = shouldRun ex
     when runPart1 do
       answerShow $ digitsToInt @Int (take 8 $ iterate (onePhase len) xs !! 100)
     when runPart2 do

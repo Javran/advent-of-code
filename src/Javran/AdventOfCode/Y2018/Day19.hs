@@ -343,9 +343,9 @@ extractInput prog r0 = m ^. _reg inpReg
 
 instance Solution Day19 where
   solutionRun _ SolutionContext {getInputS, answerShow, terminal} = do
-    (extraOps, rawInput) <- consumeExtraLeadingLines <$> getInputS
+    (ex, rawInput) <- consumeExtraLeadingLines <$> getInputS
     let prog = consumeOrDie programP rawInput
-    case extraOps of
+    case ex of
       Nothing -> do
         when (isJust terminal) $
           pprProgram prog

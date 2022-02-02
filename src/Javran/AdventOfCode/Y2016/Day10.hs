@@ -106,14 +106,14 @@ simulate rs tracedPair q0 = case PQ.minView q0 of
 
 instance Solution Day10 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    (extraOps, rawInput) <- consumeExtra getInputS
+    (ex, rawInput) <- consumeExtra getInputS
     let (bh, gr) = parseFromRaw . lines $ rawInput
         initSt = (bh, IM.empty)
         initQ = PQ.fromList do
           (b, hs) <- IM.toList bh
           guard $ length hs >= 2
           pure (b PQ.:-> Down (length hs))
-        tracedPair = minMaxFromPair $ singleLineExtra (17, 61) extraOps
+        tracedPair = minMaxFromPair $ singleLineExtra (17, 61) ex
         (ans2, Just (First ans1)) =
           evalState (runWriterT (simulate gr tracedPair initQ)) initSt
     answerShow ans1

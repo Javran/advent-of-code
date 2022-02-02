@@ -89,7 +89,7 @@ showWorld (xs, (MinMax2D ((minR, maxR), (minC, maxC)), negative)) = do
 
 instance Solution Day20 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    (extraOps, rawInput) <- consumeExtraLeadingLines <$> getInputS
+    (ex, rawInput) <- consumeExtraLeadingLines <$> getInputS
     let [[xs], ys] = splitOn [""] . lines $ rawInput
         rows = length ys
         cols = length (head ys)
@@ -104,7 +104,7 @@ instance Solution Day20 where
         debug = False
     let progression = iterate step initWd
         answer i = answerShow . S.size . fst $ progression !! i
-        atSteps = case extraOps of
+        atSteps = case ex of
           Just ss -> fmap (read @Int) ss
           Nothing -> [2, 50]
     when debug do

@@ -218,10 +218,10 @@ runDuet = \case
 
 instance Solution Day18 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    (extraOps, rawInput) <- consumeExtra getInputS
+    (ex, rawInput) <- consumeExtra getInputS
     let instrs = V.fromList . fmap (consumeOrDie instrP) . lines $ rawInput
         initSt = ((0, IM.empty), Nothing)
-        (runPart1, runPart2) = shouldRun extraOps
+        (runPart1, runPart2) = shouldRun ex
     when runPart1 do
       answerShow $ solve instrs initSt
     when runPart2 do

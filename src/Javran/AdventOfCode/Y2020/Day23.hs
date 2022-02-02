@@ -103,13 +103,13 @@ mixCups xs len opCount = runST simulate
 
 instance Solution Day23 where
   solutionRun _ SolutionContext {getInputS, answerShow, answerS} = do
-    (extraOpts, rawInput) <- consumeExtraLeadingLines <$> getInputS
+    (ex, rawInput) <- consumeExtraLeadingLines <$> getInputS
     let xs = fmap chInt . head . lines $ rawInput
     -- looks like a safe assumption, make sure of it.
     True <- pure (sort xs == [1 .. 9])
     let final = iterate step xs !! 100
     answerS (toResult final)
-    let (len, opCount) = case extraOpts of
+    let (len, opCount) = case ex of
           Nothing -> (1000000, 10000000)
           Just [rawExtra] -> read rawExtra
           _ -> errInvalid

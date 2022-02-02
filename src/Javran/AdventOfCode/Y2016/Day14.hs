@@ -88,9 +88,9 @@ solve findNth ss = fst $ keys !! (findNth - 1)
 
 instance Solution Day14 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    (extraOps, rawInput) <- consumeExtra getInputS
+    (ex, rawInput) <- consumeExtra getInputS
     let [salt] = lines rawInput
-        (findNth, rehashTimes) = singleLineExtra (64, 2016 :: Int) extraOps
+        (findNth, rehashTimes) = singleLineExtra (64, 2016 :: Int) ex
         Endo rehashN = stimes rehashTimes (Endo rehash)
         ss = searchSpace salt
         ss2 = fmap rehashN ss

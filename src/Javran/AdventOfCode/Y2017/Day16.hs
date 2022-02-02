@@ -104,9 +104,9 @@ applyMove n = \case
 
 instance Solution Day16 where
   solutionRun _ SolutionContext {getInputS, answerS} = do
-    (extraOps, rawInput) <- consumeExtra getInputS
+    (ex, rawInput) <- consumeExtra getInputS
     let xs = consumeOrDie ((moveP `sepBy` char ',') <* char '\n') rawInput
-        n = singleLineExtra 16 extraOps
+        n = singleLineExtra 16 ex
         s0 = mkPrograms n
         applyAll z = foldl' (\cur move -> applyMove n move cur) z xs
         progression = iterate applyAll s0

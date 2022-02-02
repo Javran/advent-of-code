@@ -204,13 +204,13 @@ pprGraph g = do
 
 instance Solution Day20 where
   solutionRun _ SolutionContext {getInputS, answerShow, terminal} = do
-    (extraOps, rawInput) <- consumeExtraLeadingLines <$> getInputS
+    (ex, rawInput) <- consumeExtraLeadingLines <$> getInputS
     let re = consumeOrDie reP . head . lines $ rawInput
         (_, nfa) = execState (buildNfa 0 re 1) (2, IM.empty)
         starts = epsilonClosure nfa [0]
         g :: Graph
         g = buildGraph nfa M.empty (PQ.singleton (0, 0) (Arg () starts))
-        part2Limit = case extraOps of
+        part2Limit = case ex of
           Just raw -> read (head raw)
           Nothing -> 1000
     when (isJust terminal) do

@@ -273,10 +273,10 @@ simulate stopOnConflict mi =
 
 instance Solution Day13 where
   solutionRun _ SolutionContext {getInputS, answerS} = do
-    (extraOps, rawInput) <- consumeExtra getInputS
+    (ex, rawInput) <- consumeExtra getInputS
     let xs = lines rawInput
         mi = parseFromRaw xs
-        (runPart1, runPart2) = shouldRun extraOps
+        (runPart1, runPart2) = shouldRun ex
     when runPart1 do
       let (x, y) = simulate True mi
       answerS $ show x <> "," <> show y

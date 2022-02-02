@@ -39,10 +39,10 @@ genSeq factor seed = tail $ iterate (parkMiller factor) seed
 
 instance Solution Day15 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    (extraOps, rawInput) <- consumeExtra getInputS
+    (ex, rawInput) <- consumeExtra getInputS
     let (seedA, seedB) = consumeOrDie inputP rawInput
         judge (a, b) = (a .&. 0xFFFF) == (b .&. 0xFFFF)
-        (p1N, p2N) = case extraOps of
+        (p1N, p2N) = case ex of
           Nothing -> (40_000_000, 5_000_000)
           Just _ -> (40_000, 5_000)
     do

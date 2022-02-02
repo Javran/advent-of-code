@@ -48,7 +48,7 @@ decryptName ((chunks, sec), _) = unwords $ fmap (fmap (decryptBy sec)) chunks
 
 instance Solution Day4 where
   solutionRun _ SolutionContext {getInputS, answerShow, answerS} = do
-    (extraOps, rawInput) <- consumeExtra getInputS
+    (ex, rawInput) <- consumeExtra getInputS
     let xs = fmap (consumeOrDie encNameP) . lines $ rawInput
         processRoom en = do
           sec <- verifyRoom en
@@ -60,7 +60,7 @@ instance Solution Day4 where
           pure ((sec, realName), m)
         rooms = mapMaybe processRoom xs
     answerShow $ sum (fmap (fst . fst) rooms)
-    case extraOps of
+    case ex of
       Nothing -> do
         let Just (First ans) = foldMap snd rooms
         answerShow ans

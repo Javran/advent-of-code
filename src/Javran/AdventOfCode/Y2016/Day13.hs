@@ -80,11 +80,11 @@ bfs mi discovered = \case
 
 instance Solution Day13 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    (extraOps, rawInput) <- consumeExtra getInputS
+    (ex, rawInput) <- consumeExtra getInputS
     let seed = read @Int . head . lines $ rawInput
         mapInfo = mkMapInfo seed
         start = (1, 1)
-        target = singleLineExtra (31, 39) extraOps
+        target = singleLineExtra (31, 39) ex
     answerShow $
       aStar
         mapInfo

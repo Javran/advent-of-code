@@ -398,11 +398,11 @@ startBfs mi@MapInfo {miGet, miGraph, miAllKeys} =
 
 instance Solution Day18 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    (extraOps, rawInput) <- consumeExtra getInputS
+    (ex, rawInput) <- consumeExtra getInputS
     let xs = lines rawInput
         rows = length xs
         cols = length (head xs)
-        (runPart1, runPart2) = shouldRun extraOps
+        (runPart1, runPart2) = shouldRun ex
         floorPlan :: FloorPlan
         floorPlan = Arr.array
           ((0, 0), (rows -1, cols -1))

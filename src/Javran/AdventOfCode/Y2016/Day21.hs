@@ -135,9 +135,9 @@ unapplyOp n = \case
 
 instance Solution Day21 where
   solutionRun _ SolutionContext {getInputS, answerS} = do
-    (extraOps, rawInput) <- consumeExtra getInputS
+    (ex, rawInput) <- consumeExtra getInputS
     let ops = fmap (consumeOrDie operationP) . lines $ rawInput
-        initSeq = case extraOps of
+        initSeq = case ex of
           Nothing -> "abcdefgh"
           Just ~[s] -> s
         applyAll z = foldl' (\cur op -> applyOp (length initSeq) op cur) z ops
@@ -159,7 +159,7 @@ instance Solution Day21 where
             pure (result, [p])
       print uniqueInputs
 
-    case extraOps of
+    case ex of
       Nothing -> do
         answerS xs
         do

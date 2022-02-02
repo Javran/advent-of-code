@@ -75,7 +75,7 @@ step2 = mkStep adjacents2
 
 instance Solution Day24 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    (extraOps, rawInput) <- consumeExtraLeadingLines <$> getInputS
+    (ex, rawInput) <- consumeExtraLeadingLines <$> getInputS
     let initWorld :: World
         initWorld = S.fromList do
           (r, rs) <- zip [0 ..] (lines rawInput)
@@ -92,7 +92,7 @@ instance Solution Day24 where
     answerShow (encodeWorld $ last ans)
     let initWorld2 = S.map (0,) $ S.delete (2, 2) initWorld
         progression = iterate step2 initWorld2
-    case extraOps of
+    case ex of
       Nothing ->
         answerShow (S.size $ progression !! 200)
       Just _ ->

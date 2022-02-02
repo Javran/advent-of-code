@@ -44,9 +44,9 @@ applyInstr (turn, n) (loc0, d) = do
 
 instance Solution Day1 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    (extraOps, rawInput) <- consumeExtra getInputS
+    (ex, rawInput) <- consumeExtra getInputS
     let instrs = consumeOrDie (instrP `sepBy` string ", " <* char '\n') rawInput
-        (runPart1, runPart2) = shouldRun extraOps
+        (runPart1, runPart2) = shouldRun ex
         dist = manhattan (0, 0)
         ((loc, _), path) = runWriter (foldM (\ld instr -> applyInstr instr ld) ((0, 0), N) instrs)
     when runPart1 do

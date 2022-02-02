@@ -310,11 +310,11 @@ bfs
 
 instance Solution Day20 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    (extraOps, rawInput) <- consumeExtra getInputS
+    (ex, rawInput) <- consumeExtra getInputS
     let xs = lines rawInput
         rows = length xs
         cols = length (head xs)
-        (runPart1, runPart2) = shouldRun extraOps
+        (runPart1, runPart2) = shouldRun ex
         rawFloor :: Arr.Array Coord Char
         rawFloor = Arr.array
           ((0, 0), (rows -1, cols -1))

@@ -215,14 +215,14 @@ applyRules (rt2, rt3) =
 
 instance Solution Day21 where
   solutionRun _ SolutionContext {getInputS, answerShow, answerS} = do
-    (extraOps, rawInput) <- consumeExtra getInputS
+    (ex, rawInput) <- consumeExtra getInputS
     let allRules =
           bimap buildRuleTable buildRuleTable $
             consumeOrDie inputP rawInput
         step = applyRules allRules
         g0 = Right [[consumeOrDie (gridP (Proxy @3)) ".#./..#/###"]]
         progression = iterate step g0
-    case extraOps of
+    case ex of
       Nothing -> do
         forM_ [5, 18] \i -> do
           let pg = toPlainGrid' (progression !! i)

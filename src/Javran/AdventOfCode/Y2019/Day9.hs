@@ -15,9 +15,9 @@ data Day9 deriving (Generic)
 
 instance Solution Day9 where
   solutionRun _ SolutionContext {getInputS, answerS} = do
-    (extraOps, rawInput) <- consumeExtraLeadingLines <$> getInputS
+    (ex, rawInput) <- consumeExtraLeadingLines <$> getInputS
     let xs = parseCodeOrDie rawInput
-    case extraOps of
+    case ex of
       Just _ -> do
         -- running tests
         (_, outputs) <- runProgram xs []

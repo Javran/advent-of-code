@@ -24,9 +24,9 @@ result2 xs = do
 
 instance Solution Day2 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    (extraOps, rawInput) <- consumeExtra getInputS
+    (ex, rawInput) <- consumeExtra getInputS
     let xs = fmap (fmap (read @Int) . words) . lines $ rawInput
-        (runPart1, runPart2) = shouldRun extraOps
+        (runPart1, runPart2) = shouldRun ex
     when runPart1 do
       answerShow $
         sum $

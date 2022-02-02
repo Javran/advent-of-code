@@ -37,12 +37,12 @@ solve xs size = runST $ do
 
 instance Solution Day15 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    (extraOpts, rawInput) <- consumeExtraLeadingLines <$> getInputS
+    (ex, rawInput) <- consumeExtraLeadingLines <$> getInputS
     let [raw] = lines rawInput
     let xs :: [(Word32, Word32)]
         xs = zip [1 ..] $ fmap read $ splitOn "," raw
     answerShow $ solve xs 2020
-    let n = case extraOpts of
+    let n = case ex of
           Nothing -> 30000000
           Just [overrideN] -> read overrideN
           _ -> errInvalid

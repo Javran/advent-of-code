@@ -18,7 +18,7 @@ import qualified Data.Map.Strict as M
 import Javran.AdventOfCode.Prelude
 import Javran.AdventOfCode.TestExtra
 import Linear.Affine
-import Linear.V3
+import Linear.V3 hiding (ex)
 import Linear.Vector
 import Text.ParserCombinators.ReadP hiding (count, get, many)
 
@@ -113,9 +113,9 @@ dropUntilStable isStable = go . zip [0 ..]
 
 instance Solution Day20 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    (extraOps, rawInput) <- consumeExtra getInputS
+    (ex, rawInput) <- consumeExtra getInputS
     let xs = fmap (consumeOrDie ptP) . lines $ rawInput
-        (runPart1, runPart2) = shouldRun extraOps
+        (runPart1, runPart2) = shouldRun ex
     let tracedXs :: [(Int, Pt)]
         tracedXs = zip [0 :: Int ..] xs
     guessedStableIter <-

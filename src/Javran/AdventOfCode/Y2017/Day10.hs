@@ -96,12 +96,12 @@ knotHash = if useFast then knotHashFast else knotHashListBased
 
 instance Solution Day10 where
   solutionRun _ SolutionContext {getInputS, answerShow, answerS} = do
-    (extraOps, rawContent) <- consumeExtra getInputS
+    (ex, rawContent) <- consumeExtra getInputS
     let [raw] = lines rawContent
-        (runPart1, runPart2) = shouldRun extraOps
+        (runPart1, runPart2) = shouldRun ex
     when runPart1 do
       let lenSeq = fmap (read @Int) . splitOn "," $ raw
-          n = case extraOps of
+          n = case ex of
             Just ~("part1" : rawN : _) -> read rawN
             Nothing -> 256
           x : y : _ = knotHashInternal n lenSeq

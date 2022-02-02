@@ -67,10 +67,10 @@ isHashUsable relaxedForTest h =
 
 instance Solution Day5 where
   solutionRun _ SolutionContext {getInputS, answerS} = do
-    (extraOps, rawInput) <- consumeExtra getInputS
+    (ex, rawInput) <- consumeExtra getInputS
     let inp = head . lines $ rawInput
         ss = searchSpace inp
-        relaxed = isJust extraOps
+        relaxed = isJust ex
         isUsable = isHashUsable relaxed
         usables = mapMaybe (extractDigit3 isUsable) ss
     answerS $ take 8 $ fmap fst usables

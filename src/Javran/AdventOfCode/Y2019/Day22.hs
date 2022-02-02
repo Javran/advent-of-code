@@ -88,12 +88,12 @@ shufTechToLinFn = \case
 
 instance Solution Day22 where
   solutionRun _ SolutionContext {getInputS, answerShow, answerS} = do
-    (extraOps, rawInput) <- consumeExtraLeadingLines <$> getInputS
+    (ex, rawInput) <- consumeExtraLeadingLines <$> getInputS
     let xs :: [ShufTech]
         xs = fmap (consumeOrDie shufTechP) . lines $ rawInput
         composed :: forall m. KnownNat m => LinFn m
         composed = foldl' (composeLinFn @m) (LinFn (1, 0)) (fmap shufTechToLinFn xs)
-    case extraOps of
+    case ex of
       Nothing -> do
         case someNatVal 10007 of
           SomeNat (_ :: Proxy m) -> do

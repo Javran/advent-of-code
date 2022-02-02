@@ -175,8 +175,8 @@ encodeVaccumRobotInput (mainRoutine, progList) =
 
 instance Solution Day17 where
   solutionRun _ SolutionContext {getInputS, answerShow, answerS} = do
-    (extraOps, rawInput) <- consumeExtraLeadingLines <$> getInputS
-    case extraOps of
+    (ex, rawInput) <- consumeExtraLeadingLines <$> getInputS
+    case ex of
       Nothing -> do
         let xs = parseCodeOrDie rawInput
         (_, out) <- runProgram xs []

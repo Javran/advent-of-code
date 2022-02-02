@@ -126,7 +126,7 @@ tick g capacity requiredTime = do
 
 instance Solution Day7 where
   solutionRun _ SolutionContext {getInputS, answerS, answerShow} = do
-    (extraOps, rawInput) <- consumeExtraLeadingLines <$> getInputS
+    (ex, rawInput) <- consumeExtraLeadingLines <$> getInputS
     let xs = fmap (consumeOrDie stepDepP) . lines $ rawInput
     let graph = M.fromListWith (<>) do
           (sFrom, sTo) <- xs
@@ -143,7 +143,7 @@ instance Solution Day7 where
         initQ =
           PQ.fromList $ fmap (\n -> n PQ.:-> n) initZeroDegNodes
     answerS (topologicalSort graph inDegs initQ)
-    let (workers, requiredTimeIncr) = case extraOps of
+    let (workers, requiredTimeIncr) = case ex of
           Nothing -> (5, 60)
           Just ys ->
             let [w, r] = fmap (read @Int) ys

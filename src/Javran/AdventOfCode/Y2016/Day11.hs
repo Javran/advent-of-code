@@ -290,8 +290,8 @@ solve inp =
 
 instance Solution Day11 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
-    (extraOps, rawInput) <- consumeExtra getInputS
-    let (runPart1, runPart2) = shouldRun extraOps
+    (ex, rawInput) <- consumeExtra getInputS
+    let (runPart1, runPart2) = shouldRun ex
         inp = consumeOrDie inputP rawInput
     when runPart1 do
       answerShow $ solve inp
