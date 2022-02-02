@@ -11,13 +11,8 @@ module Javran.AdventOfCode.Y2018.Day15
 where
 
 {-
-  (ranting)
-
-  Who the f comes up with this and has the guts to publish this bs,
-  please go f yourself, excuse my language but you deserve exactly that.
-
-  Or tell me what exactly am I supposed to learn from this?
-  Is this a fcking reading contest?
+  Warning: I strongly recommend *not* doing this puzzle unless aimming for completion,
+  as this one is nothing but following instructions, tedious as hell.
  -}
 
 import Control.Lens

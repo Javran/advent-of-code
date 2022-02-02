@@ -11,16 +11,8 @@ module Javran.AdventOfCode.Y2018.Day24
 where
 
 {-
-  (ranting)
-  I'm not sure what kind of douchebag insists on having another instance
-  of this simulation bullshit, after we've done with day 15.
-  *What* is the fun in reading a lengthy specification (if you can even call it a spec),
-  and implementing it exactly as specified?
-  I'd like to speculate that somebody implemented this the first time and discovered
-  this "stalemate" situation and decided that this would be a great AoC puzzle,
-  which just ends up making us go through all these hassle to get to this realization,
-  which won't even much time to deal with.
-  So, tell me what exactly are we supposed to have fun with this one, if there's any?
+  Warning: same vibe as Y2018 Day15, therefore I recommend avoid if possible.
+  Nothing new except for a "Stalemate" concept.
  -}
 
 import Control.Monad

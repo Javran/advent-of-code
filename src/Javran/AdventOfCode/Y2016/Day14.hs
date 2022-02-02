@@ -9,9 +9,11 @@ module Javran.AdventOfCode.Y2016.Day14
 where
 
 {-
+  Warning: strongly recommend *not* doing.
   It's ironic that this puzzle talks about "Security through obscurity"
   while doing the exact same thing - "difficulty through obscurity",
-  with this MD5 bs.
+  putting everything through with MD5 or any other digest algorithm,
+  and congrats you have a new puzzle.
 
   I'm very glad that this is the last year that I see this kind of puzzle.
  -}

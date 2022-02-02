@@ -25,11 +25,10 @@ import Numeric
 data Day5 deriving (Generic)
 
 {-
-  This is one of those garbage puzzles that serves absolutely no purpose:
+  Warning: strong recommend *not* doing this one,
+  as it serves absolutely no purpose:
   you learn nothing except for calling an external library,
   and there's no clear method of optimization.
-  And in addition, those digests are expensive to compute,
-  what is even the point?
  -}
 
 chHex :: Word8 -> Char
