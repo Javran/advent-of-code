@@ -43,6 +43,7 @@ import qualified Data.Map.Strict as M
 import Data.Monoid hiding (First, Last)
 import qualified Data.PSQueue as PQ
 import Data.Semigroup
+import qualified Data.Sequence as Seq
 import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Vector as V
@@ -96,27 +97,27 @@ psearch rules steps q0 = case PQ.minView q0 of
             q2 = foldr (\(next, step') -> PQ.insert next (Arg (BSC.length next) step')) q1 nexts
          in psearch rules steps' q2
 
-chemP :: ReadP String
-chemP = do
+type Atom = String
+
+data RnAr a
+  = Y0 a
+  | Y1 a a
+  | Y2 a a a
+  deriving (Show, Eq, Ord)
+
+data Inp
+  = Flat Atom
+  | Nest (RnAr [Inp])
+  deriving (Show, Eq, Ord)
+
+atomP :: ReadP Atom
+atomP = do
   atom <- (:) <$> satisfy isAsciiUpper <*> munch isAsciiLower
   guard $ atom `notElem` ["Rn", "Y", "Ar"]
   pure atom
 
-type Atom = String
-
-data RnAr
-  = Y0 [Inp]
-  | Y1 [Inp] [Inp]
-  | Y2 [Inp] [Inp] [Inp]
-  deriving (Show)
-
-data Inp
-  = Flat Atom
-  | Nest RnAr
-  deriving (Show)
-
 inpP :: ReadP Inp
-inpP = rnArP <++ (Flat <$> chemP)
+inpP = rnArP <++ (Flat <$> atomP)
   where
     rnArP = between (strP "Rn") (strP "Ar") do
       xs <- many1 inpP `sepBy1` char 'Y'
@@ -124,6 +125,19 @@ inpP = rnArP <++ (Flat <$> chemP)
         [a] -> Y0 a
         [a, b] -> Y1 a b
         ~[a, b, c] -> Y2 a b c
+
+replacementClosure rules = fix \go discovered acc -> \case
+  Seq.Empty -> acc
+  a Seq.:<| q1 ->
+    let nexts = performReplace rules a
+     in case nexts of
+          [] -> go discovered (S.insert a acc) q1
+          _ : _ ->
+            let nexts' = do
+                  next <- nexts
+                  guard $ S.notMember next discovered
+                  pure next
+             in go (foldr S.insert discovered nexts') acc (q1 <> Seq.fromList nexts')
 
 {-
   TODO:
@@ -146,7 +160,29 @@ inpP = rnArP <++ (Flat <$> chemP)
        or Y `Rn` A `Y` B `Y` C `Ar`
      where X, Y, Z, A, B, and C are atoms.
 
+  - sequence seems to have unique parsing,
+    or at least if we prioritize inside a nested structure,
+    alternatives won't be much.
+
+  - For RnAr, we probably can get all fields of Y0 / Y1 / Y2
+    to a single atom.
+
  -}
+
+rule2P :: ReadP (Atom, Either (Atom, Atom) (Atom, RnAr Atom))
+rule2P = do
+  lhs <- atomP <++ ("e" <$ char 'e')
+  strP " => "
+  rhsPre <- many1 inpP
+  rhs <- case rhsPre of
+    [Flat a, Flat b] -> pure $ Left (a, b)
+    [Flat a, Nest xs] -> (\v -> Right (a,v)) <$> (case xs of
+      Y0 [Flat x0] -> pure $ Y0 x0
+      Y1 [Flat x0] [Flat x1] -> pure $ Y1 x0 x1
+      Y2 [Flat x0] [Flat x1] [Flat x2] -> pure $ Y2 x0 x1 x2
+      _ -> pfail)
+    _ -> pfail
+  pure (lhs, rhs)
 
 instance Solution Day19 where
   solutionSolved _ = False
@@ -161,6 +197,10 @@ instance Solution Day19 where
     answerShow (S.size $ S.fromList $ performReplace rules inp')
     do
       let revRules1 :: Rules
+          revRules = M.toAscList $ M.fromListWith (<>) do
+            (lhs, rhss) <- rules
+            rhs <- rhss
+            pure (rhs, [lhs])
           revRules1 = M.toAscList $ M.fromListWith (<>) do
             (lhs, rhss) <- rules
             rhs <- rhss
@@ -174,5 +214,10 @@ instance Solution Day19 where
           experiment rs cur n = case performReplace rs cur of
             [] -> (cur, n)
             next : _ -> experiment rs next (n + 1)
-      print inp
       printer (consumeOrDie (many inpP) inp)
+      let experiment2 i =
+            sortOn BSC.length $
+              S.toList $
+                replacementClosure revRules (S.singleton i) S.empty (Seq.singleton i)
+
+      mapM_ (print . consumeOrDie rule2P) rawRules
