@@ -54,6 +54,7 @@ import GHC.Generics (Generic)
 import Javran.AdventOfCode.Prelude
 import Shower
 import Text.ParserCombinators.ReadP hiding (count, get, many)
+import Control.Monad.Writer.CPS
 
 data Day19 deriving (Generic)
 
@@ -113,17 +114,17 @@ inpP = rnArP <++ (Flat <$> atomP)
 
 replacementClosure rules = fix \go discovered q0 -> case PQ.minView q0 of
   Nothing -> []
-  Just (a PQ.:-> _l, q1) ->
+  Just (a PQ.:-> Arg _l cnt, q1) ->
     let nexts = performReplace2 rules a
      in case nexts of
-          [] -> a : go discovered q1
+          [] -> (a, cnt) : go discovered q1
           _ : _ ->
             let nexts' = do
                   next <- nexts
                   guard $ S.notMember next discovered
-                  pure (next, length next)
-                q2 = foldr (uncurry PQ.insert) q1 nexts'
-                discovered' = foldr (\(n, _) -> S.insert n) discovered nexts'
+                  pure (next, length next, cnt+1)
+                q2 = foldr (\(next, l', cnt') -> PQ.insert next (Arg l' cnt')) q1 nexts'
+                discovered' = foldr (\(n, _, _) -> S.insert n) discovered nexts'
              in go discovered' q2
 
 {-
@@ -187,9 +188,9 @@ performReplace2 rules inp = do
   Just xs1 <- pure $ stripPrefix lhs xs0
   pure $ pre <> [Flat rhs] <> xs1
 
-simpInp :: Rules2 -> Inp -> [Inp]
+simpInp :: Rules2 -> Inp -> WriterT (Sum Int) [] Inp
 simpInp rs = \case
-  x@Flat {} -> [x]
+  x@Flat {} -> pure x
   Nest rnAr -> case rnAr of
     Y0 x0 -> do
       x0' <- simp' x0
@@ -208,10 +209,12 @@ simpInp rs = \case
       [o] <- simp rs i
       pure [o]
 
-simp :: Rules2 -> [Inp] -> [] [Inp]
+simp :: Rules2 -> [Inp] -> WriterT (Sum Int) [] [Inp]
 simp rs xs = do
   xs' <- mapM (simpInp rs) xs
-  replacementClosure rs (S.singleton xs') (PQ.singleton xs' (length xs'))
+  (r, l) <- lift $ replacementClosure rs (S.singleton xs') (PQ.singleton xs' $ Arg (length xs') 0)
+  tell (Sum l)
+  pure r
 
 instance Solution Day19 where
   solutionSolved _ = False
@@ -235,4 +238,5 @@ instance Solution Day19 where
                   Right (a, ra) -> [Flat a, Nest $ fmap ((: []) . Flat) ra]
             pure (lhs', oLhs)
           inp2 = consumeOrDie (many inpP) inp
-      answerShow $ take 1 $ simp rules inp2
+          (_, Sum ans2) : _ = runWriterT $ simp rules inp2
+      answerShow ans2
