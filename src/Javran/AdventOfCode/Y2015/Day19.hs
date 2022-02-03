@@ -1,6 +1,6 @@
 {-# LANGUAGE BlockArguments #-}
-{-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -59,7 +59,7 @@ data RnAr a
   = Y0 a
   | Y1 a a
   | Y2 a a a
-  deriving (Show, Eq, Ord, Functor)
+  deriving (Show, Eq, Ord, Functor, Foldable, Traversable)
 
 data Inp
   = Flat Atom
@@ -148,19 +148,7 @@ performReplace2 rules inp = do
 simpInp :: Rules2 -> Inp -> WriterT (Sum Int) [] Inp
 simpInp rs = \case
   x@Flat {} -> pure x
-  Nest rnAr -> case rnAr of
-    Y0 x0 -> do
-      x0' <- simp' x0
-      pure $ Nest $ Y0 x0'
-    Y1 x0 x1 -> do
-      x0' <- simp' x0
-      x1' <- simp' x1
-      pure $ Nest $ Y1 x0' x1'
-    Y2 x0 x1 x2 -> do
-      x0' <- simp' x0
-      x1' <- simp' x1
-      x2' <- simp' x2
-      pure $ Nest $ Y2 x0' x1' x2'
+  Nest rnAr -> Nest <$> mapM simp' rnAr
   where
     simp' i = do
       [o] <- simp rs i
