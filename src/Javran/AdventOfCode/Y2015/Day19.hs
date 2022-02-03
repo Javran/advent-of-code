@@ -53,6 +53,18 @@ performReplace rules inp = do
 
 type Rules = [(Str, [Str])]
 
+solvePart1 :: [String] -> String -> Int
+solvePart1 rawRules inp =
+  S.size $ S.fromList $ performReplace rules inp'
+  where
+    inp' = BSC.pack inp
+    rules :: Rules
+    rules = M.toAscList $ M.fromListWith (<>) $ fmap tr rawRules
+      where
+        tr x =
+          let [a, b] = splitOn " => " x
+           in (BSC.pack a, [BSC.pack b])
+
 type Atom = String
 
 data RnAr a
@@ -186,28 +198,26 @@ simp rs xs = do
   tell (Sum l)
   pure r
 
+solvePart2 :: [String] -> String -> Int
+solvePart2 rawRules inp = ans2
+  where
+    rules :: Rules2
+    rules = M.fromListWith (error "duplicated key") do
+      rawRule <- rawRules
+      let (oLhs, oRhs) = consumeOrDie rule2P rawRule
+          lhs' = case oRhs of
+            Left (a, b) -> [Flat a, Flat b]
+            Right (a, ra) -> [Flat a, Nest $ fmap ((: []) . Flat) ra]
+      pure (lhs', oLhs)
+    inp2 = consumeOrDie (many inpP) inp
+    (_, Sum ans2) : _ = runWriterT $ simp rules inp2
+
 instance Solution Day19 where
   solutionRun _ SolutionContext {getInputS, answerShow} = do
     (ex, rawInput) <- consumeExtra getInputS
     let [rawRules, [inp]] = splitOn [""] . lines $ rawInput
-        inp' = BSC.pack inp
         (runPart1, runPart2) = shouldRun ex
     when runPart1 do
-      let rules = M.toAscList $ M.fromListWith (<>) $ fmap tr rawRules
-            where
-              tr x =
-                let [a, b] = splitOn " => " x
-                 in (BSC.pack a, [BSC.pack b])
-      answerShow (S.size $ S.fromList $ performReplace rules inp')
+      answerShow $ solvePart1 rawRules inp
     when runPart2 do
-      let rules :: Rules2
-          rules = M.fromListWith (error "duplicated key") do
-            rawRule <- rawRules
-            let (oLhs, oRhs) = consumeOrDie rule2P rawRule
-                lhs' = case oRhs of
-                  Left (a, b) -> [Flat a, Flat b]
-                  Right (a, ra) -> [Flat a, Nest $ fmap ((: []) . Flat) ra]
-            pure (lhs', oLhs)
-          inp2 = consumeOrDie (many inpP) inp
-          (_, Sum ans2) : _ = runWriterT $ simp rules inp2
-      answerShow ans2
+      answerShow $ solvePart2 rawRules inp
