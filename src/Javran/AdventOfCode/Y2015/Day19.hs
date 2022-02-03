@@ -53,6 +53,23 @@ performReplace rules inp = do
 
 type Rules = [(Str, [Str])]
 
+{-
+  Note that this solution uses ByteString.Char8 instead of the usual String
+  that we are working with.
+
+  This has a significant speed boost and my original plan is to use tools that we built
+  in part 1 to see how far can we go in part 2.
+
+  That plan didsn't work - I'm not aware of any algorithm
+  that can handle this kind of puzzles in general
+  (that said, probably someone can do that with some forms of dynamic programming),
+  so I ended up with something else taking advantage of properties that
+  many websites' input data seems to share.
+
+  This ByteString.Char8 impl remains however, just to have some examples
+  that works with ByteString for once
+  (note that for proper unicode handling, we need Data.Text of course).
+ -}
 solvePart1 :: [String] -> String -> Int
 solvePart1 rawRules inp =
   S.size $ S.fromList $ performReplace rules inp'
@@ -64,6 +81,11 @@ solvePart1 rawRules inp =
         tr x =
           let [a, b] = splitOn " => " x
            in (BSC.pack a, [BSC.pack b])
+
+
+{-
+  Below are for part2.
+ -}
 
 type Atom = String
 
