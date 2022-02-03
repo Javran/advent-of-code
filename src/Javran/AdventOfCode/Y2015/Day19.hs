@@ -193,6 +193,11 @@ rule2P = do
     _ -> pfail
   pure (lhs, rhs)
 
+{-
+  Exactly the same function as splitAts with
+  a different type - we could genrealize this
+  with a typeclass but I don't want the complexity of going that far.
+ -}
 splitAts2 :: [Inp] -> [] ([Inp], [Inp])
 splitAts2 xs = do
   n <- [0 .. length xs]
@@ -200,6 +205,10 @@ splitAts2 xs = do
 
 type Rules2 = M.Map [Inp] Atom
 
+{-
+  Very similar to performReplace but for part2
+  we have only one RHS (was originally a LHS for a rule) to worry about.
+ -}
 performReplace2 :: Rules2 -> [Inp] -> [] [Inp]
 performReplace2 rules inp = do
   (pre, xs0) <- splitAts2 inp
@@ -207,6 +216,9 @@ performReplace2 rules inp = do
   Just xs1 <- pure $ stripPrefix lhs xs0
   pure $ pre <> [Flat rhs] <> xs1
 
+{-
+  Simplifying is parsing, keeping track of rule application count.
+ -}
 simpInp :: Rules2 -> Inp -> WriterT (Sum Int) [] Inp
 simpInp rs = \case
   x@Flat {} -> pure x
@@ -216,6 +228,15 @@ simpInp rs = \case
       [o] <- simp rs i
       pure [o]
 
+{-
+  Keeps applying a set of rules until nothing further can be applied,
+  this search is prioritized on length of the current string
+  (shorter one in queue is always checked first) to produce
+  a stream of final parsing results, roughly ordered by length.
+  (it probably won't be a sorted list, as a shorter way of parsing
+  might appear late in the search that a longer one has been in
+  the result list prior to that).
+ -}
 replaceUntilFix
   :: Rules2
   -> S.Set [Inp]
@@ -225,9 +246,9 @@ replaceUntilFix rules = fix \go discovered q0 -> case PQ.minView q0 of
   Nothing -> []
   Just (a PQ.:-> Arg _l cnt, q1) ->
     let nexts = performReplace2 rules a
-     in case nexts of
-          [] -> (a, cnt) : go discovered q1
-          _ : _ ->
+     in if null nexts
+          then (a, cnt) : go discovered q1
+          else
             let nexts' = do
                   next <- nexts
                   guard $ S.notMember next discovered
@@ -236,6 +257,10 @@ replaceUntilFix rules = fix \go discovered q0 -> case PQ.minView q0 of
                 discovered' = foldr (\(n, _, _) -> S.insert n) discovered nexts'
              in go discovered' q2
 
+{-
+  simp and simpInp are mutually recursive to work on
+  individual elements and then the sequence as a whole.
+ -}
 simp :: Rules2 -> [Inp] -> WriterT (Sum Int) [] [Inp]
 simp rs xs = do
   xs' <- mapM (simpInp rs) xs
