@@ -82,9 +82,57 @@ solvePart1 rawRules inp =
           let [a, b] = splitOn " => " x
            in (BSC.pack a, [BSC.pack b])
 
-
 {-
   Below are for part2.
+
+  First thing, it might be easier to think about the medicine molecule as the input string,
+  and work backwards, "unapplying" rules until it becomes just `e`.
+
+  A general search doesn't work, however. As there are simply too many search states
+  to explore - a small portion of the input string could have multiple ways of parsing
+  and putting those portions together the search space will definitely explode.
+
+  So my solution needs to exploit properties in my login input
+  (and also some other login input samples to see what is common).
+
+  Let's begin with some analysis on my login input:
+  (as I've later found out that all examples have a fixed set of rules,
+  just that the input strings differ)
+
+  Among all those rules:
+
+  - it seems all RHS are unique, in other words, there is no branching
+    by "unapplying" a rules from RHS to LHS.
+    (however, the order of un-application might matter)
+
+  - only on rule's LHS: ["e"]
+
+  - only on rule's RHS: ["Ar","C","Rn","Y"]
+
+    + further, `Rn` and `Ar` always appear in pairs, in that order,
+      and `Y` only appears between them.
+
+ - rules follow one of the following forms:
+
+   + X => Y Z
+     where X, Y, and Z are atoms
+
+   + X => Y `Rn` A `Ar`
+       or Y `Rn` A `Y` B `Ar`
+       or Y `Rn` A `Y` B `Y` C `Ar`
+     where X, Y, Z, A, B, and C are atoms.
+
+    The significance of this is that we now know we must get those A, B, C
+    to single atoms before we can apply any of those rules.
+    so if a sequence of atoms appears in one of those A, B, C positions,
+    we should only accept parsing that results in one single atom.
+
+  - By playing around with some subsequences of the input string,
+    I think most of them has a unique parsing result despite taking
+    different paths - this further confirms that we can probably
+    get away without exploring the full search space by taking
+    the first few viable way of parsing.
+
  -}
 
 type Atom = String
@@ -117,38 +165,18 @@ inpP = rnArP <++ (Flat <$> atomP)
         ~[a, b, c] -> Y2 a b c
 
 {-
-  TODO:
-  Some analysis on my login input, which might or might not be useful:
+  Output type explained:
 
-  - only on rule's LHS: ["e"]
-
-  - only on rule's RHS: ["Ar","C","Rn","Y"]
-
-    + further, `Rn` and `Ar` always appear in pairs, in that order,
-      and `Y` only appears between them.
-
- - rules follow one of the following forms:
-
-   + X => Y Z
-     where X, Y, and Z are atoms
-
-   + X => Y `Rn` A `Ar`
-       or Y `Rn` A `Y` B `Ar`
-       or Y `Rn` A `Y` B `Y` C `Ar`
-     where X, Y, Z, A, B, and C are atoms.
-
-  - sequence seems to have unique parsing,
-    or at least if we prioritize inside a nested structure,
-    alternatives won't be much.
-
-  - For RnAr, we probably can get all fields of Y0 / Y1 / Y2
-    to a single atom.
-
-  TODO: a bit messy, cleanup needed.
+  - Left (_ :: (Atom, Atom)): expect exactly two atoms on RHS
+  - Right (_ :: Atom, _ :: RnAr):
+    expect one atom followed by one of those RnAr chunks.
 
  -}
-
-rule2P :: ReadP (Atom, Either (Atom, Atom) (Atom, RnAr Atom))
+rule2P
+  :: ReadP
+       ( Atom
+       , Either (Atom, Atom) (Atom, RnAr Atom)
+       )
 rule2P = do
   lhs <- atomP <++ ("e" <$ char 'e')
   strP " => "
