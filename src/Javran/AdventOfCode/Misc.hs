@@ -59,7 +59,7 @@ commitLeft1 = foldr1 (<++)
 {-
   Finds the n-th permutation of a list:
 
-  nthPermutation n which xs
+  > nthPermutation n which xs
 
   - length xs == n
   - 0 <= which < product [1..n]
