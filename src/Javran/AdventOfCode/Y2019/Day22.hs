@@ -100,7 +100,6 @@ instance Solution Day22 where
             answerShow (unMod $ applyLinFn (undoLinFn (composed @m)) 2019)
         case someNatVal 119315717514047 of
           SomeNat (_ :: Proxy m) -> do
-            -- TODO: test coverage for part 2.
             let tr = stimes @_ @Int 101741582076661 (composed @m)
             answerShow (unMod $ applyLinFn tr 2020)
       Just extra ->
