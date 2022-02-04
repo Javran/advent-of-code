@@ -105,7 +105,8 @@ instance Solution Day10 where
             Just ~("part1" : rawN : _) -> read rawN
             Nothing -> 256
           x : y : _ = knotHashInternal n lenSeq
-      answerShow $ x * y
+          ans1 = fromIntegral x * fromIntegral y :: Int
+      answerShow ans1
     when runPart2 do
       let ans = knotHashFast raw
           hexStr :: Word8 -> String
