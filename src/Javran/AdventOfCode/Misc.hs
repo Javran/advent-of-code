@@ -50,6 +50,21 @@ internalize xs = ((m M.!), (arr Arr.!))
 commitLeft1 :: Foldable t => t (ReadP a) -> ReadP a
 commitLeft1 = foldr1 (<++)
 
+
+{-
+  TODO: use nthPermutation to generate input string
+  for QuickCheck-ing Y2016.Day21.
+ -}
+
+{-
+  Finds the n-th permutation of a list:
+
+  nthPermutation n which xs
+
+  - length xs == n
+  - 0 <= which < product [1..n]
+
+ -}
 nthPermutation :: Int -> Int -> [a] -> [a]
 nthPermutation n which =
   if n <= 1
