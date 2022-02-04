@@ -3,11 +3,13 @@ module Javran.AdventOfCode.Misc
   , rotateRightBy
   , internalize
   , commitLeft1
+  , nthPermutation
   )
 where
 
 import qualified Data.Array as Arr
 import Data.Containers.ListUtils
+import Data.List
 import qualified Data.Map.Strict as M
 import Data.Tuple
 import Text.ParserCombinators.ReadP (ReadP, (<++))
@@ -47,3 +49,26 @@ internalize xs = ((m M.!), (arr Arr.!))
 
 commitLeft1 :: Foldable t => t (ReadP a) -> ReadP a
 commitLeft1 = foldr1 (<++)
+
+nthPermutation :: Int -> Int -> [a] -> [a]
+nthPermutation n which =
+  if n <= 1
+    then id
+    else selects decisions
+  where
+    decisions = go mods which
+      where
+        mods = reverse (scanl' (*) 1 [2 .. n -1])
+        go xs v = case xs of
+          [] -> [v]
+          x : xs' ->
+            let (q, r) = v `quotRem` x
+             in q : go xs' r
+    select i xs = (v, ys <> zs)
+      where
+        (ys, v : zs) = splitAt i xs
+    selects indices xs = case indices of
+      [] -> []
+      i : indices' ->
+        let (v, xs') = select i xs
+         in v : selects indices' xs'
