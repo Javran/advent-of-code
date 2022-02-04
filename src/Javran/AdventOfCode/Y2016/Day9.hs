@@ -32,7 +32,7 @@ chunkP = repeatedP <++ (Plain <$> munch1 (`notElem` "(\n"))
         <*> replicateM m nextCharP
 
 {-
-  TODO: We could use some rercursion-schemes stuff here,
+  TODO: We could use some recursion-schemes stuff here,
   but the problem is we have two layers:
 
   parseString :: String -> [SimpleChunk]
