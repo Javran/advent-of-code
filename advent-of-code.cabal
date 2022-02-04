@@ -316,6 +316,7 @@ test-suite hspec
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      Javran.AdventOfCode.MiscSpec
       Javran.AdventOfCode.TestdataSpec
       Javran.AdventOfCode.TestdataTh
       Javran.AdventOfCode.Y2019.Day17Spec

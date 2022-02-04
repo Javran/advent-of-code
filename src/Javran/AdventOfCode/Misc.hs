@@ -19,14 +19,20 @@ import Text.ParserCombinators.ReadP (ReadP, (<++))
 
 {-
   Rotates a known-length list to left or right.
-  n > 0, 0 <= offset <= n.
+  n > 0 (in other words, non-empty list), 0 <= offset <= n.
 
-  TODO: QuickCheck, make this accept nums in other ranges.
-
+  It is intentional that these two functions lean towards
+  performance rather than being convenient -
+  how to compute list length and whether to apply modulo on offsets
+  is not our concern here.
  -}
 rotateLeftBy, rotateRightBy :: Int -> Int -> [a] -> [a]
-rotateLeftBy n offset xs = take n $ drop offset $ cycle xs
-rotateRightBy n offset = rotateLeftBy n (n - offset)
+rotateLeftBy _n offset xs = zs <> ys
+  where
+    (ys, zs) = splitAt offset xs
+rotateRightBy n offset xs = zs <> ys
+  where
+    (ys, zs) = splitAt (n - offset) xs
 
 {-
   Builds one-to-one mappings between a known set of values (typically Strings)
