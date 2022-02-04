@@ -107,10 +107,12 @@ parseArgs = \case
             maybe (pure defExample) parseExampleName mx
         | cmd == "write-expect" -> CmdWriteExampleExpect <$ expectNoExtra args
         | cmd == "new" -> CmdNewSolution <$ expectNoExtra args
-        | cmd == "submit" -> do
-          -- TODO: be more rigid on this.
-          let [whichRaw, answer] = args
-          pure $ CmdSubmit (read whichRaw) answer
+        | cmd == "submit" -> case args of
+          [whichRaw, answer]
+            | [(w, "")] <- reads whichRaw
+              , w `elem` [1, 2] ->
+              pure $ CmdSubmit w answer
+          _ -> Left "Expected <1|2> <answer>"
         | cmd == "test" ->
           CmdTest <$ expectNoExtra args
         | cmd == "add-extra" ->
