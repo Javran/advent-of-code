@@ -38,7 +38,7 @@ step n len skipSize (xs0, offset) = (xs2, (offset + offset') `rem` n)
   where
     xs1 = let (ys, zs) = splitAt len xs0 in reverse ys <> zs
     offset' = len + skipSize
-    xs2 = rotateLeftBy n (len + skipSize) xs1
+    xs2 = rotateLeftBy n ((len + skipSize) `rem` n) xs1
 
 viaCircle :: Int -> (Circle -> Circle) -> [Word8] -> [Word8]
 viaCircle n f xs = rotateRightBy n offset ys
