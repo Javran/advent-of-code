@@ -319,6 +319,7 @@ test-suite hspec
       Javran.AdventOfCode.MiscSpec
       Javran.AdventOfCode.TestdataSpec
       Javran.AdventOfCode.TestdataTh
+      Javran.AdventOfCode.Y2016.Day21Spec
       Javran.AdventOfCode.Y2019.Day17Spec
       Javran.AdventOfCode.Y2021.Day24Spec
   hs-source-dirs:

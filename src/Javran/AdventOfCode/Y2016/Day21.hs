@@ -4,7 +4,9 @@
 {-# LANGUAGE NamedFieldPuns #-}
 
 module Javran.AdventOfCode.Y2016.Day21
-  (
+  ( Operation (..)
+  , applyOp
+  , unapplyOp
   )
 where
 
@@ -113,7 +115,8 @@ unapplyOp n = \case
   op@(RotCh x) -> \ys -> do
     {-
       n is small enough that we can afford trying them all
-      TODO: probably something smarter than this?
+      TODO: with QuickCheck now in place,
+      we can probably remove those runtime checks.
      -}
     offset <- [0 .. n -1]
     let xs = rotateLeftBy n offset ys
