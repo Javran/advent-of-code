@@ -105,14 +105,11 @@ applyOp n = \case
 {-
   Attempts to undo an operation.
 
-  With runtime checks - we could certainly go faster, but I'd say
-  the program is fast enough that we can afford having those checks in place.
-
-  TODO: QuickCheck probably?
+  Note that this function is checked by QuickCheck to make sure its correctness.
  -}
 unapplyOp :: Int -> Operation -> [] Char -> [[] Char]
 unapplyOp n = \case
-  op@(RotCh x) -> \ys -> do
+  RotCh x -> \ys -> do
     {-
       n is small enough that we can afford trying them all
       TODO: with QuickCheck now in place,
@@ -122,19 +119,14 @@ unapplyOp n = \case
     let xs = rotateLeftBy n offset ys
         Just i = elemIndex x xs
         extra = if i >= 4 then 1 else 0
-    guard $ offset == ((i + 1 + extra) `mod` n)
-    if applyOp n op xs == ys
-      then pure xs
-      else error $ "violated: " <> show (xs, op, ys)
+    xs <$ guard (offset == ((i + 1 + extra) `mod` n))
   op -> \ys ->
     let op' = case op of
           RotStep e -> RotStep $ either Right Left e
           Move i j -> Move j i
           _ -> op
         xs = applyOp n op' ys
-     in if applyOp n op xs == ys
-          then [xs]
-          else error $ "violated: " <> show (op, op', xs, ys)
+     in [xs]
 
 instance Solution Day21 where
   solutionRun _ SolutionContext {getInputS, answerS} = do
