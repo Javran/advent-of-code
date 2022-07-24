@@ -3,6 +3,6 @@ cradle:
     - path: "./src"
       component: "advent-of-code:lib"
     - path: "./exe"
-      component: "advent-of-code:exe:demo"
+      component: "advent-of-code:exe:run-advent-of-code"
     - path: "./test"
       component: "advent-of-code:test:hspec"
