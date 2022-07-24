@@ -5,8 +5,7 @@ packages:
 extra-deps:
 - git: https://github.com/Javran/petbox.git
   commit: 8e921c41862dbe37ae8d957e88cea7961362e303
-- git: https://github.com/IagoAbal/haskell-z3.git
-  commit: ba5c2907c06a7844a78cf1fb87dae60f9b6ee6df
+- z3-408.2
 - PSQueue-1.1.0.1
 - memoize-1.1.1
 - monoidal-containers-0.6.2.0

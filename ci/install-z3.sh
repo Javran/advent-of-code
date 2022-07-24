@@ -1,7 +1,7 @@
 #!/bin/bash
 
-export Z3_RELEASE=z3-4.8.14
-export Z3_LONG_VERSION=z3-4.8.14-x64-glibc-2.31
+export Z3_RELEASE=z3-4.8.17
+export Z3_LONG_VERSION=z3-4.8.17-x64-glibc-2.31
 
 zip_target="$HOME/${Z3_LONG_VERSION}.zip"
 
